@@ -11,6 +11,43 @@ The response to this request will either be 200 together with a JSON body that
 contains the request (i.e., challenge and statement for which the presentation
 is valid) together with the timestamp and block in which the verification took place.
 
+An example response is
+```json
+{
+  "block": "c4fa02aa6940750e6692639092406f32282b4d414d0aab66222e328caabbd411",
+  "blockTime": "2023-06-01T14:15:47.250Z",
+  "challenge": "dbd9887999b7ce48236f86fa35d29dd7a8335287b422b186e11ec6d1d02b3291",
+  "credentialStatements": [
+    {
+      "id": "did:ccd:testnet:sci:4718:0/credentialEntry/2eec102b173118dda466411fc7df88093788a34c3e2a4b0a8891f5c671a9d106",
+      "statement": [
+        {
+          "attributeTag": 0,
+          "set": [
+            "bar",
+            "baz",
+            "foo",
+            "qux"
+          ],
+          "type": "AttributeInSet"
+        },
+        {
+          "attributeTag": 3,
+          "lower": 0,
+          "type": "AttributeInRange",
+          "upper": 17
+        }
+      ],
+      "type": [
+        "ConcordiumVerifiableCredential",
+        "MyCredential",
+        "VerifiableCredential"
+      ]
+    }
+  ]
+}
+```
+
 In case of invalid request the error will be in the 4** range, either 404 if
 credentials cannot be found, or 400 for invalid proofs or otherwise malformed request.
 

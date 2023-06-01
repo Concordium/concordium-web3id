@@ -10,6 +10,7 @@ use clap::Parser;
 use concordium_rust_sdk::{
     contract_client::CredentialStatus,
     id::{constants::ArCurve, types::GlobalContext},
+    types::hashes::BlockHash,
     v2::{self, BlockIdentifier},
     web3id::{
         self, did::Network, CredentialLookupError, Presentation, PresentationVerificationError,
@@ -127,17 +128,31 @@ struct State {
     params:  GlobalContext<ArCurve>,
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Response {
+    block:      BlockHash,
+    block_time: chrono::DateTime<chrono::Utc>,
+    #[serde(flatten)]
+    request:    web3id::Request<ArCurve, Web3IdAttribute>,
+}
+
 #[tracing::instrument(level = "info", skip_all)]
 async fn verify_presentation(
     axum::extract::State(mut state): axum::extract::State<State>,
     presentation: Result<axum::Json<Presentation<ArCurve, Web3IdAttribute>>, JsonRejection>,
-) -> Result<axum::Json<web3id::Request<ArCurve, Web3IdAttribute>>, Error> {
+) -> Result<axum::Json<Response>, Error> {
     let presentation = presentation?;
+    let bi = state
+        .client
+        .get_block_info(BlockIdentifier::LastFinal)
+        .await
+        .map_err(|e| Error::CredentialLookup(e.into()))?;
     let public_data = web3id::get_public_data(
         &mut state.client,
         state.network,
         &presentation,
-        BlockIdentifier::LastFinal,
+        bi.block_hash,
     )
     .await?;
     // Check that all credentials are active at the time of the query.
@@ -148,9 +163,13 @@ async fn verify_presentation(
         return Err(Error::InactiveCredentials);
     }
     // And then verify the cryptographic proofs.
-    let statement =
+    let request =
         presentation.verify(&state.params, public_data.iter().map(|cm| &cm.commitments))?;
-    Ok(axum::Json(statement))
+    Ok(axum::Json(Response {
+        block: bi.block_hash,
+        block_time: bi.response.block_slot_time,
+        request,
+    }))
 }
 
 #[tokio::main]
