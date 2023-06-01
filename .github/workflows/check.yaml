@@ -25,6 +25,7 @@ jobs:
       matrix:
         crates:
           - web3id-verifier/Cargo.toml
+          - test-tools/web3id-test/Cargo.toml
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -51,6 +52,7 @@ jobs:
       matrix:
         crates:
           - web3id-verifier/Cargo.toml
+          - test-tools/web3id-test/Cargo.toml
     steps:
       - name: Checkout
         uses: actions/checkout@v3
