@@ -1,8 +1,8 @@
 use anyhow::Context;
 use axum::{
-    extract::rejection::JsonRejection,
+    extract::rejection::{JsonRejection, PathRejection},
     http::{self, StatusCode},
-    routing::post,
+    routing::{get, post},
     Router,
 };
 use axum_prometheus::PrometheusMetricLayerBuilder;
@@ -14,10 +14,11 @@ use concordium_rust_sdk::{
     contract_client::CredentialInfo,
     smart_contracts::common::{self as concordium_std, Amount},
     types::{
-        hashes::TransactionHash, transactions::send::GivenEnergy, ContractAddress, Nonce,
-        WalletAccount,
+        hashes::{BlockHash, TransactionHash},
+        transactions::send::GivenEnergy,
+        ContractAddress, Nonce, WalletAccount,
     },
-    v2,
+    v2::{self, QueryError},
     web3id::storage::{DataToSign, StoreParam},
 };
 use std::{path::PathBuf, sync::Arc};
@@ -93,10 +94,14 @@ struct App {
 enum Error {
     #[error("Unable to parse request: {0}")]
     InvalidRequest(#[from] JsonRejection),
+    #[error("Unable to parse path: {0}")]
+    InvalidPath(#[from] PathRejection),
     #[error("Unable to submit transaction: {0}")]
     CouldNotSubmit(#[from] Cis4TransactionError),
     #[error("Transaction expiry is too early in the future.")]
     ExpiryTooEarly,
+    #[error("Transaction query error: {0}.")]
+    QueryError(#[from] QueryError),
 }
 
 impl axum::response::IntoResponse for Error {
@@ -109,12 +114,33 @@ impl axum::response::IntoResponse for Error {
                     axum::Json(format!("Invalid presentation format: {e}")),
                 )
             }
+            Error::InvalidPath(e) => {
+                tracing::warn!("Invalid request. Failed to parse path: {e}");
+                (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json(format!("Invalid path: {e}")),
+                )
+            }
             Error::CouldNotSubmit(e) => {
                 tracing::error!("Failed to submit transaction: {e}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     axum::Json(format!("Could not submit transaction.")),
                 )
+            }
+            Error::QueryError(e) => {
+                if e.is_not_found() {
+                    (
+                        StatusCode::NOT_FOUND,
+                        axum::Json(format!("Transaction not found.")),
+                    )
+                } else {
+                    tracing::error!("Failed to query transaction: {e}");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        axum::Json(format!("Could not query transaction.")),
+                    )
+                }
             }
             Error::ExpiryTooEarly => {
                 tracing::warn!("Invalid request. Credential expiry is too early.");
@@ -144,6 +170,32 @@ struct IssueRequest {
     #[serde(deserialize_with = "concordium_base::common::base16_decode")]
     signature:  [u8; 64],
     data:       DataToSign,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(tag = "status")]
+enum StatusResponse {
+    #[serde(rename = "finalized")]
+    Finalized { block: BlockHash, success: bool },
+    #[serde(rename = "notFinalized")]
+    NotFinalized,
+}
+
+#[tracing::instrument(level = "info", skip(state, tx))]
+async fn status(
+    axum::extract::State(mut state): axum::extract::State<State>,
+    tx: Result<axum::extract::Path<TransactionHash>, PathRejection>,
+) -> Result<axum::Json<StatusResponse>, Error> {
+    let tx = tx?;
+    let status = state.client.client.get_block_item_status(&tx).await?;
+    if let Some((bh, summary)) = status.is_finalized() {
+        Ok(axum::Json(StatusResponse::Finalized {
+            block:   *bh,
+            success: summary.is_success(),
+        }))
+    } else {
+        Ok(axum::Json(StatusResponse::NotFinalized))
+    }
 }
 
 #[tracing::instrument(level = "info", skip(state, request))]
@@ -285,6 +337,7 @@ async fn main() -> anyhow::Result<()> {
     // build routes
     let server = Router::new()
         .route("/v0/issue", post(issue_credential))
+        .route("/v0/status/:transactionHash", get(status))
         .with_state(state)
         .layer(tower_http::trace::TraceLayer::new_for_http().
                make_span_with(DefaultMakeSpan::new().
