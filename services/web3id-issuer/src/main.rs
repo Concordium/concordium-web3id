@@ -10,15 +10,15 @@ use clap::Parser;
 use concordium_rust_sdk::{
     base as concordium_base,
     cis4::{Cis4Contract, Cis4TransactionError, Cis4TransactionMetadata},
-    common::{self, types::TransactionTime, SerdeBase16Serialize},
+    common::types::TransactionTime,
     contract_client::CredentialInfo,
-    smart_contracts::common::{self as concordium_std, Amount, Timestamp},
+    smart_contracts::common::{self as concordium_std, Amount},
     types::{
         hashes::TransactionHash, transactions::send::GivenEnergy, ContractAddress, Nonce,
         WalletAccount,
     },
     v2,
-    web3id::CredentialHolderId,
+    web3id::storage::{DataToSign, StoreParam},
 };
 use std::{path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
@@ -137,49 +137,13 @@ struct State {
     min_allowed_expiry: u64,
 }
 
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Response {
-    transaction: TransactionHash,
-}
-
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct IssueRequest {
     credential: CredentialInfo,
-    signature:  Ed25519Signature,
+    #[serde(deserialize_with = "concordium_base::common::base16_decode")]
+    signature:  [u8; 64],
     data:       DataToSign,
-}
-
-/// The parameter type for the contract function `serializationHelper`.
-#[derive(concordium_std::Serialize, Debug, serde::Deserialize)]
-// TODO: Serialize vec as hex.
-pub struct DataToSign {
-    /// A timestamp to make signatures expire.
-    pub timestamp:            Timestamp,
-    /// The contract_address that the signature is intended for.
-    pub contract_address:     ContractAddress,
-    /// Metadata associated with the credential.
-    pub version:              u16,
-    /// The serialized encrypted_credential.
-    #[concordium(size_length = 2)]
-    pub encrypted_credential: Vec<u8>,
-}
-
-#[derive(concordium_std::Serialize, common::Serialize, SerdeBase16Serialize, Debug)]
-struct Ed25519Signature {
-    sig: [u8; 64],
-}
-
-/// The parameter type for the contract function `store`.
-#[derive(concordium_std::Serialize, Debug)]
-pub struct StoreParam {
-    /// Public key that created the above signature.
-    pub public_key: CredentialHolderId,
-    /// Signature.
-    pub signature:  [u8; 64],
-    // The signed data.
-    pub data:       DataToSign,
 }
 
 #[tracing::instrument(level = "info", skip(state, request))]
@@ -187,8 +151,8 @@ async fn issue_credential(
     axum::extract::State(mut state): axum::extract::State<State>,
     request: Result<axum::Json<IssueRequest>, JsonRejection>,
 ) -> Result<axum::Json<TransactionHash>, Error> {
+    tracing::info!("Request to issue a credential.");
     let axum::Json(request) = request?;
-
     if request.data.timestamp.timestamp_millis()
         < (chrono::Utc::now().timestamp_millis() as u64).saturating_add(state.min_allowed_expiry)
     {
@@ -199,11 +163,12 @@ async fn issue_credential(
 
     let storage_data = concordium_std::to_bytes(&StoreParam {
         public_key: request.credential.holder_id,
-        signature:  request.signature.sig,
+        signature:  request.signature,
         data:       request.data,
     });
 
     let mut nonce_guard = state.nonce_counter.lock().await;
+    tracing::info!("Using nonce {} to send the transaction.", *nonce_guard);
     let metadata = Cis4TransactionMetadata {
         sender_address: state.issuer.address,
         nonce: *nonce_guard,
