@@ -2805,6 +2805,7 @@ dependencies = [
  "clap",
  "concordium-rust-sdk",
  "ed25519-dalek",
+ "hex",
  "key_derivation",
  "rand 0.7.3",
  "reqwest",

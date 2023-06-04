@@ -9,12 +9,13 @@ edition = "2021"
 aes-gcm = {version = "0.10", features = ["std"]}
 anyhow = "1.0"
 chrono = "0.4.24"
-clap = { version = "4.3.0", features = ["derive", "env"] }
+clap = { version = "4.3", features = ["derive", "env"] }
 concordium-rust-sdk = { version = "2.4", path = "../../deps/concordium-rust-sdk" }
 ed25519-dalek = "1.0.1"
+hex = "0.4"
 key_derivation = { version = "*", path = "../../deps/concordium-rust-sdk/concordium-base/rust-src/key_derivation" }
 rand = "0.7"
-reqwest = { version = "0.11.18", features = ["json"] }
+reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.28", features = ["rt-multi-thread", "time"] }
