@@ -506,6 +506,7 @@ dependencies = [
 name = "concordium-rust-sdk"
 version = "2.4.0"
 dependencies = [
+ "aes-gcm",
  "anyhow",
  "chrono",
  "concordium-smart-contract-engine",
@@ -2804,6 +2805,7 @@ dependencies = [
  "clap",
  "concordium-rust-sdk",
  "ed25519-dalek",
+ "hex",
  "key_derivation",
  "rand 0.7.3",
  "reqwest",
