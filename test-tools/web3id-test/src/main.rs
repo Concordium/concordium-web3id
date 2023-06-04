@@ -51,7 +51,10 @@ pub struct InitParams {
 
 #[derive(Debug, clap::Subcommand)]
 enum Action {
-    #[clap(name = "new-issuer")]
+    #[clap(
+        name = "new-issuer",
+        about = "Create a new issuer smart contract instance."
+    )]
     NewIssuer {
         #[clap(long = "metadata-url", help = "The credential's metadat URL.")]
         metadata_url:     String,
@@ -77,7 +80,10 @@ enum Action {
         )]
         mod_ref:          ModuleReference,
     },
-    #[clap(name = "register")]
+    #[clap(
+        name = "register",
+        about = "Register a new credential in a credential registry."
+    )]
     Register {
         #[clap(long = "registry")]
         /// Address of the registry contract.
@@ -118,7 +124,10 @@ enum Action {
         #[clap(long = "index", help = "The index of the credential.")]
         index:    u32,
     },
-    #[clap(name = "prove")]
+    #[clap(
+        name = "prove",
+        about = "Construct a proof based on the stored credential and the statement."
+    )]
     Prove {
         #[clap(
             long = "verifier",
@@ -142,8 +151,8 @@ enum Action {
 struct App {
     #[clap(
         long = "node",
-        help = "GRPC interface of the node.",
-        default_value = "http://localhost:20000",
+        help = "GRPC V2 interface of the node.",
+        default_value = "http://node.testnet.concordium.com:20000",
         global = true
     )]
     endpoint: v2::Endpoint,
