@@ -87,32 +87,37 @@ enum Action {
     Register {
         #[clap(long = "registry")]
         /// Address of the registry contract.
-        registry:        ContractAddress,
+        registry:         ContractAddress,
         /// Address of the storage contract.
         #[clap(long = "storage", default_value_t=ContractAddress::new(4732,0))]
-        storage:         ContractAddress,
+        storage:          ContractAddress,
         #[clap(long = "attributes", help = "Path to the file with attributes.")]
-        attributes:      PathBuf,
+        attributes:       PathBuf,
         #[clap(long = "seed", help = "The path to the seed phrase.")]
-        seed:            PathBuf,
+        seed:             PathBuf,
         #[clap(
             name = "issuer",
             long = "issuer",
             help = "The issuer's wallet.",
             required_unless_present = "issuer-service"
         )]
-        issuer:          Option<PathBuf>,
+        issuer:           Option<PathBuf>,
         #[clap(
             name = "issuer-service",
             long = "issuer-service",
             help = "The URL of the issuer servicexs.",
             required_unless_present = "issuer"
         )]
-        issuer_service:  Option<reqwest::Url>,
+        issuer_service:   Option<reqwest::Url>,
         #[clap(long = "credential-type", help = "The credential type.")]
-        credential_type: String,
-        #[clap(long = "metadata-url", help = "The credential's metadat URL.")]
-        metadata_url:    String,
+        credential_type:  String,
+        #[clap(long = "metadata-url", help = "The credential's metadata URL.")]
+        metadata_url:     String,
+        #[clap(
+            long = "holder-revocable",
+            help = "Whether the credential should be holder revocable."
+        )]
+        holder_revocable: bool,
     },
     #[clap(name = "view", about = "View the credentials in a given contract.")]
     View {
@@ -367,6 +372,7 @@ async fn main() -> anyhow::Result<()> {
             issuer_service,
             metadata_url,
             credential_type,
+            holder_revocable,
         } => {
             let wallet = std::fs::read_to_string(&seed).context("Unable to read seed phrase.")?;
             let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet);
@@ -424,15 +430,15 @@ async fn main() -> anyhow::Result<()> {
                 .context("Unable to commit.")?;
 
             let cred_info = CredentialInfo {
-                holder_id:        CredentialHolderId::new(pub_key),
-                holder_revocable: true,
-                commitment:       concordium_rust_sdk::common::to_bytes(&comm),
-                valid_from:       Timestamp::from_timestamp_millis(
-                    chrono::Utc::now().timestamp_millis() as u64,
+                holder_id: CredentialHolderId::new(pub_key),
+                holder_revocable,
+                commitment: concordium_rust_sdk::common::to_bytes(&comm),
+                valid_from: Timestamp::from_timestamp_millis(
+                    chrono::Utc::now().timestamp_millis() as u64
                 ),
-                valid_until:      None,
-                credential_type:  CredentialType { credential_type },
-                metadata_url:     MetadataUrl::new(metadata_url, None)?,
+                valid_until: None,
+                credential_type: CredentialType { credential_type },
+                metadata_url: MetadataUrl::new(metadata_url, None)?,
             };
             let nonce: [u8; 12] = rng.gen();
 
