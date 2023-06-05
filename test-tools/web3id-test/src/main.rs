@@ -118,6 +118,17 @@ enum Action {
             help = "Whether the credential should be holder revocable."
         )]
         holder_revocable: bool,
+        #[clap(
+            long = "valid-from",
+            help = "Timestamp when the credential starts being valid.",
+            default_value_t = chrono::Utc::now()
+        )]
+        valid_from:       chrono::DateTime<chrono::Utc>,
+        #[clap(
+            long = "valid-until",
+            help = "Timestamp when the credential stops being valid."
+        )]
+        valid_until:      Option<chrono::DateTime<chrono::Utc>>,
     },
     #[clap(name = "view", about = "View the credentials in a given contract.")]
     View {
@@ -373,6 +384,8 @@ async fn main() -> anyhow::Result<()> {
             metadata_url,
             credential_type,
             holder_revocable,
+            valid_until,
+            valid_from,
         } => {
             let wallet = std::fs::read_to_string(&seed).context("Unable to read seed phrase.")?;
             let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet);
@@ -429,14 +442,17 @@ async fn main() -> anyhow::Result<()> {
                 .commit(&gapped_values, &mut rng)
                 .context("Unable to commit.")?;
 
+            let valid_from = Timestamp::from_timestamp_millis(valid_from.timestamp_millis() as u64);
+
+            let valid_until = valid_until
+                .map(|ts| Timestamp::from_timestamp_millis(ts.timestamp_millis() as u64));
+
             let cred_info = CredentialInfo {
                 holder_id: CredentialHolderId::new(pub_key),
                 holder_revocable,
                 commitment: concordium_rust_sdk::common::to_bytes(&comm),
-                valid_from: Timestamp::from_timestamp_millis(
-                    chrono::Utc::now().timestamp_millis() as u64
-                ),
-                valid_until: None,
+                valid_from,
+                valid_until,
                 credential_type: CredentialType { credential_type },
                 metadata_url: MetadataUrl::new(metadata_url, None)?,
             };
