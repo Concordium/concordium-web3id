@@ -87,32 +87,48 @@ enum Action {
     Register {
         #[clap(long = "registry")]
         /// Address of the registry contract.
-        registry:        ContractAddress,
+        registry:         ContractAddress,
         /// Address of the storage contract.
         #[clap(long = "storage", default_value_t=ContractAddress::new(4732,0))]
-        storage:         ContractAddress,
+        storage:          ContractAddress,
         #[clap(long = "attributes", help = "Path to the file with attributes.")]
-        attributes:      PathBuf,
+        attributes:       PathBuf,
         #[clap(long = "seed", help = "The path to the seed phrase.")]
-        seed:            PathBuf,
+        seed:             PathBuf,
         #[clap(
             name = "issuer",
             long = "issuer",
             help = "The issuer's wallet.",
             required_unless_present = "issuer-service"
         )]
-        issuer:          Option<PathBuf>,
+        issuer:           Option<PathBuf>,
         #[clap(
             name = "issuer-service",
             long = "issuer-service",
             help = "The URL of the issuer servicexs.",
             required_unless_present = "issuer"
         )]
-        issuer_service:  Option<reqwest::Url>,
+        issuer_service:   Option<reqwest::Url>,
         #[clap(long = "credential-type", help = "The credential type.")]
-        credential_type: String,
-        #[clap(long = "metadata-url", help = "The credential's metadat URL.")]
-        metadata_url:    String,
+        credential_type:  String,
+        #[clap(long = "metadata-url", help = "The credential's metadata URL.")]
+        metadata_url:     String,
+        #[clap(
+            long = "holder-revocable",
+            help = "Whether the credential should be holder revocable."
+        )]
+        holder_revocable: bool,
+        #[clap(
+            long = "valid-from",
+            help = "Timestamp when the credential starts being valid.",
+            default_value_t = chrono::Utc::now()
+        )]
+        valid_from:       chrono::DateTime<chrono::Utc>,
+        #[clap(
+            long = "valid-until",
+            help = "Timestamp when the credential stops being valid."
+        )]
+        valid_until:      Option<chrono::DateTime<chrono::Utc>>,
     },
     #[clap(name = "view", about = "View the credentials in a given contract.")]
     View {
@@ -367,6 +383,9 @@ async fn main() -> anyhow::Result<()> {
             issuer_service,
             metadata_url,
             credential_type,
+            holder_revocable,
+            valid_until,
+            valid_from,
         } => {
             let wallet = std::fs::read_to_string(&seed).context("Unable to read seed phrase.")?;
             let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet);
@@ -423,16 +442,19 @@ async fn main() -> anyhow::Result<()> {
                 .commit(&gapped_values, &mut rng)
                 .context("Unable to commit.")?;
 
+            let valid_from = Timestamp::from_timestamp_millis(valid_from.timestamp_millis() as u64);
+
+            let valid_until = valid_until
+                .map(|ts| Timestamp::from_timestamp_millis(ts.timestamp_millis() as u64));
+
             let cred_info = CredentialInfo {
-                holder_id:        CredentialHolderId::new(pub_key),
-                holder_revocable: true,
-                commitment:       concordium_rust_sdk::common::to_bytes(&comm),
-                valid_from:       Timestamp::from_timestamp_millis(
-                    chrono::Utc::now().timestamp_millis() as u64,
-                ),
-                valid_until:      None,
-                credential_type:  CredentialType { credential_type },
-                metadata_url:     MetadataUrl::new(metadata_url, None)?,
+                holder_id: CredentialHolderId::new(pub_key),
+                holder_revocable,
+                commitment: concordium_rust_sdk::common::to_bytes(&comm),
+                valid_from,
+                valid_until,
+                credential_type: CredentialType { credential_type },
+                metadata_url: MetadataUrl::new(metadata_url, None)?,
             };
             let nonce: [u8; 12] = rng.gen();
 
