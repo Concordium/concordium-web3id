@@ -71,7 +71,7 @@ Then run
 docker build \
     --build-arg build_image=rust:1.67-buster\
     --build-arg base_image=debian:buster\
-    -f web3id-verifier/scripts/build.Dockerfile\
+    -f services/web3id-verifier/scripts/build.Dockerfile\
     -t web3id-verifier:latest .
 ```
 

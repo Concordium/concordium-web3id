@@ -11,7 +11,7 @@ axum = { version = "0.6", features = ["tracing"] }
 axum-prometheus = "0.3.3"
 chrono = { version = "0.4.26", features = ["serde"] }
 clap = { version = "4.3", features = ["env", "derive"] }
-concordium-rust-sdk = { version = "2.4.0", path = "../deps/concordium-rust-sdk" }
+concordium-rust-sdk = { version = "2.4", path = "../../deps/concordium-rust-sdk" }
 serde = { version = "1.0.163", features = ["derive"] }
 thiserror = "1.0.40"
 tokio = { version = "1.28", features = ["macros", "rt-multi-thread"] }

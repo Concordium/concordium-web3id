@@ -23,7 +23,7 @@ pipeline {
                         --build-arg build_image=rust:${rust_version}-buster\
                         --build-arg base_image=debian:buster\
                         --label rust_version="${rust_version}" \
-                        -f web3id-verifier/scripts/build.Dockerfile\
+                        -f services/web3id-verifier/scripts/build.Dockerfile\
                         -t "${image_name}"\
                         --no-cache\
                         .
