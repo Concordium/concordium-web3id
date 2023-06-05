@@ -24,7 +24,7 @@ jobs:
     strategy:
       matrix:
         crates:
-          - web3id-verifier/Cargo.toml
+          - services/web3id-verifier/Cargo.toml
           - test-tools/web3id-test/Cargo.toml
     steps:
       - name: Checkout
@@ -51,7 +51,7 @@ jobs:
     strategy:
       matrix:
         crates:
-          - web3id-verifier/Cargo.toml
+          - services/web3id-verifier/Cargo.toml
           - test-tools/web3id-test/Cargo.toml
     steps:
       - name: Checkout
