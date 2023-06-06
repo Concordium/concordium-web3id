@@ -35,6 +35,8 @@ import {
     SET_STRING_PARAMETER_SCHEMA,
     SET_OPTION_PARAMETER_SCHEMA,
     BASE_64_TEST_BENCH_SMART_CONTRACT_MODULE,
+    CREDENTIAL_REGISTRY_BASE_64_SCHEMA,
+    CREDENTIAL_REGISTRY_CONTRACT_INDEX,
 } from './constants';
 
 export async function initializeWithoutAmountWithoutParameter(connection: WalletConnection, account: string) {
@@ -57,32 +59,130 @@ export async function initializeWithAmount(connection: WalletConnection, account
     } as InitContractPayload);
 }
 
-export async function initializeWithParameter(
-    connection: WalletConnection,
-    account: string,
-    useModuleSchema: boolean,
-    input: string
-) {
-    const schema = useModuleSchema
-        ? {
-              parameters: Number(input),
-              schema: moduleSchemaFromBase64(BASE_64_SCHEMA),
-          }
-        : {
-              parameters: Number(input),
-              schema: typeSchemaFromBase64(SET_U16_PARAMETER_SCHEMA),
-          };
+// 4775
+
+export async function createNewIssuer(connection: WalletConnection, account: string, input: string) {
+    const parameter = {
+        issuer_metadata: {
+            hash: {
+                None: [],
+            },
+            url: 'https://issuer/metaData/',
+        },
+        storage_address: {
+            index: 3,
+            subindex: 0,
+        },
+        schemas: [],
+        issuer: {
+            Some: ['3LybnyGG4th6g4s8tv6Dt68pdW3wHASnfhiC7MhCxNfdVTATny'],
+        },
+        revocation_keys: ['37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499'],
+    };
+
+    const schema = {
+        parameters: parameter,
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
 
     return connection.signAndSendTransaction(
         account,
         AccountTransactionType.InitContract,
         {
             amount: new CcdAmount(BigInt(0)),
-            moduleRef: new ModuleReference('4f013778fc2ab2136d12ae994303bcc941619a16f6c80f22e189231781c087c7'),
-            initName: 'smart_contract_test_bench',
+            moduleRef: new ModuleReference('d39cb3fa33561edc8c2d691a622a5cd0851ed38655ecdb82d67b8a12068259e8'),
+            initName: 'credential_registry',
             param: toBuffer(''),
             maxContractExecutionEnergy: 30000n,
         } as InitContractPayload,
+        schema
+    );
+}
+
+export async function registerSchema(connection: WalletConnection, account: string, input: string) {
+    const inputParameter = {
+        credential_info: {
+            holder_id: '37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499',
+            holder_revocable: true,
+            commitment: [4, 2, 52, 3],
+            valid_from: '2030-08-08T05:15:00Z',
+            valid_until: {
+                Some: ['2030-08-08T05:15:00Z'],
+            },
+            credential_type: {
+                credential_type: 'myType',
+            },
+            metadata_url: {
+                hash: {
+                    None: [],
+                },
+                url: 'https://credential/metaData/',
+            },
+        },
+        auxiliary_data: [4, 2, 52, 3],
+    } as SmartContractParameters;
+
+    const schema = {
+        parameters: inputParameter,
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(0)),
+            address: {
+                index: CREDENTIAL_REGISTRY_CONTRACT_INDEX,
+                subindex: CONTRACT_SUB_INDEX,
+            },
+            receiveName: 'credential_registry.registerCredential',
+            maxContractExecutionEnergy: 30000n,
+        } as UpdateContractPayload,
+        schema
+    );
+}
+
+export async function issueCredential(connection: WalletConnection, account: string, input: string) {
+    const inputParameter = {
+        credential_info: {
+            holder_id: '37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499',
+            holder_revocable: true,
+            commitment: [4, 2, 52, 3],
+            valid_from: '2030-08-08T05:15:00Z',
+            valid_until: {
+                Some: ['2030-08-08T05:15:00Z'],
+            },
+            credential_type: {
+                credential_type: 'myType',
+            },
+            metadata_url: {
+                hash: {
+                    None: [],
+                },
+                url: 'https://credential/metaData/',
+            },
+        },
+        auxiliary_data: [4, 2, 52, 3],
+    } as SmartContractParameters;
+
+    const schema = {
+        parameters: inputParameter,
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(0)),
+            address: {
+                index: CREDENTIAL_REGISTRY_CONTRACT_INDEX,
+                subindex: CONTRACT_SUB_INDEX,
+            },
+            receiveName: 'credential_registry.registerCredential',
+            maxContractExecutionEnergy: 30000n,
+        } as UpdateContractPayload,
         schema
     );
 }
@@ -355,71 +455,6 @@ export async function setArray(
           };
 
     const receiveName = isPayable ? `${CONTRACT_NAME}.set_address_array_payable` : `${CONTRACT_NAME}.set_address_array`;
-
-    return connection.signAndSendTransaction(
-        account,
-        AccountTransactionType.Update,
-        {
-            amount: new CcdAmount(BigInt(cCDAmount)),
-            address: {
-                index: CONTRACT_INDEX,
-                subindex: CONTRACT_SUB_INDEX,
-            },
-            receiveName,
-            maxContractExecutionEnergy: 30000n,
-        } as UpdateContractPayload,
-        schema
-    );
-}
-
-export async function setObject(
-    connection: WalletConnection,
-    account: string,
-    useModuleSchema: boolean,
-    isPayable: boolean,
-    cCDAmount: string
-) {
-    const inputParameter = {
-        account_address_value: '4fUk1a1rjBzoPCCy6p92u5LT5vSw9o8GpjMiRHBbJUfmx51uvt',
-        address_array: [
-            {
-                Account: ['4fUk1a1rjBzoPCCy6p92u5LT5vSw9o8GpjMiRHBbJUfmx51uvt'],
-            },
-            {
-                Account: ['4fUk1a1rjBzoPCCy6p92u5LT5vSw9o8GpjMiRHBbJUfmx51uvt'],
-            },
-        ],
-        address_value: {
-            Account: ['4fUk1a1rjBzoPCCy6p92u5LT5vSw9o8GpjMiRHBbJUfmx51uvt'],
-        },
-        contract_address_value: {
-            index: 3,
-            subindex: 0,
-        },
-        u16_value: 999,
-        u8_value: 88,
-        hash_value: '37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499',
-        option_value: {
-            None: [],
-        },
-        public_key_value: '37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499',
-        signature_value:
-            '632f567c9321405ce201a0a38615da41efe259ede154ff45ad96cdf860718e79bde07cff72c4d119c644552a8c7f0c413f5cf5390b0ea0458993d6d6374bd904',
-        string_value: 'abc',
-        timestamp_value: '2030-08-08T05:15:00Z',
-    };
-
-    const schema = useModuleSchema
-        ? {
-              parameters: inputParameter,
-              schema: moduleSchemaFromBase64(BASE_64_SCHEMA),
-          }
-        : {
-              parameters: inputParameter,
-              schema: typeSchemaFromBase64(SET_OBJECT_PARAMETER_SCHEMA),
-          };
-
-    const receiveName = isPayable ? `${CONTRACT_NAME}.set_object_payable` : `${CONTRACT_NAME}.set_object`;
 
     return connection.signAndSendTransaction(
         account,
