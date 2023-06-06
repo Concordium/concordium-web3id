@@ -18,7 +18,7 @@ import {
     initializeWithoutAmountWithoutParameter,
     initializeWithAmount,
     createNewIssuer,
-    registerSchema,
+    registerCredentialSchema,
     deploy,
     simpleCCDTransfer,
     simpleCCDTransferToNonExistingAccountAddress,
@@ -374,7 +374,7 @@ export default function Main(props: WalletConnectionProps) {
                                         onClick={() => {
                                             setTxHash('');
                                             setTransactionError('');
-                                            const tx = registerSchema(connection, account, input);
+                                            const tx = registerCredentialSchema(connection, account, input);
                                             tx.then(setTxHash).catch((err: Error) => {
                                                 console.log(err);
                                                 setTransactionError((err as Error).message);

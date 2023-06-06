@@ -59,8 +59,6 @@ export async function initializeWithAmount(connection: WalletConnection, account
     } as InitContractPayload);
 }
 
-// 4775
-
 export async function createNewIssuer(connection: WalletConnection, account: string, input: string) {
     const parameter = {
         issuer_metadata: {
@@ -70,7 +68,7 @@ export async function createNewIssuer(connection: WalletConnection, account: str
             url: 'https://issuer/metaData/',
         },
         storage_address: {
-            index: 3,
+            index: 4778,
             subindex: 0,
         },
         schemas: [],
@@ -99,27 +97,23 @@ export async function createNewIssuer(connection: WalletConnection, account: str
     );
 }
 
-export async function registerSchema(connection: WalletConnection, account: string, input: string) {
+export async function registerCredentialSchema(connection: WalletConnection, account: string, input: string) {
     const inputParameter = {
-        credential_info: {
-            holder_id: '37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499',
-            holder_revocable: true,
-            commitment: [4, 2, 52, 3],
-            valid_from: '2030-08-08T05:15:00Z',
-            valid_until: {
-                Some: ['2030-08-08T05:15:00Z'],
-            },
-            credential_type: {
-                credential_type: 'myType',
-            },
-            metadata_url: {
-                hash: {
-                    None: [],
+        schemas: [
+            [
+                {
+                    credential_type: 'myType',
                 },
-                url: 'https://credential/metaData/',
-            },
-        },
-        auxiliary_data: [4, 2, 52, 3],
+                {
+                    schema_ref: {
+                        hash: {
+                            None: [],
+                        },
+                        url: 'https://credentialSchema/metaData/',
+                    },
+                },
+            ],
+        ],
     } as SmartContractParameters;
 
     const schema = {
@@ -136,7 +130,7 @@ export async function registerSchema(connection: WalletConnection, account: stri
                 index: CREDENTIAL_REGISTRY_CONTRACT_INDEX,
                 subindex: CONTRACT_SUB_INDEX,
             },
-            receiveName: 'credential_registry.registerCredential',
+            receiveName: 'credential_registry.addCredentialSchemas',
             maxContractExecutionEnergy: 30000n,
         } as UpdateContractPayload,
         schema

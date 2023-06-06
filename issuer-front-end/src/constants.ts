@@ -81,7 +81,7 @@ export const CONTRACT_NAME = 'smart_contract_test_bench';
 
 export const CONTRACT_INDEX = 4726n;
 
-export const CREDENTIAL_REGISTRY_CONTRACT_INDEX = 4775n;
+export const CREDENTIAL_REGISTRY_CONTRACT_INDEX = 4779n;
 
 export const CONTRACT_SUB_INDEX = 0n;
 
