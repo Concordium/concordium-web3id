@@ -9,7 +9,7 @@ import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 import { smartContractInfo, accountInfo, view, getValue } from './reading_from_blockchain';
 import {
     setValue,
-    setObject,
+    issueCredential,
     setArray,
     reverts,
     internalCallReverts,
@@ -17,18 +17,14 @@ import {
     notExistingEntrypoint,
     initializeWithoutAmountWithoutParameter,
     initializeWithAmount,
-    initializeWithParameter,
+    createNewIssuer,
+    registerSchema,
     deploy,
     simpleCCDTransfer,
     simpleCCDTransferToNonExistingAccountAddress,
 } from './writing_to_blockchain';
 
-import {
-    CONTRACT_INDEX,
-    BROWSER_WALLET,
-    SET_OBJECT_PARAMETER_SCHEMA,
-    REFRESH_INTERVAL,
-} from './constants';
+import { CONTRACT_INDEX, BROWSER_WALLET, SET_OBJECT_PARAMETER_SCHEMA, REFRESH_INTERVAL } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -269,15 +265,6 @@ export default function Main(props: WalletConnectionProps) {
                         <>
                             <div className="col-lg-4">
                                 <div className="sticky-top">
-                                    <h5>This column includes various test scenarios that can be executed: </h5>
-                                    <ul>
-                                        <li>(IP) input parameter tests</li>
-                                        <li>(RV) return value tests</li>
-                                        <li>(TE) transaction execution tests</li>
-                                        <li>(DI) deploying and initializing tests</li>
-                                        <li>(ST) simple CCD transfer tests</li>
-                                        <li>(SG) signature tests</li>
-                                    </ul>
                                     <div className="inputFormatBox">
                                         <h3>Expected input parameter format:</h3>
                                         <ul>
@@ -334,6 +321,98 @@ export default function Main(props: WalletConnectionProps) {
                                 </div>
                             </div>
                             <div className="col-lg-4">
+                                <TestBox
+                                    header="Create New Issuer"
+                                    note="
+                                        Expected result after pressing the button and confirming in wallet: The
+                                        transaction hash or an error message should appear in the right column.
+                                        "
+                                >
+                                    <div className="switch-wrapper" />
+                                    <label className="field">
+                                        Input parameter:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="input"
+                                            type="text"
+                                            placeholder="5"
+                                            onChange={changeInputHandler}
+                                        />
+                                    </label>
+                                    <button
+                                        className="btn btn-primary"
+                                        type="button"
+                                        onClick={() => {
+                                            setTxHash('');
+                                            setTransactionError('');
+                                            const tx = createNewIssuer(connection, account, input);
+                                            tx.then(setTxHash).catch((err: Error) =>
+                                                setTransactionError((err as Error).message)
+                                            );
+                                        }}
+                                    >
+                                        Create New Issuer
+                                    </button>
+                                </TestBox>
+                                <TestBox
+                                    header="Register Schema of Credential"
+                                    note="Expected result after pressing the button and confirming in wallet: The
+                                        transaction hash or an error message should appear in the right column."
+                                >
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="input"
+                                        type="text"
+                                        placeholder="5"
+                                        onChange={changeInputHandler}
+                                    />
+                                    <br />
+                                    <button
+                                        className="btn btn-primary"
+                                        type="button"
+                                        onClick={() => {
+                                            setTxHash('');
+                                            setTransactionError('');
+                                            const tx = registerSchema(connection, account, input);
+                                            tx.then(setTxHash).catch((err: Error) => {
+                                                console.log(err);
+                                                setTransactionError((err as Error).message);
+                                            });
+                                        }}
+                                    >
+                                        Register Schema of Credential
+                                    </button>
+                                </TestBox>
+                                <TestBox
+                                    header="Register Credential"
+                                    note="Expected result after pressing the button and confirming in wallet: The
+                                        transaction hash or an error message should appear in the right column."
+                                >
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="input"
+                                        type="text"
+                                        placeholder="5"
+                                        onChange={changeInputHandler}
+                                    />
+                                    <br />
+                                    <button
+                                        className="btn btn-primary"
+                                        type="button"
+                                        onClick={() => {
+                                            setTxHash('');
+                                            setTransactionError('');
+                                            const tx = issueCredential(connection, account, input);
+                                            tx.then(setTxHash).catch((err: Error) => {
+                                                console.log(err);
+                                                setTransactionError((err as Error).message);
+                                            });
+                                        }}
+                                    >
+                                        Register Credential
+                                    </button>
+                                </TestBox>
                                 <TestBox
                                     header="(IP) Testing simple input parameters"
                                     note="Expected result after pressing the button and confirming in wallet: The
@@ -518,75 +597,7 @@ export default function Main(props: WalletConnectionProps) {
                                         </div>
                                     )}
                                 </TestBox>
-                                <TestBox
-                                    header="(IP) Testing complex object as input parameter"
-                                    note="Expected result after pressing the button and confirming in wallet: The
-                                        transaction hash or an error message should appear in the right column."
-                                >
-                                    <div className="switch-wrapper">
-                                        <div>Use module schema</div>
-                                        <Switch
-                                            onChange={() => {
-                                                setUseModuleSchema(!useModuleSchema);
-                                            }}
-                                            onColor="#308274"
-                                            offColor="#308274"
-                                            onHandleColor="#174039"
-                                            offHandleColor="#174039"
-                                            checked={!useModuleSchema}
-                                            checkedIcon={false}
-                                            uncheckedIcon={false}
-                                        />
-                                        <div>Use parameter schema</div>
-                                    </div>
-                                    <div className="switch-wrapper">
-                                        <div>Is payable</div>
-                                        <Switch
-                                            onChange={() => {
-                                                setIsPayable(!isPayable);
-                                            }}
-                                            onColor="#308274"
-                                            offColor="#308274"
-                                            onHandleColor="#174039"
-                                            offHandleColor="#174039"
-                                            checked={!isPayable}
-                                            checkedIcon={false}
-                                            uncheckedIcon={false}
-                                        />
-                                        <div>Is not payable</div>
-                                    </div>
-                                    <label className="field">
-                                        <p>CCD (micro):</p>
-                                        <input
-                                            className="inputFieldStyle"
-                                            id="CCDAmount"
-                                            type="text"
-                                            placeholder="0"
-                                            onChange={changeCCDAmountHandler}
-                                        />
-                                    </label>
-                                    <br />
-                                    <button
-                                        className="btn btn-primary"
-                                        type="button"
-                                        onClick={() => {
-                                            setTxHash('');
-                                            setTransactionError('');
-                                            const tx = setObject(
-                                                connection,
-                                                account,
-                                                useModuleSchema,
-                                                isPayable,
-                                                cCDAmount
-                                            );
-                                            tx.then(setTxHash).catch((err: Error) =>
-                                                setTransactionError((err as Error).message)
-                                            );
-                                        }}
-                                    >
-                                        Set object
-                                    </button>
-                                </TestBox>
+
                                 <TestBox
                                     header="(IP) Testing array as input parameter"
                                     note="
@@ -797,61 +808,6 @@ export default function Main(props: WalletConnectionProps) {
                                         }}
                                     >
                                         Initialize smart contract instance (without parameter; without amount)
-                                    </button>
-                                </TestBox>
-                                <TestBox
-                                    header="(DI) Testing initializing a smart contract instance with parameter"
-                                    note="
-                                        Expected result after pressing the button and confirming in wallet: The
-                                        transaction hash or an error message should appear in the right column.
-                                        "
-                                >
-                                    <div className="switch-wrapper">
-                                        <div>Use module schema</div>
-                                        <Switch
-                                            onChange={() => {
-                                                setUseModuleSchema(!useModuleSchema);
-                                            }}
-                                            onColor="#308274"
-                                            offColor="#308274"
-                                            onHandleColor="#174039"
-                                            offHandleColor="#174039"
-                                            checked={!useModuleSchema}
-                                            checkedIcon={false}
-                                            uncheckedIcon={false}
-                                        />
-                                        <div>Use parameter schema</div>
-                                    </div>
-                                    <label className="field">
-                                        Input parameter:
-                                        <br />
-                                        <input
-                                            className="inputFieldStyle"
-                                            id="input"
-                                            type="text"
-                                            placeholder="5"
-                                            onChange={changeInputHandler}
-                                        />
-                                    </label>
-                                    <button
-                                        className="btn btn-primary"
-                                        type="button"
-                                        onClick={() => {
-                                            setTxHash('');
-                                            setTransactionError('');
-                                            const tx = initializeWithParameter(
-                                                connection,
-                                                account,
-                                                useModuleSchema,
-                                                input
-                                            );
-                                            tx.then(setTxHash).catch((err: Error) =>
-                                                setTransactionError((err as Error).message)
-                                            );
-                                        }}
-                                    >
-                                        Initialize smart contract instance with parameter (parameter should be of type
-                                        `u16`)
                                     </button>
                                 </TestBox>
                                 <TestBox
