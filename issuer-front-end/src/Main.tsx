@@ -13,6 +13,7 @@ import {
     REFRESH_INTERVAL,
     STORAGE_CONTRACT_SERIALIZATION_HELPER_PARAMETER_SCHEMA,
     CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX,
+    STORAGE_CONTRACT_STORE_PARAMETER_SCHEMA,
 } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
@@ -78,18 +79,52 @@ export default function Main(props: WalletConnectionProps) {
             ],
         ],
         issuer: {
-            Some: ['3LybnyGG4th6g4s8tv6Dt68pdW3wHASnfhiC7MhCxNfdVTATny'],
+            None: [],
         },
         revocation_keys: ['37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499'],
     };
 
+    const newSignatureExampleInput = {
+        contract_address: {
+            index: Number(CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX),
+            subindex: 0,
+        },
+        encrypted_credential: [3, 35, 25],
+        metadata: [34],
+        timestamp: '2030-08-08T05:15:00Z',
+    };
+
+    const newRegisterCredentialExampleInput = {
+        credential_info: {
+            holder_id: '9cfb82e0b2c6a4c63e586e3f97796c14ddef1d431ae8cf73f5bed067f412cc90',
+            holder_revocable: true,
+            commitment: [4, 2, 52, 3],
+            valid_from: '2030-08-08T05:15:00Z',
+            valid_until: {
+                Some: ['2030-08-08T05:15:00Z'],
+            },
+            credential_type: {
+                credential_type: 'myType',
+            },
+            metadata_url: {
+                hash: {
+                    None: [],
+                },
+                url: 'https://credential/metaData/',
+            },
+        },
+        auxiliary_data: [1, 2],
+    };
+
     const [input, setInput] = useState(newIssuerExampleInput);
 
-    const [toAccount, setToAccount] = useState('');
     const [signature, setSignature] = useState('');
+    const [registerCredentialInput, setRegisterCredentialInput] = useState('');
 
     const [txHash, setTxHash] = useState('');
     const [publicKey, setPublicKey] = useState('');
+    const [signatureInput, setSignatureInput] = useState('');
+    const [object, setObject] = useState();
 
     const changeNewIssuerInputHandler = (event: ChangeEvent) => {
         const inputTextArea = document.getElementById('newIssuerInput');
@@ -99,19 +134,25 @@ export default function Main(props: WalletConnectionProps) {
         setInput(JSON.parse(target.value));
     };
 
-    const changeInputHandler = (event: ChangeEvent) => {
+    const changeNewRegisterCredentialInputHandler = (event: ChangeEvent) => {
+        const inputTextArea = document.getElementById('newRegisterCredentialInput');
+        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+
         const target = event.target as HTMLTextAreaElement;
-        setInput(JSON.parse(target.value));
+        setRegisterCredentialInput(JSON.parse(target.value));
+    };
+
+    const changeSignatureInputHandler = (event: ChangeEvent) => {
+        const inputTextArea = document.getElementById('newSignatureInput');
+        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+
+        const target = event.target as HTMLTextAreaElement;
+        setSignatureInput(JSON.parse(target.value));
     };
 
     const changePublicKeyHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setPublicKey(target.value);
-    };
-
-    const changeToAccountHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setToAccount(target.value);
     };
 
     // Refresh accountInfo periodically.
@@ -227,22 +268,18 @@ export default function Main(props: WalletConnectionProps) {
                                         an error message should appear in the above test unit.
                                         "
                             >
+                                <textarea id="newSignatureInput" onChange={changeSignatureInputHandler}>
+                                    Copy below object in here and adjust.
+                                </textarea>
+                                <pre className="largeText">{JSON.stringify(newSignatureExampleInput, null, '\t')}</pre>
+
                                 <button
                                     className="btn btn-primary"
                                     type="button"
                                     onClick={() => {
-                                        const signMessage = {
-                                            contract_address: {
-                                                index: CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX,
-                                                subindex: 0,
-                                            },
-                                            encrypted_credential: [3, 35, 25],
-                                            metadata: [34],
-                                            timestamp: '2030-08-08T05:15:00Z',
-                                        };
 
                                         const serializedMessage = serializeTypeValue(
-                                            signMessage,
+                                            signatureInput,
                                             toBuffer(STORAGE_CONTRACT_SERIALIZATION_HELPER_PARAMETER_SCHEMA, 'base64')
                                         );
                                         setSigningError('');
@@ -281,17 +318,41 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 3: Register Credential"
+                                header="Step 3: Register Credential (the signature is NOT checked in the storage contract because the browser wallet cannot sign with the prefix `WEB3ID:STORE` yet)"
                                 note="Expected result after pressing the button and confirming in wallet: The
                                         transaction hash or an error message should appear in the right column."
                             >
-                                <input
-                                    className="inputFieldStyle"
-                                    id="input"
-                                    type="text"
-                                    placeholder="5"
-                                    onChange={changeInputHandler}
-                                />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        const storageInputParameter = {
+                                            data: signatureInput,
+                                            public_key:
+                                                'd119a99913c0732a3a5a5eaa18318a127e64865a91c227baf209f13c6788031d',
+                                            signature,
+                                        };
+
+                                        const serializedMessage = serializeTypeValue(
+                                            storageInputParameter,
+                                            toBuffer(STORAGE_CONTRACT_STORE_PARAMETER_SCHEMA, 'base64')
+                                        );
+                                        const createdObject = newRegisterCredentialExampleInput;
+
+                                        createdObject.auxiliary_data = Array.from(serializedMessage);
+
+                                        setObject(JSON.parse(JSON.stringify(createdObject, null, '\t')));
+                                    }}
+                                >
+                                    Create object
+                                </button>
+                                <textarea
+                                    id="newRegisterCredentialInput"
+                                    onChange={changeNewRegisterCredentialInputHandler}
+                                >
+                                    Copy below object in here and adjust.
+                                </textarea>
+                                <pre className="largeText">{JSON.stringify(object, null, '\t')}</pre>
                                 <br />
                                 <button
                                     className="btn btn-primary"
@@ -299,11 +360,15 @@ export default function Main(props: WalletConnectionProps) {
                                     onClick={() => {
                                         setTxHash('');
                                         setTransactionError('');
-                                        // const tx = issueCredential(connection, account, input, signature);
-                                        // tx.then(setTxHash).catch((err: Error) => {
-                                        //     console.log(err);
-                                        //     setTransactionError((err as Error).message);
-                                        // });
+                                        const tx = issueCredential(
+                                            connection,
+                                            account,
+                                            JSON.stringify(registerCredentialInput)
+                                        );
+                                        tx.then(setTxHash).catch((err: Error) => {
+                                            console.log(err);
+                                            setTransactionError((err as Error).message);
+                                        });
                                     }}
                                 >
                                     Register Credential
