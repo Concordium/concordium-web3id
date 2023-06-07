@@ -20,26 +20,8 @@ import {
 } from './constants';
 
 export async function createNewIssuer(connection: WalletConnection, account: string, input: string) {
-    const parameter = {
-        issuer_metadata: {
-            hash: {
-                None: [],
-            },
-            url: 'https://issuer/metaData/',
-        },
-        storage_address: {
-            index: CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX,
-            subindex: 0,
-        },
-        schemas: [],
-        issuer: {
-            Some: ['3LybnyGG4th6g4s8tv6Dt68pdW3wHASnfhiC7MhCxNfdVTATny'],
-        },
-        revocation_keys: ['37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499'],
-    } as unknown as SmartContractParameters;
-
     const schema = {
-        parameters: parameter,
+        parameters: JSON.parse(input),
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
@@ -53,46 +35,6 @@ export async function createNewIssuer(connection: WalletConnection, account: str
             param: toBuffer(''),
             maxContractExecutionEnergy: 30000n,
         } as InitContractPayload,
-        schema
-    );
-}
-
-export async function registerCredentialSchema(connection: WalletConnection, account: string, input: string) {
-    const inputParameter = {
-        schemas: [
-            [
-                {
-                    credential_type: 'myType',
-                },
-                {
-                    schema_ref: {
-                        hash: {
-                            None: [],
-                        },
-                        url: 'https://credentialSchema/metaData/',
-                    },
-                },
-            ],
-        ],
-    } as SmartContractParameters;
-
-    const schema = {
-        parameters: inputParameter,
-        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
-    };
-
-    return connection.signAndSendTransaction(
-        account,
-        AccountTransactionType.Update,
-        {
-            amount: new CcdAmount(BigInt(0)),
-            address: {
-                index: CREDENTIAL_REGISTRY_CONTRACT_INDEX,
-                subindex: CONTRACT_SUB_INDEX,
-            },
-            receiveName: 'credential_registry.addCredentialSchemas',
-            maxContractExecutionEnergy: 30000n,
-        } as UpdateContractPayload,
         schema
     );
 }
