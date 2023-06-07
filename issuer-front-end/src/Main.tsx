@@ -125,6 +125,7 @@ export default function Main(props: WalletConnectionProps) {
     const [publicKey, setPublicKey] = useState('');
     const [signatureInput, setSignatureInput] = useState('');
     const [object, setObject] = useState();
+    const [browserPublicKey, setBrowserPublicKey] = useState('');
 
     const changeNewIssuerInputHandler = (event: ChangeEvent) => {
         const inputTextArea = document.getElementById('newIssuerInput');
@@ -165,11 +166,15 @@ export default function Main(props: WalletConnectionProps) {
                     .then((value) => {
                         if (value !== undefined) {
                             setAccountBalance(value.accountAmount.toString());
+                            setBrowserPublicKey(
+                                value.accountCredentials[0].value.contents.credentialPublicKeys.keys[0].verifyKey
+                            );
                         }
                         setViewError('');
                     })
                     .catch((e) => {
                         setAccountBalance('');
+                        setBrowserPublicKey('');
                         setViewError((e as Error).message);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
@@ -183,12 +188,16 @@ export default function Main(props: WalletConnectionProps) {
                 .then((value) => {
                     if (value !== undefined) {
                         setAccountBalance(value.accountAmount.toString());
+                        setBrowserPublicKey(
+                            value.accountCredentials[0].value.contents.credentialPublicKeys.keys[0].verifyKey
+                        );
                     }
                     setViewError('');
                 })
                 .catch((e) => {
                     setViewError((e as Error).message);
                     setAccountBalance('');
+                    setBrowserPublicKey('');
                 });
         }
     }, [connection]);
@@ -277,7 +286,6 @@ export default function Main(props: WalletConnectionProps) {
                                     className="btn btn-primary"
                                     type="button"
                                     onClick={() => {
-
                                         const serializedMessage = serializeTypeValue(
                                             signatureInput,
                                             toBuffer(STORAGE_CONTRACT_SERIALIZATION_HELPER_PARAMETER_SCHEMA, 'base64')
@@ -328,8 +336,7 @@ export default function Main(props: WalletConnectionProps) {
                                     onClick={() => {
                                         const storageInputParameter = {
                                             data: signatureInput,
-                                            public_key:
-                                                'd119a99913c0732a3a5a5eaa18318a127e64865a91c227baf209f13c6788031d',
+                                            public_key: browserPublicKey,
                                             signature,
                                         };
 
@@ -340,6 +347,7 @@ export default function Main(props: WalletConnectionProps) {
                                         const createdObject = newRegisterCredentialExampleInput;
 
                                         createdObject.auxiliary_data = Array.from(serializedMessage);
+                                        createdObject.credential_info.holder_id = browserPublicKey;
 
                                         setObject(JSON.parse(JSON.stringify(createdObject, null, '\t')));
                                     }}
@@ -485,7 +493,8 @@ export default function Main(props: WalletConnectionProps) {
                         <div className="sticky-top">
                             <h5>
                                 This column refreshes every few seconds to update your account balanace. It also
-                                displays your connected account, transaction hashes, and error messages.
+                                displays your connected account, your public key, transaction hashes, and error
+                                messages.
                             </h5>
                             <div className="label">Connected account:</div>
                             <div>
@@ -498,6 +507,9 @@ export default function Main(props: WalletConnectionProps) {
                                     {account}
                                 </a>
                             </div>
+                            <br />
+                            <div className="label">Your public key:</div>
+                            <div>{browserPublicKey}</div>
                             <br />
                             <div className="label">Your account balance:</div>
                             <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
