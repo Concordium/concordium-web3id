@@ -6,7 +6,6 @@ import {
     STORAGE_CONTRACT_VIEW_RETURN_VALUE_SCHEMA,
     STORAGE_CONTRACT_VIEW_PARAMETER_SCHEMA,
     REGISTRY_CONTRACT_CREDENTIAL_ENTRY_PARAMETER_SCHEMA,
-    CREDENTIAL_REGISTRY_CONTRACT_INDEX,
     REGISTRY_CONTRACT_CREDENTIAL_ENTRY_RETURN_VALUE_SCHEMA,
     CONTRACT_REGISTRY_NAME,
     CONTRACT_STORAGE_NAME,
@@ -47,7 +46,11 @@ export async function getStorageValue(rpcClient: JsonRpcClient, publicKey: strin
     }
 }
 
-export async function getCredentialEntry(rpcClient: JsonRpcClient, publicKey: string) {
+export async function getCredentialEntry(
+    rpcClient: JsonRpcClient,
+    publicKey: string,
+    credentialRegistryContratIndex: number
+) {
     let serializedPublicKey;
 
     try {
@@ -62,12 +65,14 @@ export async function getCredentialEntry(rpcClient: JsonRpcClient, publicKey: st
     const res = await rpcClient.invokeContract({
         method: `${CONTRACT_REGISTRY_NAME}.credentialEntry`,
         parameter: serializedPublicKey,
-        contract: { index: CREDENTIAL_REGISTRY_CONTRACT_INDEX, subindex: CONTRACT_SUB_INDEX },
+        contract: { index: BigInt(credentialRegistryContratIndex), subindex: CONTRACT_SUB_INDEX },
     });
 
     if (!res || res.tag === 'failure' || !res.returnValue) {
         throw new Error(
-            `RPC call 'invokeContract' on method '${CONTRACT_REGISTRY_NAME}.credentialEntry' of contract '${CREDENTIAL_REGISTRY_CONTRACT_INDEX}' failed`
+            `RPC call 'invokeContract' on method '${CONTRACT_REGISTRY_NAME}.credentialEntry' of contract ' ${BigInt(
+                credentialRegistryContratIndex
+            )} ' failed`
         );
     }
 
@@ -78,7 +83,9 @@ export async function getCredentialEntry(rpcClient: JsonRpcClient, publicKey: st
 
     if (state === undefined) {
         throw new Error(
-            `Deserializing the returnValue from the '${CONTRACT_REGISTRY_NAME}.credentialEntry' method of contract '${CREDENTIAL_REGISTRY_CONTRACT_INDEX}' failed`
+            `Deserializing the returnValue from the '${CONTRACT_REGISTRY_NAME}.credentialEntry' method of contract '${BigInt(
+                credentialRegistryContratIndex
+            )} ' failed`
         );
     } else {
         return JSON.stringify(state);

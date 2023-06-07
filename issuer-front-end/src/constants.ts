@@ -44,8 +44,6 @@ export const CONTRACT_REGISTRY_NAME = 'credential_registry';
 
 export const CONTRACT_STORAGE_NAME = 'credential-registry-storage';
 
-export const CREDENTIAL_REGISTRY_CONTRACT_INDEX = 4817n;
-
 export const CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX = 4791n;
 
 export const CONTRACT_SUB_INDEX = 0n;
