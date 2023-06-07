@@ -5,7 +5,7 @@ import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } f
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
-import { smartContractInfo, accountInfo, view } from './reading_from_blockchain';
+import { smartContractInfo, accountInfo, view, getStorageValue, getCredentialEntry } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer, registerCredentialSchema } from './writing_to_blockchain';
 
 import {
@@ -48,16 +48,28 @@ export default function Main(props: WalletConnectionProps) {
     const [accountBalance, setAccountBalance] = useState('');
     const [smartContractBalance, setSmartContractBalance] = useState('');
 
+    const [credentialState, setCredentialState] = useState('');
+    const [credentialStateError, setCredentialStateError] = useState('');
+
+    const [credentialRegistryState, setCredentialRegistryState] = useState('');
+    const [credentialRegistryStateError, setCredentialRegistryStateError] = useState('');
+
     const [input, setInput] = useState('');
 
     const [toAccount, setToAccount] = useState('');
     const [signature, setSignature] = useState('');
 
     const [txHash, setTxHash] = useState('');
+    const [publicKey, setPublicKey] = useState('');
 
     const changeInputHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setInput(target.value);
+    };
+
+    const changePublicKeyHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setPublicKey(target.value);
     };
 
     const changeToAccountHandler = (event: ChangeEvent) => {
@@ -432,6 +444,108 @@ export default function Main(props: WalletConnectionProps) {
                                     >
                                         Register Credential
                                     </button>
+                                </TestBox>
+                                <TestBox
+                                    header="Step 5: View Public Key in Storage Contract"
+                                    note="Expected result after pressing the button: The return value or an error message
+                                        should appear in the above test unit."
+                                >
+                                    <br />
+                                    <label className="field">
+                                        Public Key:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="publicKey"
+                                            type="text"
+                                            placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                            onChange={changePublicKeyHandler}
+                                        />
+                                    </label>
+                                    <button
+                                        className="btn btn-primary"
+                                        type="button"
+                                        onClick={() => {
+                                            setCredentialState('');
+                                            setCredentialStateError('');
+                                            withJsonRpcClient(connection, (rpcClient) =>
+                                                getStorageValue(rpcClient, publicKey)
+                                            )
+                                                .then((value) => {
+                                                    if (value !== undefined) {
+                                                        setCredentialState(JSON.stringify(value));
+                                                    }
+                                                })
+                                                .catch((e) => {
+                                                    setCredentialStateError((e as Error).message);
+                                                });
+                                        }}
+                                    >
+                                        View Public Key in Storage Contract
+                                    </button>
+                                    {credentialState !== '' && (
+                                        <div className="actionResultBox">
+                                            <div>Your return value is:</div>
+                                            <br />
+                                            <div>{credentialState}</div>
+                                        </div>
+                                    )}
+                                    {!credentialState && credentialStateError && (
+                                        <div className="alert alert-danger" role="alert">
+                                            Error: {credentialStateError}.
+                                        </div>
+                                    )}
+                                </TestBox>
+                                <TestBox
+                                    header="Step 6: View Credential Entry in Registry Contract"
+                                    note="Expected result after pressing the button: The return value or an error message
+                                        should appear in the above test unit."
+                                >
+                                    <br />
+                                    <label className="field">
+                                        Public Key:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="publicKey"
+                                            type="text"
+                                            placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                            onChange={changePublicKeyHandler}
+                                        />
+                                    </label>
+                                    <button
+                                        className="btn btn-primary"
+                                        type="button"
+                                        onClick={() => {
+                                            setCredentialRegistryState('');
+                                            setCredentialRegistryStateError('');
+                                            withJsonRpcClient(connection, (rpcClient) =>
+                                                getCredentialEntry(rpcClient, publicKey)
+                                            )
+                                                .then((value) => {
+                                                    if (value !== undefined) {
+                                                        setCredentialRegistryState(JSON.stringify(value));
+                                                    }
+                                                })
+                                                .catch((e) => {
+                                                    setCredentialRegistryStateError((e as Error).message);
+                                                });
+                                        }}
+                                    >
+                                        View Credential Entry in Registry Contract
+                                    </button>
+                                    {credentialRegistryState !== '' && (
+                                        <div className="actionResultBox">
+                                            <div>Your return value is:</div>
+                                            <br />
+                                            <div>{credentialRegistryState}</div>
+                                        </div>
+                                    )}
+                                    {!credentialRegistryState && credentialRegistryStateError && (
+                                        <div className="alert alert-danger" role="alert">
+                                            Error: {credentialRegistryStateError}.
+                                        </div>
+                                    )}
                                 </TestBox>
                             </div>
                         </>
