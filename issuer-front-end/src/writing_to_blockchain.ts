@@ -9,11 +9,7 @@ import {
 } from '@concordium/web-sdk';
 import { WalletConnection } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
-import {
-    CONTRACT_SUB_INDEX,
-    CREDENTIAL_REGISTRY_BASE_64_SCHEMA,
-    CREDENTIAL_REGISTRY_CONTRACT_INDEX,
-} from './constants';
+import { CONTRACT_SUB_INDEX, CREDENTIAL_REGISTRY_BASE_64_SCHEMA } from './constants';
 
 export async function createNewIssuer(connection: WalletConnection, account: string, input: string) {
     const schema = {
@@ -35,7 +31,12 @@ export async function createNewIssuer(connection: WalletConnection, account: str
     );
 }
 
-export async function issueCredential(connection: WalletConnection, account: string, input: string) {
+export async function issueCredential(
+    connection: WalletConnection,
+    account: string,
+    input: string,
+    credentialRegistryContratIndex: number
+) {
     const schema = {
         parameters: JSON.parse(input),
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
@@ -47,7 +48,7 @@ export async function issueCredential(connection: WalletConnection, account: str
         {
             amount: new CcdAmount(BigInt(0)),
             address: {
-                index: CREDENTIAL_REGISTRY_CONTRACT_INDEX,
+                index: BigInt(credentialRegistryContratIndex),
                 subindex: CONTRACT_SUB_INDEX,
             },
             receiveName: 'credential_registry.registerCredential',

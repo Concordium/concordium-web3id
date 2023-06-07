@@ -42,6 +42,8 @@ export default function Main(props: WalletConnectionProps) {
     const [signingError, setSigningError] = useState('');
     const [transactionError, setTransactionError] = useState('');
 
+    const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState(0);
+
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
 
     const [accountBalance, setAccountBalance] = useState('');
@@ -116,7 +118,7 @@ export default function Main(props: WalletConnectionProps) {
         auxiliary_data: [1, 2],
     };
 
-    const [input, setInput] = useState(newIssuerExampleInput);
+    const [input, setInput] = useState();
 
     const [signature, setSignature] = useState('');
     const [registerCredentialInput, setRegisterCredentialInput] = useState('');
@@ -154,6 +156,11 @@ export default function Main(props: WalletConnectionProps) {
     const changePublicKeyHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setPublicKey(target.value);
+    };
+
+    const changeCredentialRegistryContratIndexHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setCredentialRegistryContratIndex(Number(target.value));
     };
 
     // Refresh accountInfo periodically.
@@ -271,10 +278,36 @@ export default function Main(props: WalletConnectionProps) {
                                 </button>
                             </TestBox>
                             <TestBox
-                                header="Step 2: Sign Storage Contract Message"
+                                header="Step 2: Input Smart Contract Index"
                                 note="
-                                        Expected result after pressing button and confirming in wallet: A signature or
-                                        an error message should appear in the above test unit.
+                                Expected result after inputing a value: The inex or
+                                an error message should appear in the above test unit.
+                                        "
+                            >
+                                <label className="field">
+                                    Input smart contract index created in above step:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="credentialRegistryContratIndex"
+                                        type="text"
+                                        placeholder="1111"
+                                        onChange={changeCredentialRegistryContratIndexHandler}
+                                    />
+                                </label>
+                                {credentialRegistryContratIndex !== 0 && (
+                                    <div className="actionResultBox">
+                                        <div> You will be using this registry contract index: </div>
+                                        <br />
+                                        <div>{credentialRegistryContratIndex}</div>
+                                    </div>
+                                )}
+                            </TestBox>
+                            <TestBox
+                                header="Step 3: Sign Storage Contract Message"
+                                note="
+                                Expected result after pressing button and confirming in wallet: A signature or
+                                an error message should appear in the above test unit.
                                         "
                             >
                                 <textarea id="newSignatureInput" onChange={changeSignatureInputHandler}>
@@ -326,7 +359,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 3: Register Credential (the signature is NOT checked in the storage contract because the browser wallet cannot sign with the prefix `WEB3ID:STORE` yet)"
+                                header="Step 4: Register Credential (the signature is NOT checked in the storage contract because the browser wallet cannot sign with the prefix `WEB3ID:STORE` yet)"
                                 note="Expected result after pressing the button and confirming in wallet: The
                                         transaction hash or an error message should appear in the right column."
                             >
@@ -371,7 +404,8 @@ export default function Main(props: WalletConnectionProps) {
                                         const tx = issueCredential(
                                             connection,
                                             account,
-                                            JSON.stringify(registerCredentialInput)
+                                            JSON.stringify(registerCredentialInput),
+                                            credentialRegistryContratIndex
                                         );
                                         tx.then(setTxHash).catch((err: Error) => {
                                             console.log(err);
@@ -383,7 +417,7 @@ export default function Main(props: WalletConnectionProps) {
                                 </button>
                             </TestBox>
                             <TestBox
-                                header="Step 4: View Public Key in Storage Contract"
+                                header="Step 5: View Public Key in Storage Contract"
                                 note="Expected result after pressing the button: The return value or an error message
                                         should appear in the above test unit."
                             >
@@ -435,7 +469,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 5: View Credential Entry in Registry Contract"
+                                header="Step 6: View Credential Entry in Registry Contract"
                                 note="Expected result after pressing the button: The return value or an error message
                                         should appear in the above test unit."
                             >
@@ -458,7 +492,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialRegistryState('');
                                         setCredentialRegistryStateError('');
                                         withJsonRpcClient(connection, (rpcClient) =>
-                                            getCredentialEntry(rpcClient, publicKey)
+                                            getCredentialEntry(rpcClient, publicKey, credentialRegistryContratIndex)
                                         )
                                             .then((value) => {
                                                 if (value !== undefined) {
