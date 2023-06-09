@@ -77,12 +77,12 @@ docker build \
 
 ## Run
 
-- `CONCORDIUM_WEB3ID_VERIFIER_NODE` - address of the node to connect to.
+- `CONCORDIUM_WEB3ID_VERIFIER_NODE` - address of the node to connect to. (defaults to http://localhost:20000)
 - `CONCORDIUM_WEB3ID_VERIFIER_API_LISTEN_ADDRESS` - address on which the service
   will listen (defaults to 0.0.0.0:8080)
 - `CONCORDIUM_WEB3ID_VERIFIER_LOG_LEVEL` - maximum log level (defaults to `info`)
 - `CONCORDIUM_WEB3ID_VERIFIER_LOG_HEADERS` - whether to log request and response
-    headers (defaults to `false`
+    headers (defaults to `false`)
 - `CONCORDIUM_WEB3ID_VERIFIER_REQUEST_TIMEOUT` - timeout of requests (in
   milliseconds), both of requests to the node as well as the entire processing
   of a verification request )] 
