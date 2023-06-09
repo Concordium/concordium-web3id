@@ -5,13 +5,13 @@ The front end has two flows:
 - An issuer should be able to deploy a new smart contract instance of the credential_registry_smart_contract.
 - This issuer should be able to issue new credentials by invoking the corresponding function in the credential_registry_smart_contract.
 
-Only the browser wallet (no walletConnect) is supported in the frist version.
+Only the browser wallet (no walletConnect) is supported in the first version.
 
 ## Prerequisites
 
 -   Browser wallet extension must be installed in Chrome browser and the Concordium testnet needs to be selected.
 
-## Running the test bench front end
+## Running the front end
 
 Clone the repo:
 
@@ -21,7 +21,7 @@ git clone git@github.com:Concordium/concordium-web3id.git
 
 Navigate into this folder:
 ```shell
-cd ../issuer-front-end
+cd ./issuer-front-end
 ```
 
 -   Run `yarn install` in this folder.

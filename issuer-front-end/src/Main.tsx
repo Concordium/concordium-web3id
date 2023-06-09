@@ -2,6 +2,7 @@
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
 import { toBuffer, serializeTypeValue } from '@concordium/web-sdk';
 import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
+import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
@@ -54,37 +55,60 @@ export default function Main(props: WalletConnectionProps) {
     const [credentialRegistryState, setCredentialRegistryState] = useState('');
     const [credentialRegistryStateError, setCredentialRegistryStateError] = useState('');
 
-    const newIssuerExampleInput = {
-        issuer_metadata: {
-            hash: {
-                None: [],
-            },
-            url: 'https://issuer/metaData/',
-        },
-        storage_address: {
-            index: Number(CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX),
-            subindex: 0,
-        },
-        schemas: [
-            [
-                {
-                    credential_type: 'myType',
-                },
-                {
-                    schema_ref: {
-                        hash: {
-                            None: [],
-                        },
-                        url: 'https://credentialSchema/metaData/',
+    async function addOption(
+        options: any,
+        setOptions: any,
+        schemas: any,
+        setSchemas: any,
+        credentialSchemaURL: any,
+        setCredentialSchemaURL: any,
+        newOption: any,
+        setOptionInput: any,
+        credentialSchemaURLInput: any,
+        setCredentialSchemaURLInput: any
+    ) {
+        if (options.includes(newOption)) {
+            throw new Error(`duplicate option ${newOption}`);
+        }
+        if (newOption) {
+            setOptions([...options, newOption]);
+            setCredentialSchemaURL([...credentialSchemaURL, credentialSchemaURLInput]);
+            setOptionInput('');
+            setCredentialSchemaURLInput('');
+
+            setSchemas([
+                ...schemas,
+                [
+                    {
+                        credential_type: newOption,
                     },
-                },
-            ],
-        ],
-        issuer: {
-            None: [],
-        },
-        revocation_keys: ['37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499'],
-    };
+                    {
+                        schema_ref: {
+                            hash: {
+                                None: [],
+                            },
+                            url: credentialSchemaURLInput,
+                        },
+                    },
+                ],
+            ]);
+        }
+    }
+
+    async function addRevokationKey(
+        revocationKeys: any,
+        setRevocationKeys: any,
+        setRevoationKeyInput: any,
+        newRevocationKey: any
+    ) {
+        if (revocationKeys.includes(newRevocationKey)) {
+            throw new Error(`duplicate option ${newRevocationKey}`);
+        }
+        if (newRevocationKey) {
+            setRevocationKeys([...revocationKeys, newRevocationKey]);
+            setRevoationKeyInput('');
+        }
+    }
 
     const newSignatureExampleInput = {
         contract_address: {
@@ -118,8 +142,6 @@ export default function Main(props: WalletConnectionProps) {
         auxiliary_data: [1, 2],
     };
 
-    const [input, setInput] = useState();
-
     const [signature, setSignature] = useState('');
     const [registerCredentialInput, setRegisterCredentialInput] = useState('');
 
@@ -129,13 +151,16 @@ export default function Main(props: WalletConnectionProps) {
     const [object, setObject] = useState();
     const [browserPublicKey, setBrowserPublicKey] = useState('');
 
-    const changeNewIssuerInputHandler = (event: ChangeEvent) => {
-        const inputTextArea = document.getElementById('newIssuerInput');
-        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+    const [issuerMetaData, setIssuerMetaData] = useState('');
 
-        const target = event.target as HTMLTextAreaElement;
-        setInput(JSON.parse(target.value));
-    };
+    const [revocationKeys, setRevocationKeys] = useState([]);
+    const [revocationKeyInput, setRevocationKeyInput] = useState('');
+
+    const [schemas, setSchemas] = useState([]);
+    const [options, setOptions] = useState([]);
+    const [credentialSchemaURL, setCredentialSchemaURL] = useState([]);
+    const [optionInput, setOptionInput] = useState('myType');
+    const [credentialSchemaURLInput, setCredentialSchemaURLInput] = useState('https://credentialSchema/metaData/');
 
     const changeNewRegisterCredentialInputHandler = (event: ChangeEvent) => {
         const inputTextArea = document.getElementById('newRegisterCredentialInput');
@@ -156,6 +181,11 @@ export default function Main(props: WalletConnectionProps) {
     const changePublicKeyHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setPublicKey(target.value);
+    };
+
+    const changeIssuerMetaDataURLHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setIssuerMetaData(target.value);
     };
 
     const changeCredentialRegistryContratIndexHandler = (event: ChangeEvent) => {
@@ -257,18 +287,132 @@ export default function Main(props: WalletConnectionProps) {
                                         transaction hash or an error message should appear in the right column.
                                         "
                             >
-                                <div className="switch-wrapper" />
-                                <textarea id="newIssuerInput" onChange={changeNewIssuerInputHandler}>
-                                    Copy below object in here and adjust.
-                                </textarea>
-                                <pre className="largeText">{JSON.stringify(newIssuerExampleInput, null, '\t')}</pre>
+                                Input issuer metadata:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="issuerMetaDataURL"
+                                    type="text"
+                                    placeholder="https://issuer/metaData/"
+                                    onChange={changeIssuerMetaDataURLHandler}
+                                />
+                                {options.length !== 0 && (
+                                    <>
+                                        <div>You have added the following `CredentialSchemaType`:</div>
+                                        <div>
+                                            {options?.map((element) => (
+                                                <li key={element}>{element}</li>
+                                            ))}
+                                        </div>
+                                        <div>You have added the following `CredentialSchemaURL`:</div>
+                                        <div>
+                                            {credentialSchemaURL?.map((element) => (
+                                                <li key={element}>{element}</li>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                                <br />
+                                <Form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        addOption(
+                                            options,
+                                            setOptions,
+                                            schemas,
+                                            setSchemas,
+                                            credentialSchemaURL,
+                                            setCredentialSchemaURL,
+                                            optionInput,
+                                            setOptionInput,
+                                            credentialSchemaURLInput,
+                                            setCredentialSchemaURLInput
+                                        ).catch(console.error);
+                                    }}
+                                >
+                                    <div>Add pairs of `CredentialSchemaType` and `CredentialSchemaURL`:</div>
+                                    <Row>
+                                        <Col sm={10}>
+                                            <InputGroup className="mb-3">
+                                                <Form.Control
+                                                    placeholder="CredentialSchemaType"
+                                                    value={optionInput}
+                                                    onChange={(e) => setOptionInput(e.target.value)}
+                                                />
+                                                <Form.Control
+                                                    placeholder="CredentialSchemaURL"
+                                                    value={credentialSchemaURLInput}
+                                                    onChange={(e) => setCredentialSchemaURLInput(e.target.value)}
+                                                />
+
+                                                <Button type="submit" variant="outline-secondary">
+                                                    Add
+                                                </Button>
+                                            </InputGroup>
+                                        </Col>
+                                        <Col sm={1}>
+                                            <Button variant="outline-secondary" onClick={() => setOptions([])}>
+                                                Clear
+                                            </Button>
+                                        </Col>
+                                    </Row>
+                                </Form>
+                                {revocationKeys.length !== 0 && (
+                                    <>
+                                        <div>You have added the following `revocationKeys`:</div>
+                                        <div>
+                                            {revocationKeys?.map((element) => (
+                                                <li key={element}>{element}</li>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                                <br />
+                                <Form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        addRevokationKey(
+                                            revocationKeys,
+                                            setRevocationKeys,
+                                            setRevocationKeyInput,
+                                            revocationKeyInput
+                                        ).catch(console.error);
+                                    }}
+                                >
+                                    <div>Add `revocationKeys`:</div>
+                                    <Row>
+                                        <Col sm={10}>
+                                            <InputGroup className="mb-3">
+                                                <Form.Control
+                                                    placeholder="RevocationKey"
+                                                    value={revocationKeyInput}
+                                                    onChange={(e) => setRevocationKeyInput(e.target.value)}
+                                                />
+                                                <Button type="submit" variant="outline-secondary">
+                                                    Add
+                                                </Button>
+                                            </InputGroup>
+                                        </Col>
+                                        <Col sm={1}>
+                                            <Button variant="outline-secondary" onClick={() => setRevocationKeys([])}>
+                                                Clear
+                                            </Button>
+                                        </Col>
+                                    </Row>
+                                </Form>
                                 <button
                                     className="btn btn-primary"
                                     type="button"
                                     onClick={() => {
                                         setTxHash('');
                                         setTransactionError('');
-                                        const tx = createNewIssuer(connection, account, JSON.stringify(input));
+                                        const tx = createNewIssuer(
+                                            connection,
+                                            account,
+                                            issuerMetaData,
+                                            JSON.stringify(schemas),
+                                            JSON.stringify(revocationKeys)
+                                        );
                                         tx.then(setTxHash).catch((err: Error) =>
                                             setTransactionError((err as Error).message)
                                         );
@@ -408,7 +552,6 @@ export default function Main(props: WalletConnectionProps) {
                                             credentialRegistryContratIndex
                                         );
                                         tx.then(setTxHash).catch((err: Error) => {
-                                            console.log(err);
                                             setTransactionError((err as Error).message);
                                         });
                                     }}
