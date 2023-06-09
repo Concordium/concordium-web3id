@@ -9,11 +9,36 @@ import {
 } from '@concordium/web-sdk';
 import { WalletConnection } from '@concordium/react-components';
 import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
+import { SmartContractParameters } from '@concordium/browser-wallet-api-helpers';
 import { CONTRACT_SUB_INDEX, CREDENTIAL_REGISTRY_BASE_64_SCHEMA } from './constants';
 
-export async function createNewIssuer(connection: WalletConnection, account: string, input: string) {
+export async function createNewIssuer(
+    connection: WalletConnection,
+    account: string,
+    issuerMetaData: string,
+    schemas: string,
+    revocationKeys: string
+) {
+    const parameter = {
+        issuer_metadata: {
+            hash: {
+                None: [],
+            },
+            url: issuerMetaData,
+        },
+        storage_address: {
+            index: 4791,
+            subindex: 0,
+        },
+        schemas: JSON.parse(schemas),
+        issuer: {
+            None: [],
+        },
+        revocation_keys: JSON.parse(revocationKeys),
+    } as SmartContractParameters;
+
     const schema = {
-        parameters: JSON.parse(input),
+        parameters: parameter,
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
