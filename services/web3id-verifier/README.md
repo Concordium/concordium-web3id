@@ -57,7 +57,7 @@ To build run `cargo build --release`. This produces the binary `target/release/w
 
 ## Docker image
 
-A docker image containing the relayer and API server can be built using the
+A docker image containing the verifier can be built using the
 provided [`Dockerfile`](./scripts/build.Dockerfile) as follows **from the root
 of the repository**. Make sure to do a full repository checkout first using
 
