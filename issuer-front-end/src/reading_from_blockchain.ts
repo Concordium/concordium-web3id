@@ -12,6 +12,10 @@ import {
 } from './constants';
 
 export async function getStorageValue(rpcClient: JsonRpcClient, publicKey: string) {
+    if (publicKey.length !== 64) {
+        throw new Error(`Public key should have a length of 64`);
+    }
+
     let serializedPublicKey;
 
     try {
@@ -51,6 +55,14 @@ export async function getCredentialEntry(
     publicKey: string,
     credentialRegistryContratIndex: number
 ) {
+    if (publicKey.length !== 64) {
+        throw new Error(`Set credentialRegistryContratIndex`);
+    }
+
+    if (credentialRegistryContratIndex === 0) {
+        throw new Error(`Set credentialRegistryContratIndex`);
+    }
+
     let serializedPublicKey;
 
     try {
