@@ -91,15 +91,18 @@ docker build \
 
 ## Run
 
+To run the service the following configuration options should be set unless the
+stated defaults suffice.
+
 - `CONCORDIUM_WEB3ID_ISSUER_NODE` - address of the node to connect to.
 - `CONCORDIUM_WEB3ID_ISSUER_API_LISTEN_ADDRESS` - address on which the service
   will listen (defaults to 0.0.0.0:8080)
 - `CONCORDIUM_WEB3ID_ISSUER_LOG_LEVEL` - maximum log level (defaults to `info`)
 - `CONCORDIUM_WEB3ID_ISSUER_LOG_HEADERS` - whether to log request and response
-    headers (defaults to `false`
+    headers (defaults to `false`)
 - `CONCORDIUM_WEB3ID_ISSUER_REQUEST_TIMEOUT` - timeout of requests (in
   milliseconds), both of requests to the node as well as the entire processing
-  of a request )] 
+  of a request
 - `CONCORDIUM_WEB3ID_ISSUER_NETWORK` - the network to which the service is
   connected. Either `testnet` or `mainnet`. Defaults to `testnet`
 - `CONCORDIUM_WEB3ID_ISSUER_PROMETHEUS_ADDRESS` - if set, the address on

@@ -60,13 +60,13 @@ credential.
 issuer service.
 
 ```
-web3id-test register --registry '<4734,0>' --attributes attributes.json --seed seedphrase.txt --node 'http://node.testnet.concordium.com:20000' --metadata-url 'http:://credential-metadaata.ccd' --credential-type Foo --issuer-service 'http://localhost:9000/v0/issue'
+web3id-test register --registry '<4734,0>' --attributes attributes.json --seed seedphrase.txt --node 'http://node.testnet.concordium.com:20000' --metadata-url 'http:://credential-metadata.ccd' --credential-type Foo --issuer-service 'http://localhost:9000/v0/issue'
 ```
 
 - Register credential as above, but by directly using the node.
 
 ```
-web3id-test register --registry '<4734,0>' --attributes attributes.json --seed seedphrase.txt --node 'http://node.testnet.concordium.com:20000' --metadata-url 'http:://credential-metadaata.ccd' --credential-type Foo --issuer wallet.export
+web3id-test register --registry '<4734,0>' --attributes attributes.json --seed seedphrase.txt --node 'http://node.testnet.concordium.com:20000' --metadata-url 'http:://credential-metadata.ccd' --credential-type Foo --issuer wallet.export
 ```
 where `wallet.export` is the wallet export file of the issuer's account.
 

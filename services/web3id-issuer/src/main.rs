@@ -16,7 +16,7 @@ use concordium_rust_sdk::{
     types::{
         hashes::{BlockHash, TransactionHash},
         transactions::send::GivenEnergy,
-        ContractAddress, Nonce, WalletAccount,
+        ContractAddress, Energy, Nonce, WalletAccount,
     },
     v2::{self, QueryError},
     web3id::storage::{DataToSign, StoreParam},
@@ -35,59 +35,68 @@ struct App {
         default_value = "http://localhost:20000",
         env = "CONCORDIUM_WEB3ID_ISSUER_NODE"
     )]
-    endpoint:           v2::Endpoint,
+    endpoint:            v2::Endpoint,
     #[clap(
         long = "listen-address",
         default_value = "0.0.0.0:8080",
         help = "Listen address for the server.",
         env = "CONCORDIUM_WEB3ID_ISSUER_API_LISTEN_ADDRESS"
     )]
-    listen_address:     std::net::SocketAddr,
+    listen_address:      std::net::SocketAddr,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "CONCORDIUM_WEB3ID_ISSUER_LOG_LEVEL"
     )]
-    log_level:          tracing_subscriber::filter::LevelFilter,
+    log_level:           tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "log-headers",
         help = "Whether to log headers for requests and responses.",
         env = "CONCORDIUM_WEB3ID_ISSUER_LOG_HEADERS"
     )]
-    log_headers:        bool,
+    log_headers:         bool,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "CONCORDIUM_WEB3ID_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout:    u64,
+    request_timeout:     u64,
     #[clap(
         long = "min-expiry",
         help = "Minimum transaction expiry time in milliseconds.",
         default_value = "15000",
         env = "CONCORDIUM_WEB3ID_ISSUER_MINIMUM_EXPIRY"
     )]
-    min_allowed_expiry: u32,
+    min_allowed_expiry:  u32,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "CONCORDIUM_WEB3ID_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry:           ContractAddress,
+    registry:            ContractAddress,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "CONCORDIUM_WEB3ID_ISSUER_WALLET"
     )]
-    wallet:             PathBuf,
+    wallet:              PathBuf,
     #[clap(
         long = "prometheus-address",
         help = "Listen address for the server.",
         env = "CONCORDIUM_WEB3ID_ISSUER_PROMETHEUS_ADDRESS"
     )]
-    prometheus_address: Option<std::net::SocketAddr>,
+    prometheus_address:  Option<std::net::SocketAddr>,
+    #[clap(
+        long = "max-register-energy",
+        help = "The amount of energy to allow for execution of the register credential \
+                transaction. This must be less than max block energy of the chain the service is \
+                connected to.",
+        default_value = "10000",
+        env = "CONCORDIUM_WEB3ID_MAX_REGISTER_ENERGY"
+    )]
+    max_register_energy: Energy,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -156,11 +165,12 @@ impl axum::response::IntoResponse for Error {
 
 #[derive(Clone, Debug)]
 struct State {
-    client:             Cis4Contract,
-    issuer:             Arc<WalletAccount>,
-    nonce_counter:      Arc<tokio::sync::Mutex<Nonce>>,
+    client:              Cis4Contract,
+    issuer:              Arc<WalletAccount>,
+    nonce_counter:       Arc<tokio::sync::Mutex<Nonce>>,
     // In milliseconds
-    min_allowed_expiry: u64,
+    min_allowed_expiry:  u64,
+    max_register_energy: Energy,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -225,7 +235,7 @@ async fn issue_credential(
         sender_address: state.issuer.address,
         nonce: *nonce_guard,
         expiry,
-        energy: GivenEnergy::Add(10_000.into()),
+        energy: GivenEnergy::Add(state.max_register_energy),
         amount: Amount::zero(),
     };
 
@@ -306,11 +316,12 @@ async fn main() -> anyhow::Result<()> {
         issuer,
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
         min_allowed_expiry: app.min_allowed_expiry.into(),
+        max_register_energy: app.max_register_energy,
     };
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
         .with_default_metrics()
-        .with_prefix("web3id-verifier")
+        .with_prefix("web3id-issuer")
         .build_pair();
 
     let prometheus_handle = if let Some(prometheus_address) = app.prometheus_address {
