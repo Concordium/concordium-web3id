@@ -110,7 +110,7 @@ enum Error {
     #[error("Transaction expiry is too early in the future.")]
     ExpiryTooEarly,
     #[error("Transaction query error: {0}.")]
-    QueryError(#[from] QueryError),
+    Query(#[from] QueryError),
 }
 
 impl axum::response::IntoResponse for Error {
@@ -134,20 +134,20 @@ impl axum::response::IntoResponse for Error {
                 tracing::error!("Failed to submit transaction: {e}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    axum::Json(format!("Could not submit transaction.")),
+                    axum::Json("Could not submit transaction.".to_string()),
                 )
             }
-            Error::QueryError(e) => {
+            Error::Query(e) => {
                 if e.is_not_found() {
                     (
                         StatusCode::NOT_FOUND,
-                        axum::Json(format!("Transaction not found.")),
+                        axum::Json("Transaction not found.".to_string()),
                     )
                 } else {
                     tracing::error!("Failed to query transaction: {e}");
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        axum::Json(format!("Could not query transaction.")),
+                        axum::Json("Could not query transaction.".to_string()),
                     )
                 }
             }
@@ -155,7 +155,7 @@ impl axum::response::IntoResponse for Error {
                 tracing::warn!("Invalid request. Credential expiry is too early.");
                 (
                     StatusCode::BAD_REQUEST,
-                    axum::Json(format!("Credential expiry is too early.")),
+                    axum::Json("Credential expiry is too early.".to_string()),
                 )
             }
         };
