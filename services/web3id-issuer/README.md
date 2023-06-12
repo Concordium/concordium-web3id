@@ -108,3 +108,6 @@ stated defaults suffice.
 - `CONCORDIUM_WEB3ID_ISSUER_PROMETHEUS_ADDRESS` - if set, the address on
   which the prometheus server is to be started. The `/metrics` endpoint is
   exposed that contains information about the number and duration of requests.
+- `CONCORDIUM_WEB3ID_ISSUER_MAX_REGISTER_ENERGY` - The maximum **execution
+  energy** allowed for the register transaction. Defaults to 10000.
+

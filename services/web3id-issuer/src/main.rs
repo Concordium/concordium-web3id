@@ -94,7 +94,7 @@ struct App {
                 transaction. This must be less than max block energy of the chain the service is \
                 connected to.",
         default_value = "10000",
-        env = "CONCORDIUM_WEB3ID_MAX_REGISTER_ENERGY"
+        env = "CONCORDIUM_WEB3ID_ISSUER_MAX_REGISTER_ENERGY"
     )]
     max_register_energy: Energy,
 }
