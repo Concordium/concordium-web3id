@@ -147,7 +147,8 @@ enum Action {
     Prove {
         #[clap(
             long = "verifier",
-            help = "URL of the verifier where to submit the presentation."
+            help = "URL of the verifier where to submit the presentation.",
+            default_value = "https://web3id-verifier.testnet.concordium.com/v0/verify"
         )]
         verifier:  url::Url,
         #[clap(long = "index", help = "The index of the credential.")]
