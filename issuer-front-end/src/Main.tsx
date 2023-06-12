@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
 import { toBuffer, serializeTypeValue } from '@concordium/web-sdk';
+import Switch from 'react-switch';
 import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { version } from '../package.json';
@@ -14,7 +15,6 @@ import {
     REFRESH_INTERVAL,
     STORAGE_CONTRACT_SERIALIZATION_HELPER_PARAMETER_SCHEMA,
     CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX,
-    STORAGE_CONTRACT_STORE_PARAMETER_SCHEMA,
 } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
@@ -33,6 +33,74 @@ function TestBox({ header, children, note }: TestBoxProps) {
     );
 }
 
+async function addSchema(
+    credentialTypes: string[],
+    setCredentialTypes: (value: string[]) => void,
+    schemas: object[],
+    setSchemas: (value: object[]) => void,
+    credentialSchemaURLs: string[],
+    setCredentialSchemaURLs: (value: string[]) => void,
+    newCredentialType: string,
+    setCredentialTypeInput: (value: string) => void,
+    credentialSchemaURLInput: string,
+    setCredentialSchemaURLInput: (value: string) => void
+) {
+    if (credentialTypes.includes(newCredentialType)) {
+        throw new Error(`duplicated CredentialType: ${newCredentialType}`);
+    }
+    if (newCredentialType) {
+        setCredentialTypes([...credentialTypes, newCredentialType]);
+        setCredentialSchemaURLs([...credentialSchemaURLs, credentialSchemaURLInput]);
+        setCredentialTypeInput('');
+        setCredentialSchemaURLInput('');
+
+        setSchemas([
+            ...schemas,
+            [
+                {
+                    credential_type: newCredentialType,
+                },
+                {
+                    schema_ref: {
+                        hash: {
+                            None: [],
+                        },
+                        url: credentialSchemaURLInput,
+                    },
+                },
+            ],
+        ]);
+    }
+}
+
+async function addRevokationKey(
+    revocationKeys: string[],
+    setRevocationKeys: (value: string[]) => void,
+    setRevoationKeyInput: (value: string) => void,
+    newRevocationKey: string
+) {
+    if (revocationKeys.includes(newRevocationKey)) {
+        throw new Error(`Duplicate revocation key: ${newRevocationKey}`);
+    }
+    if (newRevocationKey.length !== 64) {
+        throw new Error(`Revocation key should have a length of 64`);
+    }
+    if (newRevocationKey) {
+        setRevocationKeys([...revocationKeys, newRevocationKey]);
+        setRevoationKeyInput('');
+    }
+}
+
+const signatureInput = {
+    contract_address: {
+        index: Number(CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX),
+        subindex: 0,
+    },
+    encrypted_credential: [3, 35, 25],
+    metadata: [34],
+    timestamp: '2030-08-08T05:15:00Z',
+};
+
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
 
@@ -42,6 +110,8 @@ export default function Main(props: WalletConnectionProps) {
     const [viewError, setViewError] = useState('');
     const [signingError, setSigningError] = useState('');
     const [transactionError, setTransactionError] = useState('');
+    const [userInputError, setUserInputError] = useState('');
+    const [userInputError2, setUserInputError2] = useState('');
 
     const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState(0);
 
@@ -55,127 +125,40 @@ export default function Main(props: WalletConnectionProps) {
     const [credentialRegistryState, setCredentialRegistryState] = useState('');
     const [credentialRegistryStateError, setCredentialRegistryStateError] = useState('');
 
-    async function addOption(
-        options: any,
-        setOptions: any,
-        schemas: any,
-        setSchemas: any,
-        credentialSchemaURL: any,
-        setCredentialSchemaURL: any,
-        newOption: any,
-        setOptionInput: any,
-        credentialSchemaURLInput: any,
-        setCredentialSchemaURLInput: any
-    ) {
-        if (options.includes(newOption)) {
-            throw new Error(`duplicate option ${newOption}`);
-        }
-        if (newOption) {
-            setOptions([...options, newOption]);
-            setCredentialSchemaURL([...credentialSchemaURL, credentialSchemaURLInput]);
-            setOptionInput('');
-            setCredentialSchemaURLInput('');
-
-            setSchemas([
-                ...schemas,
-                [
-                    {
-                        credential_type: newOption,
-                    },
-                    {
-                        schema_ref: {
-                            hash: {
-                                None: [],
-                            },
-                            url: credentialSchemaURLInput,
-                        },
-                    },
-                ],
-            ]);
-        }
-    }
-
-    async function addRevokationKey(
-        revocationKeys: any,
-        setRevocationKeys: any,
-        setRevoationKeyInput: any,
-        newRevocationKey: any
-    ) {
-        if (revocationKeys.includes(newRevocationKey)) {
-            throw new Error(`duplicate option ${newRevocationKey}`);
-        }
-        if (newRevocationKey) {
-            setRevocationKeys([...revocationKeys, newRevocationKey]);
-            setRevoationKeyInput('');
-        }
-    }
-
-    const newSignatureExampleInput = {
-        contract_address: {
-            index: Number(CREDENTIAL_REGISTRY_STORAGE_CONTRACT_INDEX),
-            subindex: 0,
-        },
-        encrypted_credential: [3, 35, 25],
-        metadata: [34],
-        timestamp: '2030-08-08T05:15:00Z',
-    };
-
-    const newRegisterCredentialExampleInput = {
-        credential_info: {
-            holder_id: '9cfb82e0b2c6a4c63e586e3f97796c14ddef1d431ae8cf73f5bed067f412cc90',
-            holder_revocable: true,
-            commitment: [4, 2, 52, 3],
-            valid_from: '2030-08-08T05:15:00Z',
-            valid_until: {
-                Some: ['2030-08-08T05:15:00Z'],
-            },
-            credential_type: {
-                credential_type: 'myType',
-            },
-            metadata_url: {
-                hash: {
-                    None: [],
-                },
-                url: 'https://credential/metaData/',
-            },
-        },
-        auxiliary_data: [1, 2],
-    };
-
     const [signature, setSignature] = useState('');
-    const [registerCredentialInput, setRegisterCredentialInput] = useState('');
 
     const [txHash, setTxHash] = useState('');
     const [publicKey, setPublicKey] = useState('');
-    const [signatureInput, setSignatureInput] = useState('');
-    const [object, setObject] = useState();
+
     const [browserPublicKey, setBrowserPublicKey] = useState('');
 
-    const [issuerMetaData, setIssuerMetaData] = useState('');
+    const [issuerMetaData, setIssuerMetaData] = useState('https://issuer/metaData/');
+    const [credentialMetaDataURL, setCredentialMetaDataURL] = useState('myType');
+    const [credentialType, setCredentialType] = useState('https://credential/metaData/');
+    const [isHolderRevocable, setIsHolderRevocable] = useState(true);
 
-    const [revocationKeys, setRevocationKeys] = useState([]);
-    const [revocationKeyInput, setRevocationKeyInput] = useState('');
+    const [revocationKeys, setRevocationKeys] = useState<string[]>([]);
+    const [revocationKeyInput, setRevocationKeyInput] = useState(
+        '8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82'
+    );
 
-    const [schemas, setSchemas] = useState([]);
-    const [options, setOptions] = useState([]);
-    const [credentialSchemaURL, setCredentialSchemaURL] = useState([]);
-    const [optionInput, setOptionInput] = useState('myType');
+    const [schemas, setSchemas] = useState<object[]>([]);
+    const [credentialTypes, setCredentialTypes] = useState<string[]>([]);
+    const [credentialSchemaURLs, setCredentialSchemaURLs] = useState<string[]>([]);
+    const [credentialTypeInput, setCredentialTypeInput] = useState('myType');
     const [credentialSchemaURLInput, setCredentialSchemaURLInput] = useState('https://credentialSchema/metaData/');
 
-    const changeNewRegisterCredentialInputHandler = (event: ChangeEvent) => {
-        const inputTextArea = document.getElementById('newRegisterCredentialInput');
-        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+    const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
+    const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
 
+    const handleValidFromDateChange = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
-        setRegisterCredentialInput(JSON.parse(target.value));
+        setValidFromDate(target.value);
     };
 
-    const changeSignatureInputHandler = (event: ChangeEvent) => {
-        const inputTextArea = document.getElementById('newSignatureInput');
-        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
-
+    const handleValidUntilDateChange = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
-        setSignatureInput(JSON.parse(target.value));
+        setValidUntilDate(target.value);
     };
 
     const changePublicKeyHandler = (event: ChangeEvent) => {
@@ -186,6 +169,16 @@ export default function Main(props: WalletConnectionProps) {
     const changeIssuerMetaDataURLHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setIssuerMetaData(target.value);
+    };
+
+    const changeCredentialMetaDataURLHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setCredentialMetaDataURL(target.value);
+    };
+
+    const changeCredentialTypeHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setCredentialType(target.value);
     };
 
     const changeCredentialRegistryContratIndexHandler = (event: ChangeEvent) => {
@@ -237,7 +230,7 @@ export default function Main(props: WalletConnectionProps) {
                     setBrowserPublicKey('');
                 });
         }
-    }, [connection]);
+    }, [connection, account]);
 
     return (
         <main className="container">
@@ -287,7 +280,7 @@ export default function Main(props: WalletConnectionProps) {
                                         transaction hash or an error message should appear in the right column.
                                         "
                             >
-                                Input issuer metadata:
+                                Add `IssuerMetadata`:
                                 <br />
                                 <input
                                     className="inputFieldStyle"
@@ -296,48 +289,56 @@ export default function Main(props: WalletConnectionProps) {
                                     placeholder="https://issuer/metaData/"
                                     onChange={changeIssuerMetaDataURLHandler}
                                 />
-                                {options.length !== 0 && (
-                                    <>
-                                        <div>You have added the following `CredentialSchemaType`:</div>
+                                {credentialTypes.length !== 0 && (
+                                    <div className="actionResultBox">
+                                        <div>You have added the following `CredentialSchemaTypes`:</div>
                                         <div>
-                                            {options?.map((element) => (
+                                            {credentialTypes?.map((element) => (
                                                 <li key={element}>{element}</li>
                                             ))}
                                         </div>
-                                        <div>You have added the following `CredentialSchemaURL`:</div>
+                                        <div>You have added the following `CredentialSchemaURLs`:</div>
                                         <div>
-                                            {credentialSchemaURL?.map((element) => (
+                                            {credentialSchemaURLs?.map((element) => (
                                                 <li key={element}>{element}</li>
                                             ))}
                                         </div>
-                                    </>
+                                    </div>
+                                )}
+                                {userInputError !== '' && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {userInputError}.
+                                    </div>
                                 )}
                                 <br />
                                 <Form
                                     onSubmit={(e) => {
                                         e.preventDefault();
-                                        addOption(
-                                            options,
-                                            setOptions,
+                                        setUserInputError('');
+                                        addSchema(
+                                            credentialTypes,
+                                            setCredentialTypes,
                                             schemas,
                                             setSchemas,
-                                            credentialSchemaURL,
-                                            setCredentialSchemaURL,
-                                            optionInput,
-                                            setOptionInput,
+                                            credentialSchemaURLs,
+                                            setCredentialSchemaURLs,
+                                            credentialTypeInput,
+                                            setCredentialTypeInput,
                                             credentialSchemaURLInput,
                                             setCredentialSchemaURLInput
-                                        ).catch(console.error);
+                                        ).catch((err: Error) => setUserInputError((err as Error).message));
                                     }}
                                 >
+                                    <br />
                                     <div>Add pairs of `CredentialSchemaType` and `CredentialSchemaURL`:</div>
+                                    <br />
                                     <Row>
                                         <Col sm={10}>
                                             <InputGroup className="mb-3">
                                                 <Form.Control
                                                     placeholder="CredentialSchemaType"
-                                                    value={optionInput}
-                                                    onChange={(e) => setOptionInput(e.target.value)}
+                                                    value={credentialTypeInput}
+                                                    onChange={(e) => setCredentialTypeInput(e.target.value)}
                                                 />
                                                 <Form.Control
                                                     placeholder="CredentialSchemaURL"
@@ -351,35 +352,52 @@ export default function Main(props: WalletConnectionProps) {
                                             </InputGroup>
                                         </Col>
                                         <Col sm={1}>
-                                            <Button variant="outline-secondary" onClick={() => setOptions([])}>
+                                            <Button
+                                                variant="outline-secondary"
+                                                onClick={() => {
+                                                    setCredentialTypes([]);
+                                                    setSchemas([]);
+                                                    setCredentialSchemaURLs([]);
+                                                    setCredentialSchemaURLInput('');
+                                                    setCredentialTypeInput('');
+                                                    setUserInputError('');
+                                                }}
+                                            >
                                                 Clear
                                             </Button>
                                         </Col>
                                     </Row>
                                 </Form>
                                 {revocationKeys.length !== 0 && (
-                                    <>
+                                    <div className="actionResultBox">
                                         <div>You have added the following `revocationKeys`:</div>
                                         <div>
                                             {revocationKeys?.map((element) => (
                                                 <li key={element}>{element}</li>
                                             ))}
                                         </div>
-                                    </>
+                                    </div>
+                                )}
+                                {userInputError2 !== '' && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {userInputError2}.
+                                    </div>
                                 )}
                                 <br />
                                 <Form
                                     onSubmit={(e) => {
                                         e.preventDefault();
+                                        setUserInputError2('');
                                         addRevokationKey(
                                             revocationKeys,
                                             setRevocationKeys,
                                             setRevocationKeyInput,
                                             revocationKeyInput
-                                        ).catch(console.error);
+                                        ).catch((err: Error) => setUserInputError2((err as Error).message));
                                     }}
                                 >
-                                    <div>Add `revocationKeys`:</div>
+                                    <div>Add `RevocationKeys`:</div>
+                                    <br />
                                     <Row>
                                         <Col sm={10}>
                                             <InputGroup className="mb-3">
@@ -394,7 +412,14 @@ export default function Main(props: WalletConnectionProps) {
                                             </InputGroup>
                                         </Col>
                                         <Col sm={1}>
-                                            <Button variant="outline-secondary" onClick={() => setRevocationKeys([])}>
+                                            <Button
+                                                variant="outline-secondary"
+                                                onClick={() => {
+                                                    setRevocationKeys([]);
+                                                    setRevocationKeyInput('');
+                                                    setUserInputError2('');
+                                                }}
+                                            >
                                                 Clear
                                             </Button>
                                         </Col>
@@ -454,11 +479,6 @@ export default function Main(props: WalletConnectionProps) {
                                 an error message should appear in the above test unit.
                                         "
                             >
-                                <textarea id="newSignatureInput" onChange={changeSignatureInputHandler}>
-                                    Copy below object in here and adjust.
-                                </textarea>
-                                <pre className="largeText">{JSON.stringify(newSignatureExampleInput, null, '\t')}</pre>
-
                                 <button
                                     className="btn btn-primary"
                                     type="button"
@@ -507,37 +527,65 @@ export default function Main(props: WalletConnectionProps) {
                                 note="Expected result after pressing the button and confirming in wallet: The
                                         transaction hash or an error message should appear in the right column."
                             >
-                                <button
-                                    className="btn btn-primary"
-                                    type="button"
-                                    onClick={() => {
-                                        const storageInputParameter = {
-                                            data: signatureInput,
-                                            public_key: browserPublicKey,
-                                            signature,
-                                        };
-
-                                        const serializedMessage = serializeTypeValue(
-                                            storageInputParameter,
-                                            toBuffer(STORAGE_CONTRACT_STORE_PARAMETER_SCHEMA, 'base64')
-                                        );
-                                        const createdObject = newRegisterCredentialExampleInput;
-
-                                        createdObject.auxiliary_data = Array.from(serializedMessage);
-                                        createdObject.credential_info.holder_id = browserPublicKey;
-
-                                        setObject(JSON.parse(JSON.stringify(createdObject, null, '\t')));
-                                    }}
-                                >
-                                    Create object
-                                </button>
-                                <textarea
-                                    id="newRegisterCredentialInput"
-                                    onChange={changeNewRegisterCredentialInputHandler}
-                                >
-                                    Copy below object in here and adjust.
-                                </textarea>
-                                <pre className="largeText">{JSON.stringify(object, null, '\t')}</pre>
+                                Add `valid_from`:
+                                <br />
+                                <br />
+                                <input
+                                    type="datetime-local"
+                                    id="valid_from"
+                                    name="valid_from"
+                                    value={validFromDate}
+                                    onChange={handleValidFromDateChange}
+                                />
+                                <br />
+                                <br />
+                                Add `valid_until`:
+                                <br />
+                                <br />
+                                <input
+                                    type="datetime-local"
+                                    id="valid_until"
+                                    name="valid_until"
+                                    value={validUntilDate}
+                                    onChange={handleValidUntilDateChange}
+                                />
+                                <br />
+                                <br />
+                                Add `CredentialMetadata`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialMetaDataURL"
+                                    type="text"
+                                    placeholder="https://credential/metaData/"
+                                    onChange={changeCredentialMetaDataURLHandler}
+                                />
+                                <br />
+                                Add `CredentialType`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialType"
+                                    type="text"
+                                    placeholder="myType"
+                                    onChange={changeCredentialTypeHandler}
+                                />
+                                <div className="switch-wrapper">
+                                    <div>Holder can revoke credential</div>
+                                    <Switch
+                                        onChange={() => {
+                                            setIsHolderRevocable(!isHolderRevocable);
+                                        }}
+                                        onColor="#308274"
+                                        offColor="#308274"
+                                        onHandleColor="#174039"
+                                        offHandleColor="#174039"
+                                        checked={!isHolderRevocable}
+                                        checkedIcon={false}
+                                        uncheckedIcon={false}
+                                    />
+                                    <div>Holder can NOT revoke credential</div>
+                                </div>
                                 <br />
                                 <button
                                     className="btn btn-primary"
@@ -548,7 +596,14 @@ export default function Main(props: WalletConnectionProps) {
                                         const tx = issueCredential(
                                             connection,
                                             account,
-                                            JSON.stringify(registerCredentialInput),
+                                            JSON.stringify(signatureInput),
+                                            browserPublicKey,
+                                            signature,
+                                            validFromDate,
+                                            validUntilDate,
+                                            credentialType,
+                                            credentialMetaDataURL,
+                                            isHolderRevocable,
                                             credentialRegistryContratIndex
                                         );
                                         tx.then(setTxHash).catch((err: Error) => {
@@ -668,6 +723,7 @@ export default function Main(props: WalletConnectionProps) {
                     )}
                     <div className="col-lg-6">
                         <div className="sticky-top">
+                            <br />
                             <h5>
                                 This column refreshes every few seconds to update your account balanace. It also
                                 displays your connected account, your public key, transaction hashes, and error
@@ -697,7 +753,7 @@ export default function Main(props: WalletConnectionProps) {
                             </div>
                             <br />
                             {!txHash && !transactionError && (
-                                <div className="alert alert-danger" role="alert">
+                                <div className="actionResultBox" role="alert">
                                     IMPORTANT: After pressing a button on the left side that should send a transaction,
                                     the transaction hash or error returned by the wallet are displayed HERE.
                                 </div>
