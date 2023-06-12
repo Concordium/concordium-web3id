@@ -15,4 +15,4 @@ RUN yarn install && yarn build
 
 # Serve front end
 FROM nginx
-COPY --from=build ./app/issuer-front-end/dist ./usr/share/nginx/html
+COPY --from=build ./app/dist ./usr/share/nginx/html
