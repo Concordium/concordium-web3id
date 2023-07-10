@@ -1,0 +1,21 @@
+{
+    "$schema": "./JsonSchema2023-education-certificate.json",
+    "id": "did:ccd:NETWORK:sci:INDEX:SUBINDEX/credentialEntry/76ada0ebd1e8aa5a651a0c4ac1ad3b62d3040f693722f94d61efa4fdd6ee797d",
+    "type": [
+        "VerifiableCredential",
+        "ConcordiumVerifiableCredential",
+        "UniversityDegreeCredential"
+    ],
+    "issuer": "did:ccd:NETWORK:sci:INDEX:SUBINDEX/issuer",
+    "issuanceDate": "2010-01-01T00:00:00Z",
+    "credentialSubject": {
+        "id": "did:ccd:pkc:76ada0ebd1e8aa5a651a0c4ac1ad3b62d3040f693722f94d61efa4fdd6ee797d",
+        "degreeType": "BachelorDegree",
+        "degreeName": "Bachelor of Science and Arts",
+        "graduationDate": "2010-06-01T00:00:00Z"
+    },
+    "credentialSchema": {
+        "id": "https://example-university.com/certificates/JsonSchema2023-education-certificate.json",
+        "type": "JsonSchema2023"
+      }
+}
