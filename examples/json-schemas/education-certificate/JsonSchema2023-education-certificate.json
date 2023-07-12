@@ -26,6 +26,7 @@
                     "index": "1"
                 },
                 "graduationDate": {
+                    "title": "Graduation date",
                     "type": "string",
                     "format": "date-time",
                     "description": "Graduation date",
