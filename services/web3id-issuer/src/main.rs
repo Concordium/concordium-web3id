@@ -8,18 +8,16 @@ use axum::{
 use axum_prometheus::PrometheusMetricLayerBuilder;
 use clap::Parser;
 use concordium_rust_sdk::{
-    base as concordium_base,
     cis4::{Cis4Contract, Cis4TransactionError, Cis4TransactionMetadata},
     common::types::TransactionTime,
     contract_client::CredentialInfo,
-    smart_contracts::common::{self as concordium_std, Amount},
+    smart_contracts::common::Amount,
     types::{
         hashes::{BlockHash, TransactionHash},
         transactions::send::GivenEnergy,
         ContractAddress, Energy, Nonce, WalletAccount,
     },
     v2::{self, QueryError},
-    web3id::storage::{DataToSign, StoreParam},
 };
 use std::{path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
@@ -64,13 +62,6 @@ struct App {
     )]
     request_timeout:     u64,
     #[clap(
-        long = "min-expiry",
-        help = "Minimum transaction expiry time in milliseconds.",
-        default_value = "15000",
-        env = "CONCORDIUM_WEB3ID_ISSUER_MINIMUM_EXPIRY"
-    )]
-    min_allowed_expiry:  u32,
-    #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "CONCORDIUM_WEB3ID_ISSUER_REGISTRY_ADDRESS"
@@ -107,8 +98,6 @@ enum Error {
     InvalidPath(#[from] PathRejection),
     #[error("Unable to submit transaction: {0}")]
     CouldNotSubmit(#[from] Cis4TransactionError),
-    #[error("Transaction expiry is too early in the future.")]
-    ExpiryTooEarly,
     #[error("Transaction query error: {0}.")]
     Query(#[from] QueryError),
 }
@@ -151,13 +140,6 @@ impl axum::response::IntoResponse for Error {
                     )
                 }
             }
-            Error::ExpiryTooEarly => {
-                tracing::warn!("Invalid request. Credential expiry is too early.");
-                (
-                    StatusCode::BAD_REQUEST,
-                    axum::Json("Credential expiry is too early.".to_string()),
-                )
-            }
         };
         r.into_response()
     }
@@ -168,8 +150,6 @@ struct State {
     client:              Cis4Contract,
     issuer:              Arc<WalletAccount>,
     nonce_counter:       Arc<tokio::sync::Mutex<Nonce>>,
-    // In milliseconds
-    min_allowed_expiry:  u64,
     max_register_energy: Energy,
 }
 
@@ -177,9 +157,6 @@ struct State {
 #[serde(rename_all = "camelCase")]
 struct IssueRequest {
     credential: CredentialInfo,
-    #[serde(deserialize_with = "concordium_base::common::base16_decode")]
-    signature:  [u8; 64],
-    data:       DataToSign,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -215,21 +192,11 @@ async fn issue_credential(
 ) -> Result<axum::Json<TransactionHash>, Error> {
     tracing::info!("Request to issue a credential.");
     let axum::Json(request) = request?;
-    if request.data.timestamp.timestamp_millis()
-        < (chrono::Utc::now().timestamp_millis() as u64).saturating_add(state.min_allowed_expiry)
-    {
-        return Err(Error::ExpiryTooEarly);
-    }
-
-    let expiry = TransactionTime::from_seconds(request.data.timestamp.timestamp_millis() / 1000);
-
-    let storage_data = concordium_std::to_bytes(&StoreParam {
-        public_key: request.credential.holder_id,
-        signature:  request.signature,
-        data:       request.data,
-    });
 
     let mut nonce_guard = state.nonce_counter.lock().await;
+    // compute expiry after acquiring the lock to make sure we don't wait
+    // too long before acquiring the lock, rendering expiry problematic.
+    let expiry = TransactionTime::minutes_after(5);
     tracing::info!("Using nonce {} to send the transaction.", *nonce_guard);
     let metadata = Cis4TransactionMetadata {
         sender_address: state.issuer.address,
@@ -241,12 +208,7 @@ async fn issue_credential(
 
     let tx = state
         .client
-        .register_credential(
-            &*state.issuer,
-            &metadata,
-            &request.credential,
-            &storage_data,
-        )
+        .register_credential(&*state.issuer, &metadata, &request.credential, &[])
         .await?;
     nonce_guard.next_mut();
     drop(nonce_guard);
@@ -315,7 +277,6 @@ async fn main() -> anyhow::Result<()> {
         client,
         issuer,
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
-        min_allowed_expiry: app.min_allowed_expiry.into(),
         max_register_energy: app.max_register_energy,
     };
 
