@@ -9,17 +9,19 @@ use axum_prometheus::PrometheusMetricLayerBuilder;
 use clap::Parser;
 use concordium_rust_sdk::{
     cis4::{Cis4Contract, Cis4TransactionError, Cis4TransactionMetadata},
-    common::types::TransactionTime,
+    common::types::{KeyPair, TransactionTime},
     contract_client::CredentialInfo,
+    id::{constants::ArCurve, pedersen_commitment},
     smart_contracts::common::Amount,
     types::{
         hashes::{BlockHash, TransactionHash},
         transactions::send::GivenEnergy,
-        ContractAddress, Energy, Nonce, WalletAccount,
+        ContractAddress, CryptographicParameters, Energy, Nonce, WalletAccount,
     },
-    v2::{self, QueryError},
+    v2::{self, BlockIdentifier, QueryError},
+    web3id::{SignedCommitments, Web3IdAttribute, Web3IdCredential},
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 
@@ -74,6 +76,12 @@ struct App {
     )]
     wallet:              PathBuf,
     #[clap(
+        long = "issuer-key",
+        help = "Path to the issuer's key, used to sign commitments.",
+        env = "CONCORDIUM_WEB3ID_ISSUER_KEY"
+    )]
+    issuer_key:          PathBuf,
+    #[clap(
         long = "prometheus-address",
         help = "Listen address for the server.",
         env = "CONCORDIUM_WEB3ID_ISSUER_PROMETHEUS_ADDRESS"
@@ -100,6 +108,8 @@ enum Error {
     CouldNotSubmit(#[from] Cis4TransactionError),
     #[error("Transaction query error: {0}.")]
     Query(#[from] QueryError),
+    #[error("Internal error: {0}.")]
+    Internal(String),
 }
 
 impl axum::response::IntoResponse for Error {
@@ -126,6 +136,13 @@ impl axum::response::IntoResponse for Error {
                     axum::Json("Could not submit transaction.".to_string()),
                 )
             }
+            Error::Internal(e) => {
+                tracing::error!("Another internal error: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    axum::Json("Internal error.".to_string()),
+                )
+            }
             Error::Query(e) => {
                 if e.is_not_found() {
                     (
@@ -147,8 +164,10 @@ impl axum::response::IntoResponse for Error {
 
 #[derive(Clone, Debug)]
 struct State {
+    crypto_params:       Arc<CryptographicParameters>,
     client:              Cis4Contract,
     issuer:              Arc<WalletAccount>,
+    issuer_key:          Arc<KeyPair>,
     nonce_counter:       Arc<tokio::sync::Mutex<Nonce>>,
     max_register_energy: Energy,
 }
@@ -157,6 +176,14 @@ struct State {
 #[serde(rename_all = "camelCase")]
 struct IssueRequest {
     credential: CredentialInfo,
+    values:     BTreeMap<u8, Web3IdAttribute>,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct IssueResponse {
+    tx_hash:    TransactionHash,
+    credential: Web3IdCredential<ArCurve, Web3IdAttribute>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -185,11 +212,46 @@ async fn status(
     }
 }
 
+fn make_secrets(
+    state: &State,
+    values: BTreeMap<u8, Web3IdAttribute>,
+    credential: &CredentialInfo,
+) -> Result<Web3IdCredential<ArCurve, Web3IdAttribute>, Error> {
+    let mut randomness = BTreeMap::new();
+    {
+        let mut rng = rand::thread_rng();
+        for idx in values.keys() {
+            randomness.insert(*idx, pedersen_commitment::Randomness::generate(&mut rng));
+        }
+    }
+
+    let signed_commitments = SignedCommitments::from_secrets(
+        &state.crypto_params,
+        &values,
+        &randomness,
+        &credential.holder_id,
+        state.issuer_key.as_ref(),
+    )
+    .ok_or_else(|| {
+        Error::Internal("Incorrect number of values vs. randomness. This should not happen.".into())
+    })?;
+
+    Ok(Web3IdCredential {
+        issuance_date: chrono::Utc::now(),
+        registry: state.client.address,
+        issuer_key: state.issuer_key.public.into(),
+        values,
+        randomness,
+        signature: signed_commitments.signature,
+        holder_id: credential.holder_id,
+    })
+}
+
 #[tracing::instrument(level = "info", skip(state, request))]
 async fn issue_credential(
     axum::extract::State(mut state): axum::extract::State<State>,
     request: Result<axum::Json<IssueRequest>, JsonRejection>,
-) -> Result<axum::Json<TransactionHash>, Error> {
+) -> Result<axum::Json<IssueResponse>, Error> {
     tracing::info!("Request to issue a credential.");
     let axum::Json(request) = request?;
 
@@ -206,13 +268,18 @@ async fn issue_credential(
         amount: Amount::zero(),
     };
 
-    let tx = state
+    let tx_hash = state
         .client
         .register_credential(&*state.issuer, &metadata, &request.credential, &[])
         .await?;
     nonce_guard.next_mut();
     drop(nonce_guard);
-    Ok(axum::Json(tx))
+    let credential = make_secrets(&state, request.values, &request.credential)?;
+
+    Ok(axum::Json(IssueResponse {
+        tx_hash,
+        credential,
+    }))
 }
 
 #[tokio::main]
@@ -255,6 +322,11 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Unable to establish connection to the node.")?;
 
+    let issuer_key = Arc::new(
+        serde_json::from_reader(&std::fs::File::open(&app.issuer_key)?)
+            .context("Unable to read issuer's key.")?,
+    );
+
     let issuer = Arc::new(WalletAccount::from_json_file(app.wallet)?);
 
     let nonce = client
@@ -271,11 +343,17 @@ async fn main() -> anyhow::Result<()> {
         nonce.nonce
     );
 
+    let crypto_params = client
+        .get_cryptographic_parameters(BlockIdentifier::LastFinal)
+        .await?
+        .response;
     let client = Cis4Contract::create(client, app.registry).await?;
 
     let state = State {
-        client,
         issuer,
+        crypto_params: Arc::new(crypto_params),
+        issuer_key,
+        client,
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
         max_register_energy: app.max_register_energy,
     };
