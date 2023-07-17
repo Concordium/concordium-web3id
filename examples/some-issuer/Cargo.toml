@@ -1,0 +1,22 @@
+[package]
+name = "some-issuer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.71"
+axum = "0.6.18"
+clap = { version = "4.3.11", features = ["derive", "env"] }
+hex = "0.4.3"
+hmac = "0.12.1"
+reqwest = "0.11.18"
+serde = { version = "1.0.171", features = ["derive"] }
+serde_json = "1.0.100"
+serde_urlencoded = "0.7.1"
+sha2 = "0.10.7"
+tokio = { version =  "1.29", features = ["rt-multi-thread", "macros"] }
+tower-http = { version = "0.4.1", features = ["fs"] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.17"
