@@ -26,7 +26,7 @@ struct App {
     #[clap(
         long = "dapp-url",
         default_value = "http://127.0.0.1/",
-        help = "URL of the verification dapp.",
+        help = "URL of the SoMe issuer dapp.",
         env = "SOME_ISSUER_URL"
     )]
     dapp_url: Url,
