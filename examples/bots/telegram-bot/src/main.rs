@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use clap::Parser;
 use reqwest::Url;
-use serde::Serialize;
+use some_verifier::Verified;
 use teloxide::dispatching::UpdateHandler;
-use teloxide::types::{InlineKeyboardButton, MessageKind, ReplyMarkup};
+use teloxide::types::{InlineKeyboardButton, MessageKind, ReplyMarkup, User};
 use teloxide::RequestError;
 use teloxide::{prelude::*, utils::command::BotCommands};
 
@@ -30,6 +32,13 @@ struct App {
         env = "SOME_ISSUER_URL"
     )]
     dapp_url: Url,
+    #[clap(
+        long = "verifier-url",
+        default_value = "http://localhost:8080/",
+        help = "URL of the SoMe verifier.",
+        env = "SOME_VERIFIER_URL"
+    )]
+    verifier_url: Url,
 }
 
 #[derive(BotCommands, Clone)]
@@ -50,12 +59,9 @@ enum Command {
 
 #[derive(Clone)]
 struct BotConfig {
-    dapp_url: Url,
-}
-
-#[derive(Serialize, Debug)]
-pub struct DappData {
-    pub user_id: UserId,
+    dapp_url: Arc<Url>,
+    verifier_url: Arc<Url>,
+    client: reqwest::Client,
 }
 
 #[tokio::main]
@@ -72,9 +78,12 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting Telegram bot...");
 
+    let client = reqwest::Client::new();
     let bot = Bot::new(app.bot_token);
     let cfg = BotConfig {
-        dapp_url: app.dapp_url,
+        dapp_url: Arc::new(app.dapp_url),
+        verifier_url: Arc::new(app.verifier_url),
+        client,
     };
     bot.set_my_commands(Command::bot_commands()).await?;
 
@@ -93,15 +102,14 @@ async fn main() -> anyhow::Result<()> {
 
 fn schema() -> UpdateHandler<RequestError> {
     use dptree::case;
+    let command_handler = teloxide::filter_command::<Command, _>()
+        .branch(case![Command::Start].endpoint(help))
+        .branch(case![Command::Help].endpoint(help))
+        .branch(case![Command::Verify].endpoint(verify))
+        .branch(case![Command::Check].endpoint(check));
 
     Update::filter_message()
-        .branch(
-            teloxide::filter_command::<Command, _>()
-                .branch(case![Command::Start].endpoint(help))
-                .branch(case![Command::Help].endpoint(help))
-                .branch(case![Command::Verify].endpoint(verify))
-                .branch(case![Command::Check].endpoint(check)),
-        )
+        .branch(command_handler)
         .endpoint(other)
 }
 
@@ -114,8 +122,8 @@ async fn help(bot: Bot, msg: Message) -> ResponseResult<()> {
 
 /// Handler for the `/verify` command
 async fn verify(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
-    let verify_button =
-        ReplyMarkup::inline_kb([[InlineKeyboardButton::url("Verify", cfg.dapp_url)]]);
+    let dapp_url = cfg.dapp_url.as_ref().clone();
+    let verify_button = ReplyMarkup::inline_kb([[InlineKeyboardButton::url("Verify", dapp_url)]]);
     bot.send_message(msg.chat.id, "Please verify with your wallet.")
         .reply_markup(verify_button)
         .await?;
@@ -124,14 +132,10 @@ async fn verify(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
 }
 
 /// Handler for the `/check` command. This must be used in reply to another message.
-async fn check(bot: Bot, msg: Message) -> ResponseResult<()> {
+async fn check(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
     if let Some(target_msg) = msg.reply_to_message() {
         if let Some(target_user) = target_msg.from() {
-            bot.send_message(
-                msg.chat.id,
-                format!("Debug: target user has id {}.", target_user.id),
-            )
-            .await?;
+            check_user(cfg, bot, &msg, target_user).await?;
         } else {
             bot.send_message(msg.chat.id, "/check can not be used in channels.")
                 .await?;
@@ -139,6 +143,32 @@ async fn check(bot: Bot, msg: Message) -> ResponseResult<()> {
     } else {
         bot.send_message(msg.chat.id, "Usage: reply /check to a message.")
             .await?;
+    }
+
+    Ok(())
+}
+
+async fn check_user(
+    cfg: BotConfig,
+    bot: Bot,
+    msg: &Message,
+    target_user: &User,
+) -> ResponseResult<()> {
+    if let Ok(verification) = get_verification(cfg, target_user.id).await {
+        let name = target_user.mention().unwrap_or(target_user.full_name());
+        if verification.telegram_id.is_some() {
+            let reply = format!("{name} is verified with Concordium.");
+            bot.send_message(msg.chat.id, reply).await?;
+        } else {
+            let reply = format!("{name} is *not* verified with Concordium.");
+            bot.send_message(msg.chat.id, reply).await?;
+        }
+    } else {
+        bot.send_message(
+            msg.chat.id,
+            format!("Debug: target user has id {}.", target_user.id),
+        )
+        .await?;
     }
 
     Ok(())
@@ -157,4 +187,12 @@ async fn other(bot: Bot, msg: Message) -> ResponseResult<()> {
     )
     .await?;
     Ok(())
+}
+
+async fn get_verification(cfg: BotConfig, id: UserId) -> anyhow::Result<Verified> {
+    let url = cfg
+        .verifier_url
+        .join(&id.to_string())
+        .expect("URLs can be joined with a UserId");
+    Ok(cfg.client.get(url).send().await?.json().await?)
 }
