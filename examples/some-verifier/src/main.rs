@@ -5,9 +5,9 @@ use axum::extract::{Path, State};
 use axum::routing::get;
 use axum::{Json, Router};
 use clap::Parser;
-use db::{Platform, Telegram, Verified};
+use some_verifier::Verified;
 
-use crate::db::{Database, Discord};
+use crate::db::{Database, Discord, Platform, Telegram};
 
 mod db;
 

@@ -1,4 +1,4 @@
-use serde::Serialize;
+use some_verifier::Verified;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Row};
 
@@ -19,25 +19,6 @@ macro_rules! platform {
 
 platform!(Telegram, "telegram_id", i64);
 platform!(Discord, "discord_id", i64);
-
-#[derive(Serialize, Default, Debug)]
-pub struct Verified {
-    telegram_id: Option<u64>,
-    discord_id: Option<u64>,
-}
-
-impl Verified {
-    fn from_row(row: Row) -> Self {
-        Self {
-            telegram_id: row
-                .get::<_, Option<i64>>(Telegram::COLUMN_NAME)
-                .map(|id| id as u64),
-            discord_id: row
-                .get::<_, Option<i64>>(Discord::COLUMN_NAME)
-                .map(|id| id as u64),
-        }
-    }
-}
 
 pub struct Database {
     client: tokio_postgres::Client,
@@ -66,6 +47,17 @@ impl Database {
                 &[&id],
             )
             .await
-            .map(Verified::from_row)
+            .map(verified_from_row)
+    }
+}
+
+fn verified_from_row(row: Row) -> Verified {
+    Verified {
+        telegram_id: row
+            .get::<_, Option<i64>>(Telegram::COLUMN_NAME)
+            .map(|id| id as u64),
+        discord_id: row
+            .get::<_, Option<i64>>(Discord::COLUMN_NAME)
+            .map(|id| id as u64),
     }
 }
