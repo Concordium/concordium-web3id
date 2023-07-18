@@ -1,19 +1,28 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
+use anyhow::anyhow;
 use axum::extract::{Path, State};
 use axum::routing::get;
 use axum::{Json, Router};
 use clap::Parser;
-use some_verifier::Verified;
+use futures::{future, TryFutureExt};
+use serde::Deserialize;
+use some_verifier::{Platform, Verification};
 
-use crate::db::{Database, Discord, Platform, Telegram};
+use crate::db::{Account, Database, DbPlatform, Discord, Telegram};
 
 mod db;
 
 #[derive(clap::Parser, Debug)]
 #[clap(version, author)]
 struct App {
+    #[clap(
+        long = "discord-bot-token",
+        help = "Discord bot token for looking up usernames.",
+        env = "DISCORD_BOT_TOKEN"
+    )]
+    discord_bot_token: String,
     #[clap(
         long = "db",
         default_value = "host=localhost dbname=some-verifier user=postgres password=password port=5432",
@@ -39,6 +48,8 @@ struct App {
 
 #[derive(Clone)]
 struct AppState {
+    client: reqwest::Client,
+    discord_bot_token: Arc<String>,
     database: Arc<Database>,
 }
 
@@ -57,14 +68,24 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Connecting to database...");
     let database = Database::connect(app.db_config).await?;
 
+    let client = reqwest::Client::new();
+
     let state = AppState {
+        client,
+        discord_bot_token: Arc::new(app.discord_bot_token),
         database: Arc::new(database),
     };
 
     tracing::info!("Starting server...");
     let router = Router::new()
-        .route("/check/telegram/:id", get(handle_check::<Telegram>))
-        .route("/check/discord/:id", get(handle_check::<Discord>))
+        .route(
+            "/verifications/telegram/:id",
+            get(handle_get_verifications::<Telegram>),
+        )
+        .route(
+            "/verifications/discord/:id",
+            get(handle_get_verifications::<Discord>),
+        )
         .with_state(state);
 
     let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), app.api_port);
@@ -76,14 +97,67 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn handle_check<P: Platform>(
+async fn handle_get_verifications<P: DbPlatform>(
     State(state): State<AppState>,
-    Path(id): Path<P::Id>,
-) -> Json<Verified> {
-    let res = state
-        .database
-        .get_accounts::<P>(id)
-        .await
-        .unwrap_or_default();
-    Json(res)
+    Path(id): Path<i64>,
+) -> Json<Vec<Verification>> {
+    let accounts = state.database.get_accounts::<P>(id).await;
+    match accounts {
+        Ok(accounts) => {
+            // Futures that simultaneously look up username and revocation status of user
+            // The futures are then mapped to Verifications
+            let futures = accounts.iter().map(|acc| {
+                future::try_join3(
+                    async { Ok(acc.platform) },
+                    get_username(&state, acc),
+                    state
+                        .database
+                        .get_revocation_status(acc)
+                        .map_err(|e| anyhow!(e)),
+                )
+                .map_ok(|(platform, username, revoked)| Verification {
+                    platform,
+                    username,
+                    revoked,
+                })
+            });
+
+            // Keep all the non-error values since the others could not get a username
+            // or a revocation status for whatever reason, probably because the user
+            // does not have that platform
+            let verifications = future::join_all(futures)
+                .await
+                .into_iter()
+                .filter_map(|res| res.ok())
+                .collect();
+            Json(verifications)
+        }
+        Err(_) => Json(vec![]),
+    }
+}
+
+/// Looks up the username of the given account.
+async fn get_username(state: &AppState, account: &Account) -> anyhow::Result<String> {
+    #[derive(Deserialize)]
+    struct DiscordUser {
+        username: String,
+        discriminator: String,
+    }
+
+    let id = account.id as u64;
+    match account.platform {
+        Platform::Telegram => Ok((id as u64).to_string()),
+        Platform::Discord => {
+            const API_ENDPOINT: &'static str = "https://discord.com/api/v10";
+            let user = state
+                .client
+                .get(format!("{API_ENDPOINT}/users/{}", id))
+                .header("Authorization", format!("Bot {}", state.discord_bot_token))
+                .send()
+                .await?
+                .json::<DiscordUser>()
+                .await?;
+            Ok(format!("{}#{}", user.username, user.discriminator))
+        }
+    }
 }

@@ -1,7 +1,14 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-pub struct Verified {
-    pub telegram_id: Option<u64>,
-    pub discord_id: Option<u64>,
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub enum Platform {
+    Telegram,
+    Discord,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Verification {
+    pub platform: Platform,
+    pub username: String,
+    pub revoked: bool,
 }
