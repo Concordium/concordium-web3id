@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use clap::Parser;
 use poise::serenity_prelude as serenity;
 use reqwest::Url;
@@ -28,8 +30,25 @@ struct App {
     verifier_url: Url,
 }
 
-struct BotConfig {}
+struct BotConfig {
+    verifier_url: Arc<Url>,
+}
 type Context<'a> = poise::Context<'a, BotConfig, anyhow::Error>;
+
+// Note: The doc comment below defines what the user sees as a help message
+/// Verify with Concordium
+#[poise::command(slash_command, prefix_command)]
+async fn verify(ctx: Context<'_>) -> anyhow::Result<()> {
+    ctx.send(|reply| {
+        reply
+            .content("Please verify with your wallet.")
+            .components(link_button(ctx.data().verifier_url.as_ref(), "Verify"))
+            // Only the recipient can see the message
+            .ephemeral(true)
+    })
+    .await?;
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -43,11 +62,15 @@ async fn main() -> anyhow::Result<()> {
             .init();
     }
 
+    let cfg = BotConfig {
+        verifier_url: Arc::new(app.verifier_url),
+    };
+
     tracing::info!("Starting Discord bot...");
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![age()],
+            commands: vec![verify()],
             ..Default::default()
         })
         .token(app.bot_token)
@@ -55,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(BotConfig {})
+                Ok(cfg)
             })
         });
 
@@ -63,14 +86,19 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Displays your or another user's account creation date
-#[poise::command(slash_command, prefix_command)]
-async fn age(
-    ctx: Context<'_>,
-    #[description = "Selected user"] user: Option<serenity::User>,
-) -> anyhow::Result<()> {
-    let u = user.as_ref().unwrap_or_else(|| ctx.author());
-    let response = format!("{}'s account was created at {}", u.name, u.created_at());
-    ctx.say(response).await?;
-    Ok(())
+/// Creates a link button component for the given link with the given label.
+fn link_button<'btn>(
+    url: &'btn Url,
+    label: impl ToString + 'btn,
+) -> impl FnOnce(&mut serenity::CreateComponents) -> &mut serenity::CreateComponents + 'btn {
+    move |comp| {
+        comp.create_action_row(|row| {
+            row.create_button(|button| {
+                button
+                    .label(label)
+                    .style(serenity::ButtonStyle::Link)
+                    .url(url)
+            })
+        })
+    }
 }
