@@ -158,9 +158,8 @@ async fn check_user(
     match get_verifications(cfg, target_user.id).await {
         Ok(verifications) => {
             let name = target_user.mention().unwrap_or(target_user.full_name());
-            if verifications.is_empty() {
-                let reply = format!("{name} is not verified with Concordium.");
-                bot.send_message(msg.chat.id, reply).await?;
+            let reply = if verifications.is_empty() {
+                format!("{name} is not verified with Concordium.")
             } else {
                 let mut reply = format!("{name} is verified with Concordium.");
                 for verification in verifications
@@ -172,8 +171,11 @@ async fn check_user(
                         verification.platform, verification.username
                     ));
                 }
-                bot.send_message(msg.chat.id, reply).await?;
-            }
+                reply
+            };
+            bot.send_message(msg.chat.id, reply)
+                .reply_to_message_id(msg.id)
+                .await?;
         }
         Err(err) => tracing::error!("{err}"),
     }

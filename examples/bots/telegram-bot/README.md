@@ -1,6 +1,14 @@
 # Telegram Bot
 Telegram bot that can redirect users to the verification dApp and check the verification status.
 
+The bot repsonds to the following commands:
+```
+/start  - starts a new chat.
+/help   - displays the list of commands.
+/verify - sends a link to the SoMe verifier dApp.
+/check  - used in reply to another message. Replies with the verification status of the sender.
+```
+
 ## Usage
 Arguments:
 ```
