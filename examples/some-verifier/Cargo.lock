@@ -806,6 +806,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "304e6508efa593091e97a9abbc10f90aa7ca635b6d2784feff3c89d41dd12272"
+
+[[package]]
 name = "ed25519"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2187,6 +2193,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust-tdlib"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54d5f828797dc6eb8e84388f776d8be2805a96978c65d9de010b12fcda19604d"
+dependencies = [
+ "async-trait",
+ "dyn-clone",
+ "futures",
+ "lazy_static",
+ "log",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "rust_decimal"
 version = "1.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2486,6 +2510,7 @@ dependencies = [
  "concordium-rust-sdk",
  "futures",
  "reqwest",
+ "rust-tdlib",
  "serde",
  "serde_json",
  "tokio",
@@ -2942,6 +2967,9 @@ name = "uuid"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79daa5ed5740825c40b389c5e50312b9c86df53fccd33f281df655642b43869d"
+dependencies = [
+ "getrandom 0.2.10",
+]
 
 [[package]]
 name = "valuable"
