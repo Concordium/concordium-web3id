@@ -83,10 +83,12 @@ async fn main() -> anyhow::Result<()> {
     let app = App::parse();
 
     {
+        let log_filter =
+            tracing_subscriber::filter::Targets::new().with_target(module_path!(), app.log_level);
         use tracing_subscriber::prelude::*;
         tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer())
-            .with(app.log_level)
+            .with(log_filter)
             .init();
     }
     tdjson::set_log_verbosity_level(1);
