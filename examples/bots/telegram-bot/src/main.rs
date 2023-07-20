@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use clap::Parser;
 use reqwest::Url;
-use some_verifier::Verified;
+use some_verifier_lib::{Platform, Verification};
 use teloxide::dispatching::UpdateHandler;
 use teloxide::types::{InlineKeyboardButton, MessageKind, ReplyMarkup, User};
 use teloxide::RequestError;
@@ -113,14 +113,14 @@ fn schema() -> UpdateHandler<RequestError> {
         .endpoint(other)
 }
 
-/// Handlers for the `/help` and `/start` commands
+/// Handlers for the `/help` and `/start` commands.
 async fn help(bot: Bot, msg: Message) -> ResponseResult<()> {
     bot.send_message(msg.chat.id, Command::descriptions().to_string())
         .await?;
     Ok(())
 }
 
-/// Handler for the `/verify` command
+/// Handler for the `/verify` command.
 async fn verify(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
     let dapp_url = cfg.dapp_url.as_ref().clone();
     let verify_button = ReplyMarkup::inline_kb([[InlineKeyboardButton::url("Verify", dapp_url)]]);
@@ -148,27 +148,34 @@ async fn check(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
     Ok(())
 }
 
+/// Checks the verification status of a given user and sends a message with the result.
 async fn check_user(
     cfg: BotConfig,
     bot: Bot,
     msg: &Message,
     target_user: &User,
 ) -> ResponseResult<()> {
-    if let Ok(verification) = get_verification(cfg, target_user.id).await {
-        let name = target_user.mention().unwrap_or(target_user.full_name());
-        if verification.telegram_id.is_some() {
-            let reply = format!("{name} is verified with Concordium.");
-            bot.send_message(msg.chat.id, reply).await?;
-        } else {
-            let reply = format!("{name} is *not* verified with Concordium.");
-            bot.send_message(msg.chat.id, reply).await?;
+    match get_verifications(cfg, target_user.id).await {
+        Ok(verifications) => {
+            let name = target_user.mention().unwrap_or(target_user.full_name());
+            if verifications.is_empty() {
+                let reply = format!("{name} is not verified with Concordium.");
+                bot.send_message(msg.chat.id, reply).await?;
+            } else {
+                let mut reply = format!("{name} is verified with Concordium.");
+                for verification in verifications
+                    .into_iter()
+                    .filter(|v| v.platform != Platform::Telegram && !v.revoked)
+                {
+                    reply.push_str(&format!(
+                        "\n- {}: {}",
+                        verification.platform, verification.username
+                    ));
+                }
+                bot.send_message(msg.chat.id, reply).await?;
+            }
         }
-    } else {
-        bot.send_message(
-            msg.chat.id,
-            format!("Debug: target user has id {}.", target_user.id),
-        )
-        .await?;
+        Err(err) => tracing::error!("{err}"),
     }
 
     Ok(())
@@ -189,9 +196,11 @@ async fn other(bot: Bot, msg: Message) -> ResponseResult<()> {
     Ok(())
 }
 
-async fn get_verification(cfg: BotConfig, id: UserId) -> anyhow::Result<Verified> {
+async fn get_verifications(cfg: BotConfig, id: UserId) -> anyhow::Result<Vec<Verification>> {
     let url = cfg
         .verifier_url
+        .join("verifications/telegram/")
+        .expect("URLs can be joined with a string path")
         .join(&id.to_string())
         .expect("URLs can be joined with a UserId");
     Ok(cfg.client.get(url).send().await?.json().await?)

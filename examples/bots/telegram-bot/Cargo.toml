@@ -14,4 +14,4 @@ clap = { version = "4", features = ["derive", "env"] }
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 anyhow = "1.0.71"
-some-verifier = { version = "0.1", path = "../../some-verifier" }
+some-verifier-lib = { version = "0.1", path = "../../some-verifier-lib" }
