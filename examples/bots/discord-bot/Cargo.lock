@@ -389,6 +389,7 @@ dependencies = [
  "clap",
  "poise",
  "reqwest",
+ "some-verifier-lib",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1503,6 +1504,13 @@ checksum = "64a4a911eed85daf18834cfaa86a79b7d266ff93ff5ba14005426219480ed662"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "some-verifier-lib"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

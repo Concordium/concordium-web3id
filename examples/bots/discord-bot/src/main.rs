@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
 use clap::Parser;
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, Mentionable};
 use reqwest::Url;
+use some_verifier_lib::{Platform, Verification};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -31,22 +30,74 @@ struct App {
 }
 
 struct BotConfig {
-    verifier_url: Arc<Url>,
+    verifier_url: Url,
+    client: reqwest::Client,
 }
 type Context<'a> = poise::Context<'a, BotConfig, anyhow::Error>;
 
-// Note: The doc comment below defines what the user sees as a help message
+// Note: The doc comments of the commands below define what the user sees as a help message
+/// Displays the list of commands
+#[poise::command(slash_command, prefix_command)]
+async fn help(
+    ctx: Context<'_>,
+    #[description = "Specific command to show help about"]
+    #[autocomplete = "poise::builtins::autocomplete_command"]
+    command: Option<String>,
+) -> anyhow::Result<()> {
+    poise::builtins::help(
+        ctx,
+        command.as_deref(),
+        poise::builtins::HelpConfiguration::default(),
+    )
+    .await?;
+    Ok(())
+}
+
 /// Verify with Concordium
 #[poise::command(slash_command, prefix_command)]
 async fn verify(ctx: Context<'_>) -> anyhow::Result<()> {
     ctx.send(|reply| {
         reply
             .content("Please verify with your wallet.")
-            .components(link_button(ctx.data().verifier_url.as_ref(), "Verify"))
+            .components(link_button(&ctx.data().verifier_url, "Verify"))
             // Only the recipient can see the message
             .ephemeral(true)
     })
     .await?;
+    Ok(())
+}
+
+/// Checks the verification status of a user
+#[poise::command(slash_command, prefix_command)]
+async fn check(
+    ctx: Context<'_>,
+    #[description = "Selected user"] user: serenity::User,
+) -> anyhow::Result<()> {
+    match get_verifications(ctx.data(), user.id).await {
+        Ok(verifications) => {
+            let mention = user.mention();
+            let message = if verifications.is_empty() {
+                format!("{mention} is not verified with Concordium.")
+            } else {
+                let mut message = format!("{mention} is verified with Concordium.");
+                for verification in verifications
+                    .into_iter()
+                    .filter(|v| v.platform != Platform::Discord && !v.revoked)
+                {
+                    message.push_str(&format!(
+                        "\n- {}: {}",
+                        verification.platform, verification.username
+                    ));
+                }
+                message
+            };
+            // .ephemeral(true) means only the recipient can see the message
+            ctx.send(|reply| reply.content(message).ephemeral(true))
+                .await?;
+        }
+        Err(err) => tracing::error!("{err}"),
+    }
+
     Ok(())
 }
 
@@ -63,20 +114,22 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let cfg = BotConfig {
-        verifier_url: Arc::new(app.verifier_url),
+        verifier_url: app.verifier_url,
+        client: reqwest::Client::new(),
     };
 
     tracing::info!("Starting Discord bot...");
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![verify()],
+            commands: vec![help(), verify(), check()],
             ..Default::default()
         })
         .token(app.bot_token)
         .intents(serenity::GatewayIntents::non_privileged())
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
+                // Register the commands so that users can autocomplete them
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 Ok(cfg)
             })
@@ -101,4 +154,17 @@ fn link_button<'btn>(
             })
         })
     }
+}
+
+async fn get_verifications(
+    cfg: &BotConfig,
+    id: serenity::UserId,
+) -> anyhow::Result<Vec<Verification>> {
+    let url = cfg
+        .verifier_url
+        .join("verifications/discord/")
+        .expect("URLs can be joined with a string path")
+        .join(&id.to_string())
+        .expect("URLs can be joined with a UserId");
+    Ok(cfg.client.get(url).send().await?.json().await?)
 }
