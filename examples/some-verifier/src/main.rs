@@ -14,7 +14,7 @@ use rust_tdlib::client::{
 use rust_tdlib::tdjson;
 use rust_tdlib::types::{GetUser, TdlibParameters};
 use serde::Deserialize;
-use some_verifier::{Platform, Verification};
+use some_verifier_lib::{Platform, Verification};
 
 use crate::db::{Account, Database, DbPlatform, Discord, Telegram};
 

@@ -1,4 +1,4 @@
-use some_verifier::Platform;
+use some_verifier_lib::Platform;
 use tokio_postgres::{NoTls, Row};
 
 /// A social media platform that can be stored in the database.
