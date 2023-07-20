@@ -26,15 +26,8 @@ struct App {
     )]
     log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
-        long = "dapp-url",
-        default_value = "http://127.0.0.1/",
-        help = "URL of the SoMe issuer dapp.",
-        env = "SOME_ISSUER_URL"
-    )]
-    dapp_url: Url,
-    #[clap(
         long = "verifier-url",
-        default_value = "http://localhost:8080/",
+        default_value = "http://127.0.0.1:8080/",
         help = "URL of the SoMe verifier.",
         env = "SOME_VERIFIER_URL"
     )]
@@ -59,7 +52,6 @@ enum Command {
 
 #[derive(Clone)]
 struct BotConfig {
-    dapp_url: Arc<Url>,
     verifier_url: Arc<Url>,
     client: reqwest::Client,
 }
@@ -81,7 +73,6 @@ async fn main() -> anyhow::Result<()> {
     let client = reqwest::Client::new();
     let bot = Bot::new(app.bot_token);
     let cfg = BotConfig {
-        dapp_url: Arc::new(app.dapp_url),
         verifier_url: Arc::new(app.verifier_url),
         client,
     };
@@ -122,7 +113,7 @@ async fn help(bot: Bot, msg: Message) -> ResponseResult<()> {
 
 /// Handler for the `/verify` command.
 async fn verify(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
-    let dapp_url = cfg.dapp_url.as_ref().clone();
+    let dapp_url = cfg.verifier_url.as_ref().clone();
     let verify_button = ReplyMarkup::inline_kb([[InlineKeyboardButton::url("Verify", dapp_url)]]);
     bot.send_message(msg.chat.id, "Please verify with your wallet.")
         .reply_markup(verify_button)
