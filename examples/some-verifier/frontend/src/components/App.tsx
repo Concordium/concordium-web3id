@@ -33,8 +33,14 @@ function App() {
   };
 
   const prove = (event: FormEvent) => {
-    setOpen('2');
     event.preventDefault();
+    const data = new FormData(event.target as HTMLFormElement);
+    console.log({
+      telegram: data.get('telegram') === 'on',
+      discord: data.get('discord') === 'on',
+      name: data.get('name') === 'on',
+    });
+    setOpen('2');
   };
 
   return (
@@ -159,7 +165,7 @@ function PlatformOption({
   return (
     <ListGroupItem>
       <FormGroup switch>
-        <Input className="me-2" type="switch" role="switch" id={id} />
+        <Input className="me-2" type="switch" role="switch" id={id} name={id} />
         <Label check for={id}>
           {children}
         </Label>
