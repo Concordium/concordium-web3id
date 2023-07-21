@@ -57,7 +57,7 @@ function App() {
           >
             <Col md={12}>
               <Button
-                className="d-flex align-items-center"
+                className="d-inline-flex align-items-center"
                 color="primary"
                 onClick={getCredentials}
               >
@@ -71,7 +71,7 @@ function App() {
             text="Select the credentials that you want to be verified with."
           >
             <Form onSubmit={prove}>
-              <Row className="gy-2">
+              <Row className="gy-3">
                 <Col md={12}>
                   <ListGroup className="platform-options">
                     <PlatformOption id="telegram">
@@ -142,7 +142,7 @@ function Step({
         Step {step + 1}
       </AccordionHeader>
       <AccordionBody accordionId={step.toString()}>
-        <Row className="gy-2">
+        <Row className="gy-3">
           <Col md={12}>
             <Card>
               <CardBody>{text}</CardBody>
@@ -166,7 +166,7 @@ function PlatformOption({
     <ListGroupItem>
       <FormGroup switch>
         <Input className="me-2" type="switch" role="switch" id={id} name={id} />
-        <Label check for={id}>
+        <Label check for={id} className="d-flex align-items-center">
           {children}
         </Label>
       </FormGroup>
