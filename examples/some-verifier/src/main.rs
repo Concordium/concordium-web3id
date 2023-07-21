@@ -15,6 +15,7 @@ use rust_tdlib::tdjson;
 use rust_tdlib::types::{GetUser, TdlibParameters};
 use serde::Deserialize;
 use some_verifier_lib::{Platform, Verification};
+use tower_http::services::ServeDir;
 
 use crate::db::{Account, Database, DbPlatform, Discord, Telegram};
 
@@ -62,12 +63,12 @@ struct App {
     )]
     log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
-        long = "api-port",
+        long = "port",
         default_value = "8080",
-        help = "Port of the verification check API.",
-        env = "SOME_VERIFIER_API_PORT"
+        help = "Port of the SoMe verifier.",
+        env = "SOME_VERIFIER_PORT"
     )]
-    api_port: u16,
+    port: u16,
 }
 
 #[derive(Clone)]
@@ -132,7 +133,9 @@ async fn main() -> anyhow::Result<()> {
     };
 
     tracing::info!("Starting server...");
+    let serve_dir_service = ServeDir::new("frontend/dist");
     let router = Router::new()
+        .nest_service("/", serve_dir_service)
         .route(
             "/verifications/telegram/:id",
             get(handle_get_verifications::<Telegram>),
@@ -143,7 +146,7 @@ async fn main() -> anyhow::Result<()> {
         )
         .with_state(state);
 
-    let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), app.api_port);
+    let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), app.port);
     axum::Server::bind(&socket)
         .serve(router.into_make_service())
         .await?;
@@ -178,7 +181,7 @@ async fn handle_get_verifications<P: DbPlatform>(
 
             // Keep all the non-error values since the others could not get a username
             // or a revocation status for whatever reason, probably because the user
-            // does not have that platform
+            // is not verified with that platform
             let verifications = future::join_all(futures)
                 .await
                 .into_iter()
