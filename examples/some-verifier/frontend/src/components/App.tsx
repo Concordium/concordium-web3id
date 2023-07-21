@@ -138,7 +138,7 @@ function Step({
       <AccordionBody accordionId={step.toString()}>
         <Row className="gy-2">
           <Col md={12}>
-            <Card color="light">
+            <Card>
               <CardBody>{text}</CardBody>
             </Card>
           </Col>
