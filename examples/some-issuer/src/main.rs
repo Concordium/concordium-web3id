@@ -85,7 +85,7 @@ async fn main() {
         dapp_url: Arc::new(app.dapp_url),
     };
 
-    let serve_dir_service = ServeDir::new("frontend/build");
+    let serve_dir_service = ServeDir::new("frontend/dist");
     let router = Router::new()
         .nest_service("/", serve_dir_service)
         .route_layer(middleware::from_fn_with_state(
