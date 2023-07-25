@@ -1,8 +1,10 @@
+import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 import TelegramLoginButton, { TelegramUser } from 'react-telegram-login';
 import '../scss/App.scss';
 import { useState } from 'react';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import {
+  Button,
   Card,
   CardBody,
   Col,
@@ -13,6 +15,17 @@ import {
 } from 'reactstrap';
 
 function App() {
+  const [isAllowlisted, setIsAllowlisted] = useState(false);
+
+  const connectToWallet = () => {
+    const inner = async () => {
+      const provider = await detectConcordiumProvider();
+      const accounts = await provider.requestAccounts();
+      setIsAllowlisted(accounts !== undefined);
+    };
+    inner().catch(console.error);
+  };
+
   const query = new URLSearchParams(window.location.search);
   const code = query.get('code');
   // Verified Discord
@@ -57,46 +70,61 @@ function App() {
   return (
     <>
       <h1 className="mb-4">Concordium Social Media Issuer</h1>
-      <Row className="gy-3">
-        <Col xs={12}>
-          <Card>
-            <CardBody>
-              Please select your desired social media platforms below to receive
-              your Web3 ID credentials.
-            </CardBody>
-          </Card>
-        </Col>
-        <Col xs={12}>
-          <ListGroup>
-            <ListGroupItem>
-              <ListGroupItemHeading>Telegram</ListGroupItemHeading>
-              {telegramDone ? (
-                <span className="success-msg">Logged in with Telegram.</span>
-              ) : (
-                <TelegramLoginButton
-                  botName="concordium_bot"
-                  dataOnauth={onTelegramAuth}
-                  cornerRadius={3}
-                />
-              )}
-            </ListGroupItem>
-            <ListGroupItem>
-              <ListGroupItemHeading>Discord</ListGroupItemHeading>
-              {discordDone ? (
-                <span className="success-msg">Logged in with Discord.</span>
-              ) : (
-                <div className="some-btn-container">
-                  <DiscordLoginButton
-                    style={{ margin: 0, marginBottom: 5, fontSize: '12pt' }}
-                    size="40px"
-                    onClick={openDiscordVerification}
+      {isAllowlisted ? (
+        <Row className="gy-3">
+          <Col xs={12}>
+            <Card>
+              <CardBody>
+                Please select your desired social media platforms below to
+                receive your Web3 ID credentials.
+              </CardBody>
+            </Card>
+          </Col>
+          <Col xs={12}>
+            <ListGroup>
+              <ListGroupItem>
+                <ListGroupItemHeading>Telegram</ListGroupItemHeading>
+                {telegramDone ? (
+                  <span className="success-msg">Logged in with Telegram.</span>
+                ) : (
+                  <TelegramLoginButton
+                    botName="concordium_bot"
+                    dataOnauth={onTelegramAuth}
+                    cornerRadius={3}
                   />
-                </div>
-              )}
-            </ListGroupItem>
-          </ListGroup>
-        </Col>
-      </Row>
+                )}
+              </ListGroupItem>
+              <ListGroupItem>
+                <ListGroupItemHeading>Discord</ListGroupItemHeading>
+                {discordDone ? (
+                  <span className="success-msg">Logged in with Discord.</span>
+                ) : (
+                  <div className="some-btn-container">
+                    <DiscordLoginButton
+                      style={{ margin: 0, marginBottom: 5, fontSize: '12pt' }}
+                      size="40px"
+                      onClick={openDiscordVerification}
+                    />
+                  </div>
+                )}
+              </ListGroupItem>
+            </ListGroup>
+          </Col>
+        </Row>
+      ) : (
+        <Card>
+          <CardBody>
+            <Row className="gy-2">
+              <Col xs={12}>Please connect to your wallet.</Col>
+              <Col xs={12}>
+                <Button color="primary" onClick={connectToWallet}>
+                  Connect to wallet
+                </Button>
+              </Col>
+            </Row>
+          </CardBody>
+        </Card>
+      )}
     </>
   );
 }

@@ -88,10 +88,12 @@ async fn main() {
     let serve_dir_service = ServeDir::new("frontend/dist");
     let router = Router::new()
         .nest_service("/", serve_dir_service)
+        // Extract OAuth2 code from query parameters for Discord authentication
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             discord::handle_oauth,
         ))
+        // Handle telegram authenticaiton
         .route("/telegram", post(telegram::handle_auth))
         .with_state(state);
 
