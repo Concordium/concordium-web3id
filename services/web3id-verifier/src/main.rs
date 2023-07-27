@@ -17,6 +17,7 @@ use concordium_rust_sdk::{
         Web3IdAttribute,
     },
 };
+use std::sync::Arc;
 use tonic::transport::ClientTlsConfig;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 
@@ -125,7 +126,7 @@ impl axum::response::IntoResponse for Error {
 struct State {
     client:  v2::Client,
     network: Network,
-    params:  GlobalContext<ArCurve>,
+    params:  Arc<GlobalContext<ArCurve>>,
 }
 
 #[derive(serde::Serialize)]
@@ -222,7 +223,7 @@ async fn main() -> anyhow::Result<()> {
     let state = State {
         client,
         network: app.network,
-        params,
+        params: Arc::new(params),
     };
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()

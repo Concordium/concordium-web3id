@@ -8,20 +8,20 @@ use axum::{
 use axum_prometheus::PrometheusMetricLayerBuilder;
 use clap::Parser;
 use concordium_rust_sdk::{
-    base as concordium_base,
     cis4::{Cis4Contract, Cis4TransactionError, Cis4TransactionMetadata},
-    common::types::TransactionTime,
+    common::types::{KeyPair, TransactionTime},
     contract_client::CredentialInfo,
-    smart_contracts::common::{self as concordium_std, Amount},
+    id::{constants::ArCurve, pedersen_commitment},
+    smart_contracts::common::Amount,
     types::{
         hashes::{BlockHash, TransactionHash},
         transactions::send::GivenEnergy,
-        ContractAddress, Energy, Nonce, WalletAccount,
+        ContractAddress, CryptographicParameters, Energy, Nonce, WalletAccount,
     },
-    v2::{self, QueryError},
-    web3id::storage::{DataToSign, StoreParam},
+    v2::{self, BlockIdentifier, QueryError},
+    web3id::{SignedCommitments, Web3IdAttribute, Web3IdCredential},
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 
@@ -64,13 +64,6 @@ struct App {
     )]
     request_timeout:     u64,
     #[clap(
-        long = "min-expiry",
-        help = "Minimum transaction expiry time in milliseconds.",
-        default_value = "15000",
-        env = "CONCORDIUM_WEB3ID_ISSUER_MINIMUM_EXPIRY"
-    )]
-    min_allowed_expiry:  u32,
-    #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "CONCORDIUM_WEB3ID_ISSUER_REGISTRY_ADDRESS"
@@ -82,6 +75,12 @@ struct App {
         env = "CONCORDIUM_WEB3ID_ISSUER_WALLET"
     )]
     wallet:              PathBuf,
+    #[clap(
+        long = "issuer-key",
+        help = "Path to the issuer's key, used to sign commitments.",
+        env = "CONCORDIUM_WEB3ID_ISSUER_KEY"
+    )]
+    issuer_key:          PathBuf,
     #[clap(
         long = "prometheus-address",
         help = "Listen address for the server.",
@@ -107,10 +106,10 @@ enum Error {
     InvalidPath(#[from] PathRejection),
     #[error("Unable to submit transaction: {0}")]
     CouldNotSubmit(#[from] Cis4TransactionError),
-    #[error("Transaction expiry is too early in the future.")]
-    ExpiryTooEarly,
     #[error("Transaction query error: {0}.")]
     Query(#[from] QueryError),
+    #[error("Internal error: {0}.")]
+    Internal(String),
 }
 
 impl axum::response::IntoResponse for Error {
@@ -137,6 +136,13 @@ impl axum::response::IntoResponse for Error {
                     axum::Json("Could not submit transaction.".to_string()),
                 )
             }
+            Error::Internal(e) => {
+                tracing::error!("Another internal error: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    axum::Json("Internal error.".to_string()),
+                )
+            }
             Error::Query(e) => {
                 if e.is_not_found() {
                     (
@@ -151,13 +157,6 @@ impl axum::response::IntoResponse for Error {
                     )
                 }
             }
-            Error::ExpiryTooEarly => {
-                tracing::warn!("Invalid request. Credential expiry is too early.");
-                (
-                    StatusCode::BAD_REQUEST,
-                    axum::Json("Credential expiry is too early.".to_string()),
-                )
-            }
         };
         r.into_response()
     }
@@ -165,11 +164,11 @@ impl axum::response::IntoResponse for Error {
 
 #[derive(Clone, Debug)]
 struct State {
+    crypto_params:       Arc<CryptographicParameters>,
     client:              Cis4Contract,
     issuer:              Arc<WalletAccount>,
+    issuer_key:          Arc<KeyPair>,
     nonce_counter:       Arc<tokio::sync::Mutex<Nonce>>,
-    // In milliseconds
-    min_allowed_expiry:  u64,
     max_register_energy: Energy,
 }
 
@@ -177,9 +176,14 @@ struct State {
 #[serde(rename_all = "camelCase")]
 struct IssueRequest {
     credential: CredentialInfo,
-    #[serde(deserialize_with = "concordium_base::common::base16_decode")]
-    signature:  [u8; 64],
-    data:       DataToSign,
+    values:     BTreeMap<u8, Web3IdAttribute>,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct IssueResponse {
+    tx_hash:    TransactionHash,
+    credential: Web3IdCredential<ArCurve, Web3IdAttribute>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -208,28 +212,53 @@ async fn status(
     }
 }
 
+fn make_secrets(
+    state: &State,
+    values: BTreeMap<u8, Web3IdAttribute>,
+    credential: &CredentialInfo,
+) -> Result<Web3IdCredential<ArCurve, Web3IdAttribute>, Error> {
+    let mut randomness = BTreeMap::new();
+    {
+        let mut rng = rand::thread_rng();
+        for idx in values.keys() {
+            randomness.insert(*idx, pedersen_commitment::Randomness::generate(&mut rng));
+        }
+    }
+
+    let signed_commitments = SignedCommitments::from_secrets(
+        &state.crypto_params,
+        &values,
+        &randomness,
+        &credential.holder_id,
+        state.issuer_key.as_ref(),
+    )
+    .ok_or_else(|| {
+        Error::Internal("Incorrect number of values vs. randomness. This should not happen.".into())
+    })?;
+
+    Ok(Web3IdCredential {
+        issuance_date: chrono::Utc::now(),
+        registry: state.client.address,
+        issuer_key: state.issuer_key.public.into(),
+        values,
+        randomness,
+        signature: signed_commitments.signature,
+        holder_id: credential.holder_id,
+    })
+}
+
 #[tracing::instrument(level = "info", skip(state, request))]
 async fn issue_credential(
     axum::extract::State(mut state): axum::extract::State<State>,
     request: Result<axum::Json<IssueRequest>, JsonRejection>,
-) -> Result<axum::Json<TransactionHash>, Error> {
+) -> Result<axum::Json<IssueResponse>, Error> {
     tracing::info!("Request to issue a credential.");
     let axum::Json(request) = request?;
-    if request.data.timestamp.timestamp_millis()
-        < (chrono::Utc::now().timestamp_millis() as u64).saturating_add(state.min_allowed_expiry)
-    {
-        return Err(Error::ExpiryTooEarly);
-    }
-
-    let expiry = TransactionTime::from_seconds(request.data.timestamp.timestamp_millis() / 1000);
-
-    let storage_data = concordium_std::to_bytes(&StoreParam {
-        public_key: request.credential.holder_id,
-        signature:  request.signature,
-        data:       request.data,
-    });
 
     let mut nonce_guard = state.nonce_counter.lock().await;
+    // compute expiry after acquiring the lock to make sure we don't wait
+    // too long before acquiring the lock, rendering expiry problematic.
+    let expiry = TransactionTime::minutes_after(5);
     tracing::info!("Using nonce {} to send the transaction.", *nonce_guard);
     let metadata = Cis4TransactionMetadata {
         sender_address: state.issuer.address,
@@ -239,18 +268,18 @@ async fn issue_credential(
         amount: Amount::zero(),
     };
 
-    let tx = state
+    let tx_hash = state
         .client
-        .register_credential(
-            &*state.issuer,
-            &metadata,
-            &request.credential,
-            &storage_data,
-        )
+        .register_credential(&*state.issuer, &metadata, &request.credential, &[])
         .await?;
     nonce_guard.next_mut();
     drop(nonce_guard);
-    Ok(axum::Json(tx))
+    let credential = make_secrets(&state, request.values, &request.credential)?;
+
+    Ok(axum::Json(IssueResponse {
+        tx_hash,
+        credential,
+    }))
 }
 
 #[tokio::main]
@@ -293,6 +322,11 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Unable to establish connection to the node.")?;
 
+    let issuer_key = Arc::new(
+        serde_json::from_reader(&std::fs::File::open(&app.issuer_key)?)
+            .context("Unable to read issuer's key.")?,
+    );
+
     let issuer = Arc::new(WalletAccount::from_json_file(app.wallet)?);
 
     let nonce = client
@@ -309,13 +343,18 @@ async fn main() -> anyhow::Result<()> {
         nonce.nonce
     );
 
+    let crypto_params = client
+        .get_cryptographic_parameters(BlockIdentifier::LastFinal)
+        .await?
+        .response;
     let client = Cis4Contract::create(client, app.registry).await?;
 
     let state = State {
-        client,
         issuer,
+        crypto_params: Arc::new(crypto_params),
+        issuer_key,
+        client,
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
-        min_allowed_expiry: app.min_allowed_expiry.into(),
         max_register_energy: app.max_register_energy,
     };
 

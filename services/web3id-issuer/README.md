@@ -2,7 +2,7 @@
 
 A generic issuer for Web3ID credentials. It exposes a REST API for registering
 credentials, and handles the correct formatting of credentials to submit to the
-chain, and communication with the node.
+chain, construction and signing of commitments, and communication with the node.
 
 The issuer has the following endpoints
 - POST `v0/issue`
@@ -32,8 +32,9 @@ An example response is
 ## `issue` endpoint
 
 The `issue` endpoint accepts a JSON body with the request to issue the
-credential and if successful returns a transaction hash that may be queried for
-status.
+credential and if successful returns a transaction hash together with the full
+credential that can be returned to the user. The transaction hash may be queried
+for status.
 
 An example request is
 ```json
@@ -49,17 +50,32 @@ An example request is
     },
     "valid_from": "2023-06-04T18:46:10.218+00:00",
     "valid_until": null
-  },
-  "data": {
-    "contract_address": {
-      "index": 4732,
+  }
+}
+```
+
+An example response is
+```json
+{
+  "txHash": "179de883eb0e748b05dcb3a3632302cea56d0f410df86a1cc4558f3274c1cf3e",
+  "credential": {
+    "holderId": "4e199d7fed03c1265677562ae48180179f2981d865ea81c0dedc16cfb94de75f",
+    "issuanceDate": "2023-07-16T11:46:39.573037617Z",
+    "registry": {
+      "index": 5441,
       "subindex": 0
     },
-    "encrypted_credential": "98c1ae9a177c217ed8f2ed005800c7c3dffb2d72fa9ae3f10d00525854687f62fab966a123a22cfccbc65ac768f86257ef005594e08cf2da3f6c61d1b06ed3423342a841321a08d5e47f9403457b1f00bd19b6c0d1df2cdb0e4a76a5d458dd9e41fdb3f803e2",
-    "timestamp": "2023-06-04T20:46:10+00:00",
-    "version": 0
-  },
-  "signature": "ce6369076343021107f4ad770ba39a762238dd20530053d115ae2ca87d547eef2536d86d34baa6bb954ea2f38c6b7f0f3103e5111159cae03a9ec8ad0929f10c"
+    "issuerKey": "363e68c4a3ff85c1efef3ca2b79ee8a50bc963c4379dfb5157625acb3ec68f01",
+    "values": {
+      "0": "foo",
+      "3": 3
+    },
+    "randomness": {
+      "0": "2cd739043e967f3cfbf9d7a7a0c9c6be4c97600de3e53f2ddfd0a68ac2989fd4",
+      "3": "0596c681c6af2d930203d75d1dc80af51ab5938997018a4b189fe46354d9db0f"
+    },
+    "signature": "efba61fc4f6ed83ddb46e536833c2568d83a393fc3b8822b6ead451f614f309aa776aa3b91f6d77fd476f83ee492f7258100ce9b5b8954abd03bf495322a7509"
+  }
 }
 ```
 
@@ -110,4 +126,10 @@ stated defaults suffice.
   exposed that contains information about the number and duration of requests.
 - `CONCORDIUM_WEB3ID_ISSUER_MAX_REGISTER_ENERGY` - The maximum **execution
   energy** allowed for the register transaction. Defaults to 10000.
-
+- `CONCORDIUM_WEB3ID_ISSUER_REGISTRY_ADDRESS` - The address of the registry
+  contract in which to register the credential.
+- `CONCORDIUM_WEB3ID_ISSUER_WALLET` - The path to the account that the issuer
+  uses to update the registry contract with new credentials.
+- `CONCORDIUM_WEB3ID_ISSUER_KEY` - The ed25519 keypair which is used by the
+  issuer to sign commitments that are sent to the user. It must correspond to
+  the issuer's public key registered in the contract.
