@@ -1,0 +1,33 @@
+{
+  "$id": "https://some-issuer.com/json-schemas/JsonSchema2023-some-id.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "SoMe account verification",
+  "description": "A SoMe platform and a corresponding user id.",
+  "type": "object",
+  "properties": {
+    "credentialSubject": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Credential subject id",
+          "type": "string",
+          "description": "Credential subject identifier"
+        },
+        "platform": {
+          "title": "Platform",
+          "type": "string",
+          "description": "SoMe platform",
+          "index": "0"
+        },
+        "userId": {
+          "title": "User id",
+          "type": "string",
+          "description": "User id for the platform",
+          "index": "1"
+        }
+      },
+      "required": ["id", "platform", "userId"]
+    }
+  },
+  "required": ["credentialSubject"]
+}

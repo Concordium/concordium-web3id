@@ -1,7 +1,7 @@
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 import TelegramLoginButton, { TelegramUser } from 'react-telegram-login';
 import '../scss/App.scss';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import {
   Button,
@@ -15,7 +15,17 @@ import {
 } from 'reactstrap';
 
 function App() {
-  const [isAllowlisted, setIsAllowlisted] = useState(false);
+  const query = useMemo(() => new URLSearchParams(window.location.search), []);
+  const discordId = query.get('discordId');
+  const telegram = query.get('telegram');
+  const discord = query.get('discord');
+  const [telegramDone, setTelegramDone] = useState(telegram === 'true');
+  const [discordDone, setDiscordDone] = useState(discord === 'true');
+
+  // We might just have been refreshed due to Oauth2, so
+  const [isAllowlisted, setIsAllowlisted] = useState(
+    discordDone || telegramDone || discordId !== null,
+  );
 
   const connectToWallet = () => {
     const inner = async () => {
@@ -26,45 +36,32 @@ function App() {
     inner().catch(console.error);
   };
 
-  const query = new URLSearchParams(window.location.search);
-  const code = query.get('code');
-  // Verified Discord
-  if (code) {
-    const opener = window.opener as Window;
-    const openerQuery = new URLSearchParams(opener.location.search);
-    openerQuery.append('discord', 'true');
-    opener.location.assign(
-      opener.location.href.split('?')[0] + '?' + openerQuery.toString(),
-    );
-    window.close();
-  }
-
-  const telegram = query.get('telegram');
-  const discord = query.get('discord');
-
-  const [telegramDone, setTelegramDone] = useState(telegram === 'true');
-  const discordDone = discord === 'true';
+  useEffect(() => {
+    if (discordId)
+      requestCredential({ platform: 'Discord', userId: discordId })
+        .then(() => {
+          setDiscordDone(true);
+          const url = new URL(window.location.href);
+          url.searchParams.set('discord', 'true');
+          url.searchParams.delete('discordId');
+          window.history.replaceState(null, '', url);
+        })
+        .catch(console.error);
+  }, [discordId, query]);
 
   const onTelegramAuth = async (user: TelegramUser) => {
-    const done = await checkTelegramUser(user);
-    if (!done) alert('An error occured.');
-    setTelegramDone(done);
-    query.set('telegram', done.toString());
-    window.location.search = query.toString();
-  };
+    try {
+      await requestCredential({ platform: 'Telegram', user });
+    } catch (error) {
+      alert('An error occured');
+      console.error(error);
+      return;
+    }
 
-  // TODO: Add state parameter
-  const params = new URLSearchParams({
-    // TODO: Maybe send from server?
-    client_id: '1127954266213056635',
-    redirect_uri: window.location.href.split('?')[0],
-    response_type: 'code',
-    scope: 'identify',
-  });
-  const oAuth2URL =
-    'https://discord.com/api/oauth2/authorize?' + params.toString();
-  const openDiscordVerification = () => {
-    window.open(oAuth2URL);
+    setTelegramDone(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set('telegram', 'true');
+    window.history.replaceState(null, '', url);
   };
 
   return (
@@ -85,7 +82,9 @@ function App() {
               <ListGroupItem>
                 <ListGroupItemHeading>Telegram</ListGroupItemHeading>
                 {telegramDone ? (
-                  <span className="success-msg">Logged in with Telegram.</span>
+                  <span className="text-success">
+                    Telegram credential issued.
+                  </span>
                 ) : (
                   <TelegramLoginButton
                     botName="concordium_bot"
@@ -97,7 +96,9 @@ function App() {
               <ListGroupItem>
                 <ListGroupItemHeading>Discord</ListGroupItemHeading>
                 {discordDone ? (
-                  <span className="success-msg">Logged in with Discord.</span>
+                  <span className="text-success">
+                    Discord credential issued.
+                  </span>
                 ) : (
                   <div className="some-btn-container">
                     <DiscordLoginButton
@@ -129,16 +130,123 @@ function App() {
   );
 }
 
-async function checkTelegramUser(user: TelegramUser): Promise<boolean> {
-  const loc = window.location;
-  const response = await fetch(`${loc.protocol}//${loc.host}/telegram`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+interface IssuerResponse {
+  credential: {
+    signature: string;
+    randomness: Record<string, string>;
+  };
+}
+
+interface CredentialInfo {
+  holder_id: string;
+  holder_revocable: boolean;
+  valid_from: string;
+  metadata_url: {
+    url: string;
+  };
+}
+
+interface IssueRequest {
+  credential: CredentialInfo;
+  values: Record<number, string>;
+  telegramUser?: TelegramUser;
+}
+
+interface TelegramRequest {
+  platform: 'Telegram';
+  user: TelegramUser;
+}
+
+interface DiscordRequest {
+  platform: 'Discord';
+  userId: string;
+}
+
+async function requestCredential(req: TelegramRequest | DiscordRequest) {
+  const userId =
+    req.platform === 'Telegram' ? req.user.id.toString() : req.userId;
+
+  const credential = {
+    $schema: './JsonSchema2023-some.json',
+    type: [
+      'VerifiableCredential',
+      'ConcordiumVerifiableCredential',
+      'SoMeCredential',
+    ],
+    issuer: 'did:ccd:testnet:sci:5463:0/issuer',
+    issuanceDate: new Date().toISOString(),
+    credentialSubject: { platform: req.platform, userId },
+    credentialSchema: {
+      id:
+        window.location.href.split('?')[0] +
+        'json-schemas/JsonSchema2023-some.json',
+      type: 'JsonSchema2023',
     },
-    body: JSON.stringify(user),
+  };
+
+  const metadataUrl = {
+    url:
+      window.location.href.split('?')[0] +
+      'json-schemas/credential-metadata.json',
+  };
+
+  const provider = await detectConcordiumProvider();
+  await provider.addWeb3IdCredential(credential, metadataUrl, async (id) => {
+    const body: IssueRequest = {
+      credential: {
+        holder_id: id,
+        holder_revocable: true,
+        valid_from: new Date().toISOString(),
+        metadata_url: metadataUrl,
+      },
+      values: {
+        0: req.platform,
+        1: userId,
+      },
+    };
+    if (req.platform === 'Telegram') body.telegramUser = req.user;
+
+    const endpoint = window.location.href.split('?')[0] + 'credential';
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok)
+      throw new Error('Error getting credential: ' + (await response.text()));
+
+    const { credential } = (await response.json()) as IssuerResponse;
+    const { signature, randomness } = credential;
+    return { signature, randomness };
   });
-  return response.ok;
+}
+
+function openDiscordVerification() {
+  // TODO: Add state parameter
+  const params = new URLSearchParams({
+    // TODO: Maybe send from server?
+    client_id: '1127954266213056635',
+    redirect_uri: window.location.href.split('?')[0] + 'discord-oauth2',
+    response_type: 'code',
+    scope: 'identify',
+  });
+
+  const oAuth2URL =
+    'https://discord.com/api/oauth2/authorize?' + params.toString();
+
+  const width = window.innerWidth / 2;
+  const height = window.innerHeight / 2;
+  const left = window.screenX + width / 2;
+  const top = window.screenY + height / 2;
+
+  window.open(
+    oAuth2URL,
+    undefined,
+    `popup,width=${width},height=${height},left=${left},top=${top}`,
+  );
 }
 
 export default App;

@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SoMe Issuer</title>
+    <script>
+      const query = new URLSearchParams(window.location.search);
+      const discordId = query.get('discordId');
+      if (discordId) {
+        const opener = window.opener;
+        const openerQuery = new URLSearchParams(opener.location.search);
+        openerQuery.set('discordId', discordId);
+        const newURL =
+          opener.location.href.split('?')[0] + '?' + openerQuery.toString();
+        opener.location.replace(newURL);
+      }
+      window.close();
+    </script>
+  </head>
+  <body></body>
+</html>
