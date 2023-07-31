@@ -21,6 +21,8 @@ function App() {
   const discord = query.get('discord');
   const [telegramDone, setTelegramDone] = useState(telegram === 'true');
   const [discordDone, setDiscordDone] = useState(discord === 'true');
+  const [telegramPending, setTelegramPending] = useState(false);
+  const [discordPending, setDiscordPending] = useState(false);
 
   // We might just have been refreshed due to Oauth2, so
   const [isAllowlisted, setIsAllowlisted] = useState(
@@ -28,30 +30,37 @@ function App() {
   );
 
   const connectToWallet = () => {
-    const inner = async () => {
+    (async () => {
       const provider = await detectConcordiumProvider();
       const accounts = await provider.requestAccounts();
       setIsAllowlisted(accounts !== undefined);
-    };
-    inner().catch(console.error);
+    })().catch(console.error);
   };
 
   useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('discordId');
     if (discordId)
-      requestCredential({ platform: 'Discord', userId: discordId })
+      requestCredential({
+        platform: 'Discord',
+        userId: discordId,
+        setPending: () => setDiscordPending(true),
+      })
         .then(() => {
           setDiscordDone(true);
-          const url = new URL(window.location.href);
           url.searchParams.set('discord', 'true');
-          url.searchParams.delete('discordId');
-          window.history.replaceState(null, '', url);
         })
-        .catch(console.error);
+        .catch(console.error)
+        .finally(() => window.history.replaceState(null, '', url));
   }, [discordId, query]);
 
   const onTelegramAuth = async (user: TelegramUser) => {
     try {
-      await requestCredential({ platform: 'Telegram', user });
+      await requestCredential({
+        platform: 'Telegram',
+        user,
+        setPending: () => setTelegramPending(true),
+      });
     } catch (error) {
       alert('An error occured');
       console.error(error);
@@ -82,8 +91,10 @@ function App() {
               <ListGroupItem>
                 <ListGroupItemHeading>Telegram</ListGroupItemHeading>
                 {telegramDone ? (
-                  <span className="text-success">
-                    Telegram credential issued.
+                  <span className="text-success">Credential issued.</span>
+                ) : telegramPending ? (
+                  <span className="text-info">
+                    Transaction sent, please wait...
                   </span>
                 ) : (
                   <TelegramLoginButton
@@ -96,8 +107,10 @@ function App() {
               <ListGroupItem>
                 <ListGroupItemHeading>Discord</ListGroupItemHeading>
                 {discordDone ? (
-                  <span className="text-success">
-                    Discord credential issued.
+                  <span className="text-success">Credential issued.</span>
+                ) : discordPending ? (
+                  <span className="text-info">
+                    Transaction sent, please wait...
                   </span>
                 ) : (
                   <div className="some-btn-container">
@@ -131,6 +144,7 @@ function App() {
 }
 
 interface IssuerResponse {
+  txHash: string;
   credential: {
     signature: string;
     randomness: Record<string, string>;
@@ -155,14 +169,22 @@ interface IssueRequest {
 interface TelegramRequest {
   platform: 'Telegram';
   user: TelegramUser;
+  setPending: () => void;
 }
 
 interface DiscordRequest {
   platform: 'Discord';
   userId: string;
+  setPending: () => void;
+}
+
+interface RpcError {
+  code: string;
 }
 
 async function requestCredential(req: TelegramRequest | DiscordRequest) {
+  console.log('Requesting credential...');
+
   const userId =
     req.platform === 'Telegram' ? req.user.id.toString() : req.userId;
 
@@ -173,7 +195,7 @@ async function requestCredential(req: TelegramRequest | DiscordRequest) {
       'ConcordiumVerifiableCredential',
       'SoMeCredential',
     ],
-    issuer: 'did:ccd:testnet:sci:5463:0/issuer',
+    issuer: 'did:ccd:testnet:sci:5565:0/issuer',
     issuanceDate: new Date().toISOString(),
     credentialSubject: { platform: req.platform, userId },
     credentialSchema: {
@@ -191,6 +213,7 @@ async function requestCredential(req: TelegramRequest | DiscordRequest) {
   };
 
   const provider = await detectConcordiumProvider();
+  let txHash: string | undefined;
   await provider.addWeb3IdCredential(credential, metadataUrl, async (id) => {
     const body: IssueRequest = {
       credential: {
@@ -218,10 +241,32 @@ async function requestCredential(req: TelegramRequest | DiscordRequest) {
     if (!response.ok)
       throw new Error('Error getting credential: ' + (await response.text()));
 
-    const { credential } = (await response.json()) as IssuerResponse;
+    const { txHash: hash, credential } =
+      (await response.json()) as IssuerResponse;
+    txHash = hash;
     const { signature, randomness } = credential;
     return { signature, randomness };
   });
+
+  console.log('Transaction submitted, hash:', txHash);
+  req.setPending();
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      const itemSummary = await provider
+        .getGrpcClient()
+        .waitForTransactionFinalization(txHash!);
+      console.log('Transaction completed.', itemSummary);
+      break;
+    } catch (error) {
+      // NOT_FOUND errors just mean that the transaction hasn't been propagated yet
+      if ((error as RpcError).code !== 'NOT_FOUND') throw error;
+      // Sleep for half a second and try again
+      console.log('Transaction not found. Retrying in 500ms...');
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
 }
 
 function openDiscordVerification() {
