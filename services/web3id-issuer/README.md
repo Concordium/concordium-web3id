@@ -36,12 +36,11 @@ credential and if successful returns a transaction hash together with the full
 credential that can be returned to the user. The transaction hash may be queried
 for status.
 
-An example request is
+An example request, requesting to issue a credential with attributes "0" with
+value "foo" and "3" with value 17.
 ```json
 {
   "credential": {
-    "commitment": "83bf8600f4f9ad3912767a9e923152678963f096b6781d28b4aac354ae6a13dca78a3b0f110ed981482820ccb436817d",
-    "credential_type": "Foo",
     "holder_id": "21a36ad44379339abf0b33816d59129bef9a91e33c90d72ace6504206e26ea76",
     "holder_revocable": true,
     "metadata_url": {
@@ -50,6 +49,10 @@ An example request is
     },
     "valid_from": "2023-06-04T18:46:10.218+00:00",
     "valid_until": null
+  },
+  "values": {
+     "0": "foo",
+     "3": 17
   }
 }
 ```
@@ -59,7 +62,7 @@ An example response is
 {
   "txHash": "179de883eb0e748b05dcb3a3632302cea56d0f410df86a1cc4558f3274c1cf3e",
   "credential": {
-    "holderId": "4e199d7fed03c1265677562ae48180179f2981d865ea81c0dedc16cfb94de75f",
+    "holderId": "21a36ad44379339abf0b33816d59129bef9a91e33c90d72ace6504206e26ea76",
     "issuanceDate": "2023-07-16T11:46:39.573037617Z",
     "registry": {
       "index": 5441,
