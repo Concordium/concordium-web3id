@@ -40,19 +40,20 @@ An example request, requesting to issue a credential with attributes "0" with
 value "foo" and "3" with value 17.
 ```json
 {
-  "credential": {
-    "holder_id": "21a36ad44379339abf0b33816d59129bef9a91e33c90d72ace6504206e26ea76",
-    "holder_revocable": true,
-    "metadata_url": {
-      "hash": null,
-      "url": "http:://credential-metadaata.ccd"
+  "credentialSubject": {
+    "attributes": {
+      "Another attribute": "World",
+      "Attribute 0": 1234,
+      "Some attribute": "Hello"
     },
-    "valid_from": "2023-06-04T18:46:10.218+00:00",
-    "valid_until": null
+    "id": "did:ccd:testnet:pkc:c162a48f58448234da9f3848dc3bc5fd7f2aa0e4b7e5e15654876365f8b86c1b"
   },
-  "values": {
-     "0": "foo",
-     "3": 17
+  "validFrom": "1970-01-01T00:00:00.017Z",
+  "validUntil": "1970-01-01T00:00:12.345Z",
+  "holderRevocable": true,
+  "metadataUrl": {
+    "url": "http://link/to/schema",
+    "hash": null
   }
 }
 ```
@@ -62,22 +63,38 @@ An example response is
 {
   "txHash": "179de883eb0e748b05dcb3a3632302cea56d0f410df86a1cc4558f3274c1cf3e",
   "credential": {
-    "holderId": "21a36ad44379339abf0b33816d59129bef9a91e33c90d72ace6504206e26ea76",
-    "issuanceDate": "2023-07-16T11:46:39.573037617Z",
-    "registry": {
-      "index": 5441,
-      "subindex": 0
+    "credentialSchema": {
+      "id": "http://link/to/schema",
+      "type": "JsonSchema2023"
     },
-    "issuerKey": "363e68c4a3ff85c1efef3ca2b79ee8a50bc963c4379dfb5157625acb3ec68f01",
-    "values": {
-      "0": "foo",
-      "3": 3
+    "credentialSubject": {
+      "attributes": {
+        "Another attribute": "World",
+        "Attribute 0": 1234,
+        "Some attribute": "Hello"
+      },
+      "id": "did:ccd:testnet:pkc:c162a48f58448234da9f3848dc3bc5fd7f2aa0e4b7e5e15654876365f8b86c1b"
+    },
+    "id": "did:ccd:testnet:sci:3:17/credentialEntry/c162a48f58448234da9f3848dc3bc5fd7f2aa0e4b7e5e15654876365f8b86c1b",
+    "issuer": "did:ccd:testnet:sci:3:17/issuer/",
+    "proof": {
+      "proofPurpose": "assertionMethod",
+      "proofValue": "facdb03a1d054a55808875864abc85cc41d2c32290929bbb361a710b0fda5e7f333ac33abdb1b5f0ebb5662335c34410b8e96ca6730df7eb100f814f223d0b07",
+      "type": "Ed25519Signature2020",
+      "verificationMethod": "did:ccd:testnet:pkc:7f9a19691d30963a13477da2e0e4ee5a78c61000eb36867141b519f003256f9b"
     },
     "randomness": {
-      "0": "2cd739043e967f3cfbf9d7a7a0c9c6be4c97600de3e53f2ddfd0a68ac2989fd4",
-      "3": "0596c681c6af2d930203d75d1dc80af51ab5938997018a4b189fe46354d9db0f"
+      "Another attribute": "6490531ea308a2e661f62c4678e00bb87c9f602be7a053e910f8e44609bc5adb",
+      "Attribute 0": "29b439aa58324b2be5c5a3ceb7ba23b48397ba1d1d9081869f56ff1c96a2b32f",
+      "Some attribute": "2f5e0279c8ff6bcb004024dd4ba4f3e29d30ec91e3e4583855c2dae35ae83f8d"
     },
-    "signature": "efba61fc4f6ed83ddb46e536833c2568d83a393fc3b8822b6ead451f614f309aa776aa3b91f6d77fd476f83ee492f7258100ce9b5b8954abd03bf495322a7509"
+    "type": [
+      "ConcordiumVerifiableCredential",
+      "UniversityDegreeCredential",
+      "VerifiableCredential"
+    ],
+    "validFrom": "1970-01-01T00:00:00.017Z",
+    "validUntil": "1970-01-01T00:00:12.345Z"
   }
 }
 ```
