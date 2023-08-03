@@ -1,0 +1,13 @@
+{
+  "discordClientId": "1127954266213056635",
+  "issuers": {
+    "telegram": {
+      "url": "http://127.0.0.1:8080",
+      "did": "did:ccd:testnet:sci:5625:0/issuer"
+    },
+    "discord": {
+      "url": "http://127.0.0.1:8081",
+      "did": "did:ccd:testnet:sci:5631:0/issuer"
+    }
+  }
+}

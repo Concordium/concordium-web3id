@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
@@ -14,6 +14,7 @@
     "@concordium/browser-wallet-api-helpers": "../../../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers",
     "bootstrap": "^5.3.0",
     "bootstrap-icons": "^1.10.5",
+    "nanoid": "^4.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-inlinesvg": "^3.0.2",

@@ -13,21 +13,79 @@ import {
   ListGroupItemHeading,
   Row,
 } from 'reactstrap';
+import _config from '../../config.json';
+import { nanoid } from 'nanoid';
+const config = _config as Config;
+
+interface Config {
+  discordClientId: string;
+  issuers: Record<Platform, Issuer>;
+}
+
+enum Platform {
+  Telegram = 'telegram',
+  Discord = 'discord',
+}
+
+interface Issuer {
+  url: string;
+  did: string;
+}
+
+interface DiscordWindowMessage {
+  userId: string;
+  state: string | null;
+}
+
+// This is set when Discord verification is started and read upon a message back
+let oAuth2State: string | undefined = undefined;
 
 function App() {
   const query = useMemo(() => new URLSearchParams(window.location.search), []);
-  const discordId = query.get('discordId');
-  const telegram = query.get('telegram');
-  const discord = query.get('discord');
+  const telegram = query.get(Platform.Telegram);
+  const discord = query.get(Platform.Discord);
   const [telegramDone, setTelegramDone] = useState(telegram === 'true');
   const [discordDone, setDiscordDone] = useState(discord === 'true');
   const [telegramPending, setTelegramPending] = useState(false);
   const [discordPending, setDiscordPending] = useState(false);
 
-  // We might just have been refreshed due to Oauth2, so
   const [isAllowlisted, setIsAllowlisted] = useState(
-    discordDone || telegramDone || discordId !== null,
+    discordDone || telegramDone,
   );
+
+  // When Discord authentication happens, a window is opened
+  // that sends a 'message' event back with the user id
+  useEffect(() => {
+    const onDiscordWindowMessage = async (event: MessageEvent) => {
+      if (event.origin !== config.issuers.discord.url) return;
+
+      const { userId, state } = event.data as DiscordWindowMessage;
+      // Prevents CSRF attacks,
+      // see https://auth0.com/docs/secure/attack-protection/state-parameters
+      if (state !== oAuth2State)
+        throw new Error('State parameter did not match.');
+
+      await requestCredential(
+        {
+          platform: Platform.Discord,
+          userId,
+        },
+        () => setDiscordPending(true),
+      );
+
+      const url = new URL(window.location.href);
+      url.searchParams.set(Platform.Discord, 'true');
+      window.history.replaceState(null, '', url);
+      setDiscordDone(true);
+    };
+
+    const eventHandler = (event: MessageEvent) => {
+      onDiscordWindowMessage(event).catch(console.error);
+    };
+
+    addEventListener('message', eventHandler);
+    return () => removeEventListener('message', eventHandler);
+  }, []);
 
   const connectToWallet = () => {
     (async () => {
@@ -37,30 +95,15 @@ function App() {
     })().catch(console.error);
   };
 
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('discordId');
-    if (discordId)
-      requestCredential({
-        platform: 'Discord',
-        userId: discordId,
-        setPending: () => setDiscordPending(true),
-      })
-        .then(() => {
-          setDiscordDone(true);
-          url.searchParams.set('discord', 'true');
-        })
-        .catch(console.error)
-        .finally(() => window.history.replaceState(null, '', url));
-  }, [discordId, query]);
-
   const onTelegramAuth = async (user: TelegramUser) => {
     try {
-      await requestCredential({
-        platform: 'Telegram',
-        user,
-        setPending: () => setTelegramPending(true),
-      });
+      await requestCredential(
+        {
+          platform: Platform.Telegram,
+          user,
+        },
+        () => setTelegramPending(true),
+      );
     } catch (error) {
       alert('An error occured');
       console.error(error);
@@ -69,7 +112,7 @@ function App() {
 
     setTelegramDone(true);
     const url = new URL(window.location.href);
-    url.searchParams.set('telegram', 'true');
+    url.searchParams.set(Platform.Telegram, 'true');
     window.history.replaceState(null, '', url);
   };
 
@@ -151,6 +194,11 @@ interface IssuerResponse {
   };
 }
 
+interface IssueRequest {
+  credential: CredentialInfo;
+  telegramUser?: TelegramUser;
+}
+
 interface CredentialInfo {
   holder_id: string;
   holder_revocable: boolean;
@@ -160,56 +208,49 @@ interface CredentialInfo {
   };
 }
 
-interface IssueRequest {
-  credential: CredentialInfo;
-  values: Record<number, string>;
-  telegramUser?: TelegramUser;
-}
-
 interface TelegramRequest {
-  platform: 'Telegram';
+  platform: Platform.Telegram;
   user: TelegramUser;
-  setPending: () => void;
 }
 
 interface DiscordRequest {
-  platform: 'Discord';
+  platform: Platform.Discord;
   userId: string;
-  setPending: () => void;
 }
 
 interface RpcError {
   code: string;
 }
 
-async function requestCredential(req: TelegramRequest | DiscordRequest) {
+async function requestCredential(
+  req: TelegramRequest | DiscordRequest,
+  setPending: () => void,
+) {
   console.log('Requesting credential...');
 
+  const issuer = config.issuers[req.platform];
+
   const userId =
-    req.platform === 'Telegram' ? req.user.id.toString() : req.userId;
+    req.platform === Platform.Telegram ? req.user.id.toString() : req.userId;
 
   const credential = {
-    $schema: './JsonSchema2023-some.json',
+    $schema: `./JsonSchema2023-${req.platform}.json`,
     type: [
       'VerifiableCredential',
       'ConcordiumVerifiableCredential',
       'SoMeCredential',
     ],
-    issuer: 'did:ccd:testnet:sci:5565:0/issuer',
+    issuer: issuer.did,
     issuanceDate: new Date().toISOString(),
-    credentialSubject: { platform: req.platform, userId },
+    credentialSubject: { userId },
     credentialSchema: {
-      id:
-        window.location.href.split('?')[0] +
-        'json-schemas/JsonSchema2023-some.json',
+      id: `${issuer.url}/json-schemas/JsonSchema2023-${req.platform}.json`,
       type: 'JsonSchema2023',
     },
   };
 
   const metadataUrl = {
-    url:
-      window.location.href.split('?')[0] +
-      'json-schemas/credential-metadata.json',
+    url: issuer.url + '/json-schemas/credential-metadata.json',
   };
 
   const provider = await detectConcordiumProvider();
@@ -222,19 +263,17 @@ async function requestCredential(req: TelegramRequest | DiscordRequest) {
         valid_from: new Date().toISOString(),
         metadata_url: metadataUrl,
       },
-      values: {
-        0: req.platform,
-        1: userId,
-      },
     };
-    if (req.platform === 'Telegram') body.telegramUser = req.user;
+    if (req.platform === Platform.Telegram) body.telegramUser = req.user;
 
-    const endpoint = window.location.href.split('?')[0] + 'credential';
+    const endpoint = issuer.url + '/credential';
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      // If we're sending Discord requests, we need to include proof of our user id
+      credentials: 'include',
       body: JSON.stringify(body),
     });
 
@@ -249,8 +288,9 @@ async function requestCredential(req: TelegramRequest | DiscordRequest) {
   });
 
   console.log('Transaction submitted, hash:', txHash);
-  req.setPending();
+  setPending();
 
+  // Loop until transaction has been finalized
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
@@ -263,20 +303,21 @@ async function requestCredential(req: TelegramRequest | DiscordRequest) {
       // NOT_FOUND errors just mean that the transaction hasn't been propagated yet
       if ((error as RpcError).code !== 'NOT_FOUND') throw error;
       // Sleep for half a second and try again
-      console.log('Transaction not found. Retrying in 500ms...');
-      await new Promise((r) => setTimeout(r, 500));
+      console.log('Transaction not found. Retrying in 200ms...');
+      await new Promise((r) => setTimeout(r, 200));
     }
   }
 }
 
 function openDiscordVerification() {
-  // TODO: Add state parameter
+  oAuth2State = nanoid();
+
   const params = new URLSearchParams({
-    // TODO: Maybe send from server?
-    client_id: '1127954266213056635',
-    redirect_uri: window.location.href.split('?')[0] + 'discord-oauth2',
+    client_id: config.discordClientId,
+    redirect_uri: config.issuers.discord.url + '/discord-oauth2',
     response_type: 'code',
     scope: 'identify',
+    state: oAuth2State,
   });
 
   const oAuth2URL =

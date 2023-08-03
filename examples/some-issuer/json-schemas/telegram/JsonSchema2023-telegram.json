@@ -1,0 +1,27 @@
+{
+  "$id": "https://some-issuer.com/telegram/json-schemas/JsonSchema2023-telegram.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "Telegram account verification",
+  "description": "A Telegram user id.",
+  "type": "object",
+  "properties": {
+    "credentialSubject": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Credential subject id",
+          "type": "string",
+          "description": "Credential subject identifier"
+        },
+        "userId": {
+          "title": "User id",
+          "type": "string",
+          "description": "Telegram user id",
+          "index": "0"
+        }
+      },
+      "required": ["id", "userId"]
+    }
+  },
+  "required": ["credentialSubject"]
+}

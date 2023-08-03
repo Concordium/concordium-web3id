@@ -1,8 +1,8 @@
 {
-  "$id": "https://some-issuer.com/json-schemas/JsonSchema2023-some-id.json",
+  "$id": "https://some-issuer.com/discord/json-schemas/JsonSchema2023-discord.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "name": "SoMe account verification",
-  "description": "A SoMe platform and a corresponding user id.",
+  "name": "Discord account verification",
+  "description": "A Discord user id.",
   "type": "object",
   "properties": {
     "credentialSubject": {
@@ -13,20 +13,14 @@
           "type": "string",
           "description": "Credential subject identifier"
         },
-        "platform": {
-          "title": "Platform",
-          "type": "string",
-          "description": "SoMe platform",
-          "index": "0"
-        },
         "userId": {
           "title": "User id",
           "type": "string",
-          "description": "User id for the platform",
-          "index": "1"
+          "description": "Discord user id",
+          "index": "0"
         }
       },
-      "required": ["id", "platform", "userId"]
+      "required": ["id", "userId"]
     }
   },
   "required": ["credentialSubject"]

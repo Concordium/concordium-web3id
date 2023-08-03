@@ -1,0 +1,3 @@
+# Ignore keys
+account-*.json
+issuer-*.json

@@ -6,13 +6,11 @@ In the project directory, you can run:
 
 ### `yarn build`
 
-Do this before running the backend.\
-Builds the app for production to the `build` folder.
+Builds the app for production to the `dist` folder.
 
 ### `yarn dev`
 
-Runs the frontend in the development mode.\
-It can not talk to the backend when run in this way.
+Runs the frontend in the development mode.
 
 The page will reload if you make edits.\
 You will also see any lint errors in the console.
