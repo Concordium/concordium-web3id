@@ -152,7 +152,7 @@ impl axum::response::IntoResponse for Error {
                 tracing::warn!("Invalid request. Validity range is not within allowed.");
                 (
                     StatusCode::BAD_REQUEST,
-                    axum::Json(format!("Invalid validity range.")),
+                    axum::Json("Invalid validity range.".to_string()),
                 )
             }
             Error::InvalidNetwork => {
@@ -162,12 +162,12 @@ impl axum::response::IntoResponse for Error {
                 );
                 (
                     StatusCode::BAD_REQUEST,
-                    axum::Json(format!("Invalid network.")),
+                    axum::Json("Invalid network.".to_string()),
                 )
             }
             Error::InvalidId => {
                 tracing::warn!("Invalid request. Credential ID not a public key.");
-                (StatusCode::BAD_REQUEST, axum::Json(format!("Invalid ID.")))
+                (StatusCode::BAD_REQUEST, axum::Json("Invalid ID.".to_string()))
             }
             Error::CouldNotSubmit(e) => {
                 tracing::error!("Failed to submit transaction: {e}");
