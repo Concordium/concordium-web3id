@@ -19,11 +19,15 @@ use concordium_rust_sdk::{
         ContractAddress, WalletAccount,
     },
     v2::{self, BlockIdentifier},
-    web3id::{CredentialHolderId, Request, SignedCommitments, Web3IdAttribute, Web3IdCredential},
+    web3id::{
+        did::{IdentifierType, Method, Network},
+        CredentialHolderId, Request, SignedCommitments, Web3IdAttribute, Web3IdCredential,
+    },
 };
 use key_derivation::{ConcordiumHdWallet, Net};
 use rand::{thread_rng, Rng};
 use std::{collections::BTreeMap, path::PathBuf};
+use web3id_issuer::{CredentialSubject, IssueRequest};
 
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -407,7 +411,7 @@ async fn main() -> anyhow::Result<()> {
             println!("Using index = {}", idx);
             let pub_key = wallet.get_verifiable_credential_public_key(registry, idx)?;
 
-            let values: BTreeMap<u8, Web3IdAttribute> =
+            let values: BTreeMap<String, Web3IdAttribute> =
                 serde_json::from_reader(&std::fs::File::open(&attributes)?)
                     .context("Unable to read attributes.")?;
 
@@ -417,17 +421,20 @@ async fn main() -> anyhow::Result<()> {
                 .response;
             let mut rng = rand::thread_rng();
 
-            let valid_from = Timestamp::from_timestamp_millis(valid_from.timestamp_millis() as u64);
+            let cred_info = {
+                let valid_from =
+                    Timestamp::from_timestamp_millis(valid_from.timestamp_millis() as u64);
 
-            let valid_until = valid_until
-                .map(|ts| Timestamp::from_timestamp_millis(ts.timestamp_millis() as u64));
+                let valid_until = valid_until
+                    .map(|ts| Timestamp::from_timestamp_millis(ts.timestamp_millis() as u64));
 
-            let cred_info = CredentialInfo {
-                holder_id: CredentialHolderId::new(pub_key),
-                holder_revocable,
-                valid_from,
-                valid_until,
-                metadata_url: MetadataUrl::new(metadata_url, None)?,
+                CredentialInfo {
+                    holder_id: CredentialHolderId::new(pub_key),
+                    holder_revocable,
+                    valid_from,
+                    valid_until,
+                    metadata_url: MetadataUrl::new(metadata_url.clone(), None)?,
+                }
             };
 
             let expiry = TransactionTime::hours_after(2);
@@ -435,7 +442,10 @@ async fn main() -> anyhow::Result<()> {
             let register_response = if let Some(issuer) = issuer {
                 let mut randomness = BTreeMap::new();
                 for idx in values.keys() {
-                    randomness.insert(*idx, pedersen_commitment::Randomness::generate(&mut rng));
+                    randomness.insert(
+                        idx.clone(),
+                        pedersen_commitment::Randomness::generate(&mut rng),
+                    );
                 }
                 let issuer_signer: common::types::KeyPair =
                     serde_json::from_reader(&std::fs::File::open(
@@ -448,17 +458,32 @@ async fn main() -> anyhow::Result<()> {
                     &randomness,
                     &pub_key.into(),
                     &issuer_signer,
+                    registry_contract.address,
                 )
                 .context("Unable to produce commitments.")?;
 
+                let issuer_metadata = registry_contract
+                    .registry_metadata(BlockIdentifier::LastFinal)
+                    .await?;
+
                 let secrets = Web3IdCredential {
-                    issuance_date: chrono::Utc::now(),
                     registry,
                     issuer_key: issuer_signer.public.into(),
                     values,
                     randomness,
                     signature: signed_commitments.signature,
                     holder_id: cred_info.holder_id,
+                    network: Network::Testnet, // TODO
+                    credential_type: [
+                        "VerifiableCredential".into(),
+                        "ConcordiumVerifiableCredential".into(),
+                        issuer_metadata.credential_type.credential_type,
+                    ]
+                    .into_iter()
+                    .collect(),
+                    credential_schema: issuer_metadata.credential_schema.schema_ref.url().into(),
+                    valid_from,
+                    valid_until,
                 };
 
                 let issuer = WalletAccount::from_json_file(&issuer)
@@ -486,10 +511,20 @@ async fn main() -> anyhow::Result<()> {
                     .connect_timeout(std::time::Duration::from_secs(5))
                     .timeout(std::time::Duration::from_secs(10))
                     .build()?;
-                let body = serde_json::json!({
-                    "credential": cred_info,
-                    "values": values,
-                });
+                let body = IssueRequest {
+                    valid_from,
+                    valid_until,
+                    holder_revocable,
+                    credential_subject: CredentialSubject {
+                        id:         Method {
+                            network: Network::Testnet,
+                            ty:      IdentifierType::PublicKey { key: pub_key },
+                        },
+                        attributes: values,
+                    },
+                    metadata_url: MetadataUrl::new_unchecked(metadata_url, None),
+                };
+
                 let response = network_client.post(url).json(&body).send().await?;
                 if response.status().is_success() {
                     let IssueResponse {

@@ -30,7 +30,7 @@ use std::{
 };
 use tonic::transport::ClientTlsConfig;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
-use web3id_issuer::IssueRequest;
+use web3id_issuer::{IssueRequest, IssueResponse};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -125,6 +125,8 @@ enum Error {
     Internal(String),
     #[error("Invalid time ranges.")]
     InvalidTimeRange,
+    #[error("The network was not as expected.")]
+    InvalidNetwork,
     #[error("Invalid Id.")]
     InvalidId,
 }
@@ -151,6 +153,16 @@ impl axum::response::IntoResponse for Error {
                 (
                     StatusCode::BAD_REQUEST,
                     axum::Json(format!("Invalid validity range.")),
+                )
+            }
+            Error::InvalidNetwork => {
+                tracing::warn!(
+                    "Invalid request. The network does not match the network the service is \
+                     configured with."
+                );
+                (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json(format!("Invalid network.")),
                 )
             }
             Error::InvalidId => {
@@ -201,13 +213,6 @@ struct State {
     credential_schema:   String,
     credential_type:     BTreeSet<String>,
     max_register_energy: Energy,
-}
-
-#[derive(Debug, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct IssueResponse {
-    tx_hash:    TransactionHash,
-    credential: Web3IdCredential<ArCurve, Web3IdAttribute>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -308,7 +313,7 @@ async fn issue_credential(
         .ok_or(Error::InvalidId)?
         .into();
     if request.credential_subject.id.network != state.network {
-        return Err(Error::InvalidId);
+        return Err(Error::InvalidNetwork);
     }
     let valid_from = Timestamp::from_timestamp_millis(
         u64::try_from(request.valid_from.timestamp_millis())
@@ -322,6 +327,11 @@ async fn issue_credential(
                 .map(Timestamp::from_timestamp_millis)
         })
         .transpose()?;
+    if let Some(vu) = valid_until {
+        if vu < valid_from {
+            return Err(Error::InvalidTimeRange);
+        }
+    }
     let cred_info = CredentialInfo {
         holder_id,
         holder_revocable: request.holder_revocable,
