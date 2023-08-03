@@ -167,7 +167,10 @@ impl axum::response::IntoResponse for Error {
             }
             Error::InvalidId => {
                 tracing::warn!("Invalid request. Credential ID not a public key.");
-                (StatusCode::BAD_REQUEST, axum::Json("Invalid ID.".to_string()))
+                (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json("Invalid ID.".to_string()),
+                )
             }
             Error::CouldNotSubmit(e) => {
                 tracing::error!("Failed to submit transaction: {e}");
