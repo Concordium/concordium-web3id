@@ -23,7 +23,7 @@ pub struct IssueRequest {
     pub metadata_url:       MetadataUrl,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueResponse {
     pub tx_hash:    TransactionHash,

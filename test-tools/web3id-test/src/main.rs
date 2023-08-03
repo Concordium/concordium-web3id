@@ -10,7 +10,6 @@ use concordium_rust_sdk::{
     id::{constants::ArCurve, pedersen_commitment},
     smart_contracts::common::{self as concordium_std, AccountAddress, Amount, Timestamp},
     types::{
-        hashes::TransactionHash,
         smart_contracts::{ModuleReference, OwnedContractName, OwnedParameter},
         transactions::{
             send::{self, GivenEnergy},
@@ -27,15 +26,7 @@ use concordium_rust_sdk::{
 use key_derivation::{ConcordiumHdWallet, Net};
 use rand::{thread_rng, Rng};
 use std::{collections::BTreeMap, path::PathBuf};
-use web3id_issuer::{CredentialSubject, IssueRequest};
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-/// Response from the issuer service upon success.
-struct IssueResponse {
-    tx_hash:    TransactionHash,
-    credential: Web3IdCredential<ArCurve, Web3IdAttribute>,
-}
+use web3id_issuer::{CredentialSubject, IssueRequest, IssueResponse};
 
 #[derive(concordium_std::Serial)]
 pub struct InitParams {
