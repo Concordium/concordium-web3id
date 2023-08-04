@@ -5,15 +5,11 @@ use concordium_rust_sdk::{
         Cis4Contract, Cis4TransactionMetadata, CredentialEvent, CredentialInfo, CredentialType,
         MetadataUrl,
     },
-    common::types::TransactionTime,
-    contract_client::{RevocationKey, SchemaRef},
-    id::{
-        constants::ArCurve, curve_arithmetic::Curve, pedersen_commitment::VecCommitmentKey,
-        types::Attribute,
-    },
+    common::{self, types::TransactionTime},
+    contract_client::{IssuerKey, RevocationKey, SchemaRef},
+    id::{constants::ArCurve, pedersen_commitment},
     smart_contracts::common::{self as concordium_std, AccountAddress, Amount, Timestamp},
     types::{
-        hashes::TransactionHash,
         smart_contracts::{ModuleReference, OwnedContractName, OwnedParameter},
         transactions::{
             send::{self, GivenEnergy},
@@ -23,27 +19,27 @@ use concordium_rust_sdk::{
     },
     v2::{self, BlockIdentifier},
     web3id::{
-        storage::{CredentialSecrets, CredentialStorageContract, DataToSign},
-        CommitmentInputs, CredentialHolderId, Request, Web3IdAttribute,
+        did::{IdentifierType, Method, Network},
+        CredentialHolderId, Request, SignedCommitments, Web3IdAttribute, Web3IdCredential,
     },
 };
-use ed25519_dalek::Keypair;
 use key_derivation::{ConcordiumHdWallet, Net};
 use rand::{thread_rng, Rng};
 use std::{collections::BTreeMap, path::PathBuf};
+use web3id_issuer::{CredentialSubject, IssueRequest, IssueResponse};
 
 #[derive(concordium_std::Serial)]
 pub struct InitParams {
     /// The issuer's metadata.
     pub issuer_metadata: MetadataUrl,
-    /// An address of the credential storage contract.
-    pub storage_address: ContractAddress,
-    /// Credential schemas available right after initialization.
-    #[concordium(size_length = 1)]
-    pub schemas:         Vec<(CredentialType, SchemaRef)>,
+    /// Credential type
+    pub credential_type: CredentialType,
+    pub schema:          SchemaRef,
     /// The issuer for the registry. If `None`, the `init_origin` is used as
     /// `issuer`.
     pub issuer:          Option<AccountAddress>,
+    /// The public key of the issuer.
+    pub issuer_key:      IssuerKey,
     /// Revocation keys available right after initialization.
     #[concordium(size_length = 1)]
     pub revocation_keys: Vec<RevocationKey>,
@@ -57,28 +53,26 @@ enum Action {
     )]
     NewIssuer {
         #[clap(long = "metadata-url", help = "The credential's metadat URL.")]
-        metadata_url:     String,
+        metadata_url:    String,
         #[clap(long = "credential-type", help = "The credential type.")]
-        credential_types: Vec<String>,
+        credential_type: String,
         #[clap(
             long = "schema-ref",
             help = "The schema belonging to the credential type."
         )]
-        schema_refs:      Vec<String>,
-        #[clap(long = "storage", default_value_t=ContractAddress::new(4732,0))]
-        storage:          ContractAddress,
+        schema_ref:      String,
         #[clap(long = "issuer")]
-        issuer:           Option<AccountAddress>,
+        issuer:          Option<AccountAddress>,
         #[clap(long = "wallet")]
-        wallet:           PathBuf,
+        wallet:          PathBuf,
         #[clap(long = "revocation-key", help = "A revocation key to register.")]
-        revocation_keys:  Vec<RevocationKey>,
+        revocation_keys: Vec<RevocationKey>,
         #[clap(
             long = "module",
             help = "The source module from which to initialize.",
-            default_value = "20c145580805cc1215bf11cb1472fa61ae61bd74d4a06a6e3265ba206c9fce27"
+            default_value = "5b58fde5766cecf481288a971b5f0f3391af736b41ddc806364713e602d82d2b"
         )]
-        mod_ref:          ModuleReference,
+        mod_ref:         ModuleReference,
     },
     #[clap(
         name = "register",
@@ -88,9 +82,6 @@ enum Action {
         #[clap(long = "registry")]
         /// Address of the registry contract.
         registry:         ContractAddress,
-        /// Address of the storage contract.
-        #[clap(long = "storage", default_value_t=ContractAddress::new(4732,0))]
-        storage:          ContractAddress,
         #[clap(long = "attributes", help = "Path to the file with attributes.")]
         attributes:       PathBuf,
         #[clap(long = "seed", help = "The path to the seed phrase.")]
@@ -99,9 +90,16 @@ enum Action {
             name = "issuer",
             long = "issuer",
             help = "The issuer's wallet.",
-            required_unless_present = "issuer-service"
+            required_unless_present = "issuer-service",
+            requires = "issuer-key"
         )]
         issuer:           Option<PathBuf>,
+        #[clap(
+            name = "issuer-key",
+            long = "issuer-key",
+            help = "The issuer's key for signing commitments."
+        )]
+        issuer_key:       Option<PathBuf>,
         #[clap(
             name = "issuer-service",
             long = "issuer-service",
@@ -109,8 +107,6 @@ enum Action {
             required_unless_present = "issuer"
         )]
         issuer_service:   Option<reqwest::Url>,
-        #[clap(long = "credential-type", help = "The credential type.")]
-        credential_type:  String,
         #[clap(long = "metadata-url", help = "The credential's metadata URL.")]
         metadata_url:     String,
         #[clap(
@@ -150,15 +146,13 @@ enum Action {
             help = "URL of the verifier where to submit the presentation.",
             default_value = "https://web3id-verifier.testnet.concordium.com/v0/verify"
         )]
-        verifier:  url::Url,
-        #[clap(long = "index", help = "The index of the credential.")]
-        index:     u32,
-        #[clap(long = "storage", default_value_t=ContractAddress::new(4732,0))]
-        storage:   ContractAddress,
+        verifier:   url::Url,
+        #[clap(long = "credential", help = "The stored credential.")]
+        credential: PathBuf,
         #[clap(long = "seed", help = "The path to the seed phrase.")]
-        seed:      PathBuf,
+        seed:       PathBuf,
         #[clap(long = "statement", help = "Path to the credential.")]
-        statement: PathBuf,
+        statement:  PathBuf,
     },
 }
 
@@ -191,32 +185,25 @@ async fn main() -> anyhow::Result<()> {
     match app.action {
         Action::NewIssuer {
             metadata_url,
-            credential_types,
-            schema_refs,
-            storage,
+            credential_type,
+            schema_ref,
             issuer,
             wallet,
             revocation_keys,
             mod_ref,
         } => {
             let wallet = WalletAccount::from_json_file(wallet).context("Unable to read wallet.")?;
-            anyhow::ensure!(
-                credential_types.len() == schema_refs.len(),
-                "Inconsistent number of credential types and schemas."
-            );
-            let schemas = credential_types
-                .into_iter()
-                .map(|credential_type| CredentialType { credential_type })
-                .zip(schema_refs.into_iter().map(|url| SchemaRef {
-                    schema_ref: MetadataUrl::new(url, None).unwrap(),
-                }))
-                .collect::<Vec<_>>();
+            let issuer_keypair = common::types::KeyPair::generate(&mut rand::thread_rng());
             let init_params = InitParams {
                 issuer_metadata: MetadataUrl::new(metadata_url, None)?,
-                storage_address: storage,
-                schemas,
                 issuer,
                 revocation_keys,
+                credential_type: CredentialType { credential_type },
+                schema: SchemaRef {
+                    schema_ref: MetadataUrl::new(schema_ref, None)
+                        .context("Schema reference too large.")?,
+                },
+                issuer_key: issuer_keypair.public.into(),
             };
             let nonce = client
                 .get_next_account_sequence_number(&wallet.address)
@@ -240,7 +227,7 @@ async fn main() -> anyhow::Result<()> {
                 10_000.into(),
             );
             let hash = client.send_account_transaction(tx).await?;
-            println!("Sent transaction with hash {hash}.");
+            println!("Sent transaction with hash {hash}. Waiting for finalization. DO NOT CANCEL.");
             let (bh, response) = client.wait_until_finalized(&hash).await?;
             println!("Transaction finalized in block {bh}");
             if let Some(r) = response.contract_init() {
@@ -249,6 +236,12 @@ async fn main() -> anyhow::Result<()> {
                     r.address,
                     r.init_name.as_contract_name().contract_name()
                 );
+                let issuer_keys_out = format!("issuer-{}-keys.json", r.address.index);
+                std::fs::write(
+                    &issuer_keys_out,
+                    serde_json::to_string_pretty(&issuer_keypair)?,
+                )?;
+                println!("Issuer's keys written to {issuer_keys_out}.");
             } else {
                 println!("{:?}", response);
             }
@@ -256,31 +249,32 @@ async fn main() -> anyhow::Result<()> {
         Action::Prove {
             verifier,
             statement,
-            index,
             seed,
-            storage,
+            credential,
         } => {
             let wallet = std::fs::read_to_string(&seed).context("Unable to read seed phrase.")?;
             let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet);
 
-            let sec_key = wallet.get_verifiable_credential_signing_key(index)?;
-            let pub_key = wallet.get_verifiable_credential_public_key(index)?;
-            let enc_key = wallet.get_verifiable_credential_encryption_key(index)?;
-            let mut storage_client = CredentialStorageContract::create(client.clone(), storage)
-                .await
-                .context("Unable to construct storage client.")?;
+            let credential: Web3IdCredential<ArCurve, Web3IdAttribute> = serde_json::from_reader(
+                std::fs::File::open(&credential).context("Unable to open credential.")?,
+            )
+            .context("Unable to parse credential.")?;
 
-            let holder_id = CredentialHolderId::new(pub_key);
-
-            let Some(resp) = storage_client.get_credential_secrets(&holder_id, BlockIdentifier::LastFinal).await? else {
-                    anyhow::bail!("Unable to retrieve credential with index {index} from the storage contract.")
+            // Find the index used for this credential.
+            let Some(index) = (0u32..).find(
+                |idx| wallet.get_verifiable_credential_public_key(credential.registry, *idx).unwrap() == credential.holder_id.public_key
+            ) else {
+                anyhow::bail!("Could not find credential index.");
             };
-            let data = resp.decrypt(pub_key.into(), enc_key)?;
 
-            let mut registry = Cis4Contract::create(client.clone(), data.issuer).await?;
+            let sec_key =
+                wallet.get_verifiable_credential_signing_key(credential.registry, index)?;
+            let holder_id = credential.holder_id;
 
-            let info = registry
-                .credential_entry(holder_id, BlockIdentifier::LastFinal)
+            let mut registry = Cis4Contract::create(client.clone(), credential.registry).await?;
+
+            let registry_metadata = registry
+                .registry_metadata(BlockIdentifier::LastFinal)
                 .await?;
 
             let statement = serde_json::from_reader(
@@ -295,12 +289,12 @@ async fn main() -> anyhow::Result<()> {
                 ty: [
                     "VerifiableCredential".into(),
                     "ConcordiumVerifiableCredential".into(),
-                    info.credential_info.credential_type.credential_type,
+                    registry_metadata.credential_type.credential_type,
                 ]
                 .into_iter()
                 .collect(),
                 network: concordium_rust_sdk::web3id::did::Network::Testnet,
-                contract: data.issuer,
+                contract: credential.registry,
                 credential: holder_id,
                 statement,
             };
@@ -312,12 +306,7 @@ async fn main() -> anyhow::Result<()> {
                 .get_cryptographic_parameters(BlockIdentifier::LastFinal)
                 .await?;
 
-            let secrets = CommitmentInputs::Web3Issuer {
-                issuance_date: info.credential_info.valid_from.try_into()?,
-                signer:        &sec_key,
-                values:        &data.values,
-                randomness:    data.randomness,
-            };
+            let secrets = credential.into_inputs(&sec_key);
 
             let start = chrono::Utc::now();
             let proof = request
@@ -360,7 +349,7 @@ async fn main() -> anyhow::Result<()> {
                 .context("Unable to construct registry contract.")?;
             let wallet = std::fs::read_to_string(&seed).context("Unable to read seed phrase.")?;
             let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet);
-            let pk = wallet.get_verifiable_credential_public_key(index)?;
+            let pk = wallet.get_verifiable_credential_public_key(registry, index)?;
             let holder = CredentialHolderId::new(pk);
             let entry = registry_contract
                 .credential_entry(holder, bi)
@@ -377,13 +366,12 @@ async fn main() -> anyhow::Result<()> {
         }
         Action::Register {
             registry,
-            storage,
             attributes,
             seed,
             issuer,
+            issuer_key,
             issuer_service,
             metadata_url,
-            credential_type,
             holder_revocable,
             valid_until,
             valid_from,
@@ -391,95 +379,104 @@ async fn main() -> anyhow::Result<()> {
             let wallet = std::fs::read_to_string(&seed).context("Unable to read seed phrase.")?;
             let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet);
 
-            let mut storage_client = CredentialStorageContract::create(client.clone(), storage)
+            let mut registry_contract = Cis4Contract::create(client.clone(), registry)
                 .await
-                .context("Unable to construct storage client.")?;
+                .context("Unable to construct registry contract.")?;
 
             let mut idx = 0;
             loop {
-                let pk = wallet.get_verifiable_credential_public_key(idx)?;
-                let resp = storage_client
-                    .get_credential_secrets(
-                        &CredentialHolderId::new(pk),
-                        BlockIdentifier::LastFinal,
-                    )
-                    .await?;
-                if resp.is_none() {
-                    break;
+                let pk = wallet.get_verifiable_credential_public_key(registry, idx)?;
+                let resp = registry_contract
+                    .credential_entry(CredentialHolderId::new(pk), BlockIdentifier::LastFinal)
+                    .await;
+                if let Err(e) = resp {
+                    if e.is_contract_error().is_some() {
+                        break;
+                    } else {
+                        anyhow::bail!("Error querying the node: {e:?}")
+                    }
                 } else {
                     idx += 1;
                 }
             }
             println!("Using index = {}", idx);
-            let sec_key = wallet.get_verifiable_credential_signing_key(idx)?;
-            let pub_key = wallet.get_verifiable_credential_public_key(idx)?;
-            let enc_key = wallet.get_verifiable_credential_encryption_key(idx)?;
+            let pub_key = wallet.get_verifiable_credential_public_key(registry, idx)?;
 
-            let mut registry_contract = Cis4Contract::create(client.clone(), registry)
-                .await
-                .context("Unable to construct registry contract.")?;
-
-            let values: BTreeMap<u8, Web3IdAttribute> =
+            let values: BTreeMap<String, Web3IdAttribute> =
                 serde_json::from_reader(&std::fs::File::open(&attributes)?)
                     .context("Unable to read attributes.")?;
 
             let crypto_params = client
                 .get_cryptographic_parameters(BlockIdentifier::LastFinal)
-                .await?;
-            let (&h, _, bases) = crypto_params.response.vector_commitment_base();
-            let comm_key = VecCommitmentKey {
-                gs: bases.copied().collect(),
-                h,
-            };
-            let mut gapped_values = Vec::new();
-            for (k, v) in values.iter() {
-                for _ in gapped_values.len()..usize::from(*k) {
-                    gapped_values.push(ArCurve::scalar_from_u64(0));
-                }
-                gapped_values.push(v.to_field_element());
-            }
+                .await?
+                .response;
             let mut rng = rand::thread_rng();
-            let (comm, randomness) = comm_key
-                .commit(&gapped_values, &mut rng)
-                .context("Unable to commit.")?;
 
-            let valid_from = Timestamp::from_timestamp_millis(valid_from.timestamp_millis() as u64);
+            let cred_info = {
+                let valid_from =
+                    Timestamp::from_timestamp_millis(valid_from.timestamp_millis() as u64);
 
-            let valid_until = valid_until
-                .map(|ts| Timestamp::from_timestamp_millis(ts.timestamp_millis() as u64));
+                let valid_until = valid_until
+                    .map(|ts| Timestamp::from_timestamp_millis(ts.timestamp_millis() as u64));
 
-            let cred_info = CredentialInfo {
-                holder_id: CredentialHolderId::new(pub_key),
-                holder_revocable,
-                commitment: concordium_rust_sdk::common::to_bytes(&comm),
-                valid_from,
-                valid_until,
-                credential_type: CredentialType { credential_type },
-                metadata_url: MetadataUrl::new(metadata_url, None)?,
+                CredentialInfo {
+                    holder_id: CredentialHolderId::new(pub_key),
+                    holder_revocable,
+                    valid_from,
+                    valid_until,
+                    metadata_url: MetadataUrl::new(metadata_url.clone(), None)?,
+                }
             };
-            let nonce: [u8; 12] = rng.gen();
 
-            let secrets = CredentialSecrets {
-                randomness,
-                values,
-                issuer: registry,
-            };
             let expiry = TransactionTime::hours_after(2);
-            let encrypted_secrets = secrets.encrypt(cred_info.holder_id, enc_key, nonce)?;
-            let payload_to_sign = DataToSign {
-                contract_address:     storage_client.address,
-                encrypted_credential: concordium_std::to_bytes(&encrypted_secrets),
-                version:              0,
-                timestamp:            Timestamp::from_timestamp_millis(expiry.seconds * 1000),
-            };
-            let kp = Keypair {
-                secret: sec_key,
-                public: pub_key,
-            };
-            let store_params = payload_to_sign.sign(&kp);
-            let storage_data = concordium_std::to_bytes(&store_params);
 
             let register_response = if let Some(issuer) = issuer {
+                let mut randomness = BTreeMap::new();
+                for idx in values.keys() {
+                    randomness.insert(
+                        idx.clone(),
+                        pedersen_commitment::Randomness::generate(&mut rng),
+                    );
+                }
+                let issuer_signer: common::types::KeyPair =
+                    serde_json::from_reader(&std::fs::File::open(
+                        &issuer_key.context("Expected issuer key if local issuer is set.")?,
+                    )?)
+                    .context("Unable to read attributes.")?;
+                let signed_commitments = SignedCommitments::from_secrets(
+                    &crypto_params,
+                    &values,
+                    &randomness,
+                    &pub_key.into(),
+                    &issuer_signer,
+                    registry_contract.address,
+                )
+                .context("Unable to produce commitments.")?;
+
+                let issuer_metadata = registry_contract
+                    .registry_metadata(BlockIdentifier::LastFinal)
+                    .await?;
+
+                let secrets = Web3IdCredential {
+                    registry,
+                    issuer_key: issuer_signer.public.into(),
+                    values,
+                    randomness,
+                    signature: signed_commitments.signature,
+                    holder_id: cred_info.holder_id,
+                    network: Network::Testnet, // TODO
+                    credential_type: [
+                        "VerifiableCredential".into(),
+                        "ConcordiumVerifiableCredential".into(),
+                        issuer_metadata.credential_type.credential_type,
+                    ]
+                    .into_iter()
+                    .collect(),
+                    credential_schema: issuer_metadata.credential_schema.schema_ref.url().into(),
+                    valid_from,
+                    valid_until,
+                };
+
                 let issuer = WalletAccount::from_json_file(&issuer)
                     .context("Unable to get issuer's wallet.")?;
                 let metadata = Cis4TransactionMetadata {
@@ -492,8 +489,12 @@ async fn main() -> anyhow::Result<()> {
                     energy: GivenEnergy::Add(10_000.into()),
                     amount: Amount::zero(),
                 };
+                let secrets_string = serde_json::to_string_pretty(&secrets)?;
+                let secrets_out_path = format!("{}.json", cred_info.holder_id);
+                std::fs::write(&secrets_out_path, secrets_string)?;
+                println!("Credential secrets are written to {secrets_out_path}");
                 registry_contract
-                    .register_credential(&issuer, &metadata, &cred_info, &storage_data)
+                    .register_credential(&issuer, &metadata, &cred_info, &[])
                     .await
                     .context("Unable to register.")?
             } else if let Some(url) = issuer_service {
@@ -501,14 +502,31 @@ async fn main() -> anyhow::Result<()> {
                     .connect_timeout(std::time::Duration::from_secs(5))
                     .timeout(std::time::Duration::from_secs(10))
                     .build()?;
-                let body = serde_json::json!({
-                    "credential": cred_info,
-                    "signature": hex::encode(store_params.signature),
-                    "data": store_params.data,
-                });
+                let body = IssueRequest {
+                    valid_from,
+                    valid_until,
+                    holder_revocable,
+                    credential_subject: CredentialSubject {
+                        id:         Method {
+                            network: Network::Testnet,
+                            ty:      IdentifierType::PublicKey { key: pub_key },
+                        },
+                        attributes: values,
+                    },
+                    metadata_url: MetadataUrl::new_unchecked(metadata_url, None),
+                };
+
                 let response = network_client.post(url).json(&body).send().await?;
                 if response.status().is_success() {
-                    response.json::<TransactionHash>().await?
+                    let IssueResponse {
+                        tx_hash,
+                        credential,
+                    } = response.json::<IssueResponse>().await?;
+                    let secrets_string = serde_json::to_string_pretty(&credential)?;
+                    let secrets_out_path = format!("{}.json", cred_info.holder_id);
+                    std::fs::write(&secrets_out_path, secrets_string)?;
+                    println!("Credential secrets are written to {secrets_out_path}");
+                    tx_hash
                 } else {
                     anyhow::bail!("Failed to issue: {response:#?}");
                 }

@@ -2,7 +2,7 @@
 
 A generic issuer for Web3ID credentials. It exposes a REST API for registering
 credentials, and handles the correct formatting of credentials to submit to the
-chain, and communication with the node.
+chain, construction and signing of commitments, and communication with the node.
 
 The issuer has the following endpoints
 - POST `v0/issue`
@@ -32,34 +32,70 @@ An example response is
 ## `issue` endpoint
 
 The `issue` endpoint accepts a JSON body with the request to issue the
-credential and if successful returns a transaction hash that may be queried for
-status.
+credential and if successful returns a transaction hash together with the full
+credential that can be returned to the user. The transaction hash may be queried
+for status.
 
-An example request is
+An example request, requesting to issue a credential with attributes "0" with
+value "foo" and "3" with value 17.
 ```json
 {
+  "credentialSubject": {
+    "attributes": {
+      "Another attribute": "World",
+      "Attribute 0": 1234,
+      "Some attribute": "Hello"
+    },
+    "id": "did:ccd:testnet:pkc:c162a48f58448234da9f3848dc3bc5fd7f2aa0e4b7e5e15654876365f8b86c1b"
+  },
+  "validFrom": "1970-01-01T00:00:00.017Z",
+  "validUntil": "1970-01-01T00:00:12.345Z",
+  "holderRevocable": true,
+  "metadataUrl": {
+    "url": "http://link/to/schema",
+    "hash": null
+  }
+}
+```
+
+An example response is
+```json
+{
+  "txHash": "179de883eb0e748b05dcb3a3632302cea56d0f410df86a1cc4558f3274c1cf3e",
   "credential": {
-    "commitment": "83bf8600f4f9ad3912767a9e923152678963f096b6781d28b4aac354ae6a13dca78a3b0f110ed981482820ccb436817d",
-    "credential_type": "Foo",
-    "holder_id": "21a36ad44379339abf0b33816d59129bef9a91e33c90d72ace6504206e26ea76",
-    "holder_revocable": true,
-    "metadata_url": {
-      "hash": null,
-      "url": "http:://credential-metadaata.ccd"
+    "credentialSchema": {
+      "id": "http://link/to/schema",
+      "type": "JsonSchema2023"
     },
-    "valid_from": "2023-06-04T18:46:10.218+00:00",
-    "valid_until": null
-  },
-  "data": {
-    "contract_address": {
-      "index": 4732,
-      "subindex": 0
+    "credentialSubject": {
+      "attributes": {
+        "Another attribute": "World",
+        "Attribute 0": 1234,
+        "Some attribute": "Hello"
+      },
+      "id": "did:ccd:testnet:pkc:c162a48f58448234da9f3848dc3bc5fd7f2aa0e4b7e5e15654876365f8b86c1b"
     },
-    "encrypted_credential": "98c1ae9a177c217ed8f2ed005800c7c3dffb2d72fa9ae3f10d00525854687f62fab966a123a22cfccbc65ac768f86257ef005594e08cf2da3f6c61d1b06ed3423342a841321a08d5e47f9403457b1f00bd19b6c0d1df2cdb0e4a76a5d458dd9e41fdb3f803e2",
-    "timestamp": "2023-06-04T20:46:10+00:00",
-    "version": 0
-  },
-  "signature": "ce6369076343021107f4ad770ba39a762238dd20530053d115ae2ca87d547eef2536d86d34baa6bb954ea2f38c6b7f0f3103e5111159cae03a9ec8ad0929f10c"
+    "id": "did:ccd:testnet:sci:3:17/credentialEntry/c162a48f58448234da9f3848dc3bc5fd7f2aa0e4b7e5e15654876365f8b86c1b",
+    "issuer": "did:ccd:testnet:sci:3:17/issuer/",
+    "proof": {
+      "proofPurpose": "assertionMethod",
+      "proofValue": "facdb03a1d054a55808875864abc85cc41d2c32290929bbb361a710b0fda5e7f333ac33abdb1b5f0ebb5662335c34410b8e96ca6730df7eb100f814f223d0b07",
+      "type": "Ed25519Signature2020",
+      "verificationMethod": "did:ccd:testnet:pkc:7f9a19691d30963a13477da2e0e4ee5a78c61000eb36867141b519f003256f9b"
+    },
+    "randomness": {
+      "Another attribute": "6490531ea308a2e661f62c4678e00bb87c9f602be7a053e910f8e44609bc5adb",
+      "Attribute 0": "29b439aa58324b2be5c5a3ceb7ba23b48397ba1d1d9081869f56ff1c96a2b32f",
+      "Some attribute": "2f5e0279c8ff6bcb004024dd4ba4f3e29d30ec91e3e4583855c2dae35ae83f8d"
+    },
+    "type": [
+      "ConcordiumVerifiableCredential",
+      "UniversityDegreeCredential",
+      "VerifiableCredential"
+    ],
+    "validFrom": "1970-01-01T00:00:00.017Z",
+    "validUntil": "1970-01-01T00:00:12.345Z"
+  }
 }
 ```
 
@@ -110,4 +146,10 @@ stated defaults suffice.
   exposed that contains information about the number and duration of requests.
 - `CONCORDIUM_WEB3ID_ISSUER_MAX_REGISTER_ENERGY` - The maximum **execution
   energy** allowed for the register transaction. Defaults to 10000.
-
+- `CONCORDIUM_WEB3ID_ISSUER_REGISTRY_ADDRESS` - The address of the registry
+  contract in which to register the credential.
+- `CONCORDIUM_WEB3ID_ISSUER_WALLET` - The path to the account that the issuer
+  uses to update the registry contract with new credentials.
+- `CONCORDIUM_WEB3ID_ISSUER_KEY` - The ed25519 keypair which is used by the
+  issuer to sign commitments that are sent to the user. It must correspond to
+  the issuer's public key registered in the contract.

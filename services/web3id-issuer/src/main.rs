@@ -8,22 +8,29 @@ use axum::{
 use axum_prometheus::PrometheusMetricLayerBuilder;
 use clap::Parser;
 use concordium_rust_sdk::{
-    base as concordium_base,
     cis4::{Cis4Contract, Cis4TransactionError, Cis4TransactionMetadata},
-    common::types::TransactionTime,
+    common::types::{KeyPair, TransactionTime},
     contract_client::CredentialInfo,
-    smart_contracts::common::{self as concordium_std, Amount},
+    id::{constants::ArCurve, pedersen_commitment},
+    smart_contracts::common::{Amount, Timestamp},
     types::{
         hashes::{BlockHash, TransactionHash},
         transactions::send::GivenEnergy,
-        ContractAddress, Energy, Nonce, WalletAccount,
+        ContractAddress, CryptographicParameters, Energy, Nonce, WalletAccount,
     },
-    v2::{self, QueryError},
-    web3id::storage::{DataToSign, StoreParam},
+    v2::{self, BlockIdentifier, QueryError},
+    web3id::{
+        did::Network, CredentialHolderId, SignedCommitments, Web3IdAttribute, Web3IdCredential,
+    },
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
+    sync::Arc,
+};
 use tonic::transport::ClientTlsConfig;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
+use web3id_issuer::{IssueRequest, IssueResponse};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -64,13 +71,6 @@ struct App {
     )]
     request_timeout:     u64,
     #[clap(
-        long = "min-expiry",
-        help = "Minimum transaction expiry time in milliseconds.",
-        default_value = "15000",
-        env = "CONCORDIUM_WEB3ID_ISSUER_MINIMUM_EXPIRY"
-    )]
-    min_allowed_expiry:  u32,
-    #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "CONCORDIUM_WEB3ID_ISSUER_REGISTRY_ADDRESS"
@@ -82,6 +82,18 @@ struct App {
         env = "CONCORDIUM_WEB3ID_ISSUER_WALLET"
     )]
     wallet:              PathBuf,
+    #[clap(
+        long = "issuer-key",
+        help = "Path to the issuer's key, used to sign commitments.",
+        env = "CONCORDIUM_WEB3ID_ISSUER_KEY"
+    )]
+    issuer_key:          PathBuf,
+    #[clap(
+        long = "network",
+        help = "Network on which this issuer operates.",
+        env = "CONCORDIUM_WEB3ID_NETWORK"
+    )]
+    network:             Network,
     #[clap(
         long = "prometheus-address",
         help = "Listen address for the server.",
@@ -107,10 +119,16 @@ enum Error {
     InvalidPath(#[from] PathRejection),
     #[error("Unable to submit transaction: {0}")]
     CouldNotSubmit(#[from] Cis4TransactionError),
-    #[error("Transaction expiry is too early in the future.")]
-    ExpiryTooEarly,
     #[error("Transaction query error: {0}.")]
     Query(#[from] QueryError),
+    #[error("Internal error: {0}.")]
+    Internal(String),
+    #[error("Invalid time ranges.")]
+    InvalidTimeRange,
+    #[error("The network was not as expected.")]
+    InvalidNetwork,
+    #[error("Invalid Id.")]
+    InvalidId,
 }
 
 impl axum::response::IntoResponse for Error {
@@ -130,11 +148,42 @@ impl axum::response::IntoResponse for Error {
                     axum::Json(format!("Invalid path: {e}")),
                 )
             }
+            Error::InvalidTimeRange => {
+                tracing::warn!("Invalid request. Validity range is not within allowed.");
+                (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json("Invalid validity range.".to_string()),
+                )
+            }
+            Error::InvalidNetwork => {
+                tracing::warn!(
+                    "Invalid request. The network does not match the network the service is \
+                     configured with."
+                );
+                (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json("Invalid network.".to_string()),
+                )
+            }
+            Error::InvalidId => {
+                tracing::warn!("Invalid request. Credential ID not a public key.");
+                (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json("Invalid ID.".to_string()),
+                )
+            }
             Error::CouldNotSubmit(e) => {
                 tracing::error!("Failed to submit transaction: {e}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     axum::Json("Could not submit transaction.".to_string()),
+                )
+            }
+            Error::Internal(e) => {
+                tracing::error!("Another internal error: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    axum::Json("Internal error.".to_string()),
                 )
             }
             Error::Query(e) => {
@@ -151,13 +200,6 @@ impl axum::response::IntoResponse for Error {
                     )
                 }
             }
-            Error::ExpiryTooEarly => {
-                tracing::warn!("Invalid request. Credential expiry is too early.");
-                (
-                    StatusCode::BAD_REQUEST,
-                    axum::Json("Credential expiry is too early.".to_string()),
-                )
-            }
         };
         r.into_response()
     }
@@ -165,21 +207,15 @@ impl axum::response::IntoResponse for Error {
 
 #[derive(Clone, Debug)]
 struct State {
+    crypto_params:       Arc<CryptographicParameters>,
     client:              Cis4Contract,
     issuer:              Arc<WalletAccount>,
+    issuer_key:          Arc<KeyPair>,
     nonce_counter:       Arc<tokio::sync::Mutex<Nonce>>,
-    // In milliseconds
-    min_allowed_expiry:  u64,
+    network:             Network,
+    credential_schema:   String,
+    credential_type:     BTreeSet<String>,
     max_register_energy: Energy,
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct IssueRequest {
-    credential: CredentialInfo,
-    #[serde(deserialize_with = "concordium_base::common::base16_decode")]
-    signature:  [u8; 64],
-    data:       DataToSign,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -208,28 +244,61 @@ async fn status(
     }
 }
 
+fn make_secrets(
+    state: &State,
+    holder_id: CredentialHolderId,
+    request: IssueRequest,
+) -> Result<Web3IdCredential<ArCurve, Web3IdAttribute>, Error> {
+    let mut randomness = BTreeMap::new();
+    {
+        let mut rng = rand::thread_rng();
+        for idx in request.credential_subject.attributes.keys() {
+            randomness.insert(
+                idx.clone(),
+                pedersen_commitment::Randomness::generate(&mut rng),
+            );
+        }
+    }
+
+    let signed_commitments = SignedCommitments::from_secrets(
+        &state.crypto_params,
+        &request.credential_subject.attributes,
+        &randomness,
+        &holder_id,
+        state.issuer_key.as_ref(),
+        state.client.address,
+    )
+    .ok_or_else(|| {
+        Error::Internal("Incorrect number of values vs. randomness. This should not happen.".into())
+    })?;
+
+    Ok(Web3IdCredential {
+        registry: state.client.address,
+        issuer_key: state.issuer_key.public.into(),
+        values: request.credential_subject.attributes,
+        randomness,
+        signature: signed_commitments.signature,
+        holder_id,
+        network: state.network,
+        credential_type: state.credential_type.clone(),
+        credential_schema: state.credential_schema.clone(),
+        valid_from: request.valid_from,
+        valid_until: request.valid_until,
+    })
+}
+
 #[tracing::instrument(level = "info", skip(state, request))]
 async fn issue_credential(
     axum::extract::State(mut state): axum::extract::State<State>,
     request: Result<axum::Json<IssueRequest>, JsonRejection>,
-) -> Result<axum::Json<TransactionHash>, Error> {
+) -> Result<axum::Json<IssueResponse>, Error> {
     tracing::info!("Request to issue a credential.");
     let axum::Json(request) = request?;
-    if request.data.timestamp.timestamp_millis()
-        < (chrono::Utc::now().timestamp_millis() as u64).saturating_add(state.min_allowed_expiry)
-    {
-        return Err(Error::ExpiryTooEarly);
-    }
-
-    let expiry = TransactionTime::from_seconds(request.data.timestamp.timestamp_millis() / 1000);
-
-    let storage_data = concordium_std::to_bytes(&StoreParam {
-        public_key: request.credential.holder_id,
-        signature:  request.signature,
-        data:       request.data,
-    });
 
     let mut nonce_guard = state.nonce_counter.lock().await;
+    // compute expiry after acquiring the lock to make sure we don't wait
+    // too long before acquiring the lock, rendering expiry problematic.
+    let expiry = TransactionTime::minutes_after(5);
     tracing::info!("Using nonce {} to send the transaction.", *nonce_guard);
     let metadata = Cis4TransactionMetadata {
         sender_address: state.issuer.address,
@@ -239,18 +308,53 @@ async fn issue_credential(
         amount: Amount::zero(),
     };
 
-    let tx = state
+    let holder_id = request
+        .credential_subject
+        .id
+        .ty
+        .extract_public_key()
+        .ok_or(Error::InvalidId)?
+        .into();
+    if request.credential_subject.id.network != state.network {
+        return Err(Error::InvalidNetwork);
+    }
+    let valid_from = Timestamp::from_timestamp_millis(
+        u64::try_from(request.valid_from.timestamp_millis())
+            .map_err(|_| Error::InvalidTimeRange)?,
+    );
+    let valid_until = request
+        .valid_until
+        .map(|v| {
+            u64::try_from(v.timestamp_millis())
+                .map_err(|_| Error::InvalidTimeRange)
+                .map(Timestamp::from_timestamp_millis)
+        })
+        .transpose()?;
+    if let Some(vu) = valid_until {
+        if vu < valid_from {
+            return Err(Error::InvalidTimeRange);
+        }
+    }
+    let cred_info = CredentialInfo {
+        holder_id,
+        holder_revocable: request.holder_revocable,
+        valid_from,
+        valid_until,
+        metadata_url: request.metadata_url.clone(),
+    };
+
+    let tx_hash = state
         .client
-        .register_credential(
-            &*state.issuer,
-            &metadata,
-            &request.credential,
-            &storage_data,
-        )
+        .register_credential(&*state.issuer, &metadata, &cred_info, &[])
         .await?;
     nonce_guard.next_mut();
     drop(nonce_guard);
-    Ok(axum::Json(tx))
+    let credential = make_secrets(&state, holder_id, request)?;
+
+    Ok(axum::Json(IssueResponse {
+        tx_hash,
+        credential,
+    }))
 }
 
 #[tokio::main]
@@ -293,6 +397,11 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Unable to establish connection to the node.")?;
 
+    let issuer_key = Arc::new(
+        serde_json::from_reader(&std::fs::File::open(&app.issuer_key)?)
+            .context("Unable to read issuer's key.")?,
+    );
+
     let issuer = Arc::new(WalletAccount::from_json_file(app.wallet)?);
 
     let nonce = client
@@ -309,13 +418,29 @@ async fn main() -> anyhow::Result<()> {
         nonce.nonce
     );
 
-    let client = Cis4Contract::create(client, app.registry).await?;
+    let crypto_params = client
+        .get_cryptographic_parameters(BlockIdentifier::LastFinal)
+        .await?
+        .response;
+    let mut client = Cis4Contract::create(client, app.registry).await?;
+
+    let credential_schema = client.registry_metadata(BlockIdentifier::LastFinal).await?;
 
     let state = State {
+        crypto_params: Arc::new(crypto_params),
         client,
+        network: app.network,
+        credential_schema: credential_schema.credential_schema.schema_ref.url().into(),
+        credential_type: [
+            "VerifiableCredential".into(),
+            "ConcordiumVerifiableCredential".into(),
+            credential_schema.credential_type.credential_type,
+        ]
+        .into_iter()
+        .collect(),
         issuer,
+        issuer_key,
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
-        min_allowed_expiry: app.min_allowed_expiry.into(),
         max_register_energy: app.max_register_energy,
     };
 
