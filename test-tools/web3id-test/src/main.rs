@@ -52,7 +52,7 @@ enum Action {
         about = "Create a new issuer smart contract instance."
     )]
     NewIssuer {
-        #[clap(long = "metadata-url", help = "The credential's metadat URL.")]
+        #[clap(long = "metadata-url", help = "The credential's metadata URL.")]
         metadata_url:    String,
         #[clap(long = "credential-type", help = "The credential type.")]
         credential_type: String,
