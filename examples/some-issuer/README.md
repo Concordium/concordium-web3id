@@ -19,10 +19,10 @@ Takes params as JSON:
 
 On success, returns as JSON:
 
-| Param        | Type                                                                                                          | Description                                                                     |
-| ------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `txHash`     | `string`                                                                                                      | A hash of the transaction, can be used to wait for the credential to be issued. |
-| `credential` | [`Web3IdCredential`](https://docs.rs/concordium_base/latest/concordium_base/web3id/enum.Web3IdAttribute.html) | The full, signed, credential.                                                   |
+| Param        | Type                                                                                                             | Description                                                                     |
+| ------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `txHash`     | `string`                                                                                                         | A hash of the transaction, can be used to wait for the credential to be issued. |
+| `credential` | [`Web3IdCredential`](https://docs.rs/concordium_base/latest/concordium_base/web3id/struct.Web3IdCredential.html) | The full, signed, credential.                                                   |
 
 ## Usage
 
