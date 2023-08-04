@@ -18,18 +18,22 @@ import {
   Row,
 } from 'reactstrap';
 import SVG from 'react-inlinesvg';
-import linkSvg from 'bootstrap-icons/icons/box-arrow-up-right.svg';
 import telegram from 'bootstrap-icons/icons/telegram.svg';
 import discord from 'bootstrap-icons/icons/discord.svg';
 import telegramColor from '../assets/telegram-logo-color.svg';
 import discordColor from '../assets/discord-logo-color.svg';
-
+import Issuer from './Issuer';
+import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 function App() {
   const [open, setOpen] = useState('0');
+  const [isAllowlisted, setIsAllowlisted] = useState(false);
 
-  const getCredentials = () => {
-    window.open('https://google.com');
-    setOpen('1');
+  const connectToWallet = () => {
+    (async () => {
+      const provider = await detectConcordiumProvider();
+      const accounts = await provider.requestAccounts();
+      setIsAllowlisted(accounts !== undefined);
+    })().catch(console.error);
   };
 
   const prove = (event: FormEvent) => {
@@ -46,7 +50,7 @@ function App() {
   return (
     <>
       <h1 className="mb-4">Concordium Social Media Verifier</h1>
-      {
+      {isAllowlisted ? (
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore workaround since toggle is not present on Accordion for some reason
         <Accordion open={open} toggle={setOpen}>
@@ -55,16 +59,7 @@ function App() {
             text="Start by getting Web3 ID credentials for your social media accounts.
                   If you already have them, you can proceed to Step 2."
           >
-            <Col md={12}>
-              <Button
-                className="d-inline-flex align-items-center"
-                color="primary"
-                onClick={getCredentials}
-              >
-                Get Credentials
-                <SVG className="ms-2" src={linkSvg} />
-              </Button>
-            </Col>
+            <Issuer />
           </Step>
           <Step
             step={1}
@@ -123,7 +118,20 @@ function App() {
             </Row>
           </Step>
         </Accordion>
-      }
+      ) : (
+        <Card>
+          <CardBody>
+            <Row className="gy-2">
+              <Col xs={12}>Please connect to your wallet.</Col>
+              <Col xs={12}>
+                <Button color="primary" onClick={connectToWallet}>
+                  Connect to wallet
+                </Button>
+              </Col>
+            </Row>
+          </CardBody>
+        </Card>
+      )}
     </>
   );
 }

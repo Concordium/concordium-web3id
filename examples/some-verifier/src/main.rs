@@ -64,7 +64,7 @@ struct App {
     log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "port",
-        default_value = "8080",
+        default_value = "80",
         help = "Port of the SoMe verifier.",
         env = "SOME_VERIFIER_PORT"
     )]
