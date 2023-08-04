@@ -60,7 +60,7 @@ pub async fn issue_credential(
     }
 }
 
-/// Checks that the credential itself is reasonable.
+/// Checks that the credential is reasonable.
 fn validate_credential(issuer: &IssuerState, credential: &CredentialInfo) -> anyhow::Result<()> {
     anyhow::ensure!(
         credential.holder_revocable,
@@ -91,8 +91,8 @@ async fn register_credential(
     user_id: String,
 ) -> anyhow::Result<IssueResponse> {
     let mut nonce_guard = issuer.nonce_counter.lock().await;
-    // compute expiry after acquiring the lock to make sure we don't wait
-    // too long before acquiring the lock, rendering expiry problematic.
+    // Compute expiry after acquiring the lock to make sure we don't wait
+    // too long before acquiring the lock, rendering expiry problematic
     let expiry = TransactionTime::minutes_after(5);
     tracing::info!("Using nonce {} to send the transaction.", *nonce_guard);
     let metadata = Cis4TransactionMetadata {

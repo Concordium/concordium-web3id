@@ -217,6 +217,7 @@ async fn issue_discord_credential(
     issue_credential(state.issuer, request.credential, user_id).await
 }
 
+/// Exchanges an OAuth2 `code` for a User.
 async fn get_user(state: &AppState, code: &str) -> anyhow::Result<User> {
     const API_ENDPOINT: &'static str = "https://discord.com/api/v10";
     let data = AccessTokenRequestData {
