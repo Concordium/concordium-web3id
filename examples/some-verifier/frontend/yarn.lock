@@ -42,7 +42,7 @@
   resolved "https://registry.yarnpkg.com/@concordium/rust-bindings/-/rust-bindings-1.2.0-alpha.tgz#ed851ed6c7669db9b422f10d04cf4b72f9bd222c"
   integrity sha512-ly6hdm/DHPtYGe9IETtjNU2RZep+HkiBUyb2Ipf8n92Pzi856VHghHcNkK8iOOeA+tsCFs0ztZgRIhhAUNeVdQ==
 
-"@concordium/web-sdk@^6.1.0-alpha":
+"@concordium/web-sdk@6.1.0-alpha", "@concordium/web-sdk@^6.1.0-alpha":
   version "6.1.0-alpha"
   resolved "https://registry.yarnpkg.com/@concordium/web-sdk/-/web-sdk-6.1.0-alpha.tgz#d27bdc53824e928b77c0648f828bd7a93aa0d1c8"
   integrity sha512-jPK6gtSOjlqC4hUxQyBJw4cRLmNv2GZJfwJugbK2nCmyh5OVb0qHv3TA3iO31dBSbH2ek6cxMfxj3DvJ/XIjOQ==

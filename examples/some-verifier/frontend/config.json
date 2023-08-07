@@ -3,11 +3,15 @@
   "issuers": {
     "telegram": {
       "url": "http://127.0.0.1:8080",
-      "did": "did:ccd:testnet:sci:5625:0/issuer"
+      "chain": "testnet",
+      "index": "5625",
+      "subindex": "0"
     },
     "discord": {
       "url": "http://127.0.0.1:8081",
-      "did": "did:ccd:testnet:sci:5631:0/issuer"
+      "chain": "testnet",
+      "index": "5631",
+      "subindex": "0"
     }
   }
 }

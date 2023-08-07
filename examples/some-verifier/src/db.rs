@@ -1,5 +1,9 @@
+use itertools::Itertools;
 use some_verifier_lib::Platform;
+use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Row};
+
+const ACCOUNTS_TABLE: &'static str = "accounts";
 
 /// A social media platform that can be stored in the database.
 pub trait DbPlatform {
@@ -15,7 +19,7 @@ trait DbName {
     fn column_name(&self) -> &'static str;
 }
 
-macro_rules! db_platform {
+macro_rules! db_platforms {
     {$($name:ident { db_name = $db_name:literal $(,)? })* } => {
         $(
             pub struct $name;
@@ -48,7 +52,7 @@ macro_rules! db_platform {
 // * Types each implementing DbPlatform
 // * Implements the DbName trait for the Platform enum
 // * Function accounts_from_row(row: Row) -> Vec<Account>
-db_platform! {
+db_platforms! {
     Telegram {
         db_name = "telegram",
     }
@@ -78,7 +82,43 @@ pub struct Database {
     client: tokio_postgres::Client,
 }
 
-pub type DbResult<T> = Result<T, tokio_postgres::Error>;
+#[derive(Debug, thiserror::Error)]
+pub enum DbError {
+    #[error("The database returned an error: {0}")]
+    Postgres(#[from] tokio_postgres::Error),
+    #[error("Column entries were malformed.")]
+    InvalidEntries,
+}
+pub type DbResult<T> = Result<T, DbError>;
+
+/// Am entry into a column in the main DB table
+#[derive(Debug)]
+pub enum ColumnEntry {
+    PlatformId { platform: Platform, user_id: i64 },
+    Presentation(serde_json::Value),
+    FirstName(String),
+    LastName(String),
+}
+
+impl ColumnEntry {
+    fn column_name(&self) -> &'static str {
+        match self {
+            ColumnEntry::PlatformId { platform, .. } => platform.column_name(),
+            ColumnEntry::Presentation(_) => "presentation",
+            ColumnEntry::FirstName(_) => "first_name",
+            ColumnEntry::LastName(_) => "last_name",
+        }
+    }
+
+    fn sql_val(&self) -> &(dyn ToSql + Sync) {
+        match self {
+            ColumnEntry::PlatformId { user_id, .. } => user_id,
+            ColumnEntry::Presentation(presentation) => presentation,
+            ColumnEntry::FirstName(first_name) => first_name,
+            ColumnEntry::LastName(last_name) => last_name,
+        }
+    }
+}
 
 impl Database {
     pub async fn connect(db_config: tokio_postgres::Config) -> DbResult<Self> {
@@ -94,20 +134,23 @@ impl Database {
     }
 
     pub async fn get_accounts<P: DbPlatform>(&self, id: i64) -> DbResult<Vec<Account>> {
-        self.client
+        let accounts = self
+            .client
             .query_one(
                 &format!(
-                    "SELECT * FROM accounts WHERE {} = $1",
+                    "SELECT * FROM {ACCOUNTS_TABLE} WHERE {} = $1",
                     P::PLATFORM.column_name()
                 ),
                 &[&id],
             )
             .await
-            .map(accounts_from_row)
+            .map(accounts_from_row)?;
+        Ok(accounts)
     }
 
     pub async fn get_revocation_status(&self, account: &Account) -> DbResult<bool> {
-        self.client
+        let status = self
+            .client
             .query_one(
                 &format!(
                     "SELECT id, revoked FROM {} WHERE id = $1",
@@ -116,6 +159,33 @@ impl Database {
                 &[&account.id],
             )
             .await
-            .map(|row| row.get("revoked"))
+            .map(|row| row.get("revoked"))?;
+        Ok(status)
+    }
+
+    pub async fn insert_row(&self, entries: &[ColumnEntry]) -> DbResult<()> {
+        if entries.len() == 0 {
+            return Err(DbError::InvalidEntries);
+        }
+
+        let mut columns = vec![];
+        let mut values = vec![];
+        for entry in entries {
+            if columns.contains(&entry.column_name()) {
+                return Err(DbError::InvalidEntries);
+            }
+            columns.push(entry.column_name());
+            values.push(entry.sql_val());
+        }
+
+        let statement = format!(
+            "INSERT INTO {ACCOUNTS_TABLE} ({}) VALUES ({})",
+            columns.join(", "),
+            (1..=columns.len()).format_with(", ", |i, f| f(&format_args!("${i}")))
+        );
+
+        self.client.execute(&statement, &values).await?;
+
+        Ok(())
     }
 }

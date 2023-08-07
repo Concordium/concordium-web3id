@@ -22,3 +22,9 @@ reqwest = { version = "0.11.18", features = ["json"] }
 rust-tdlib = "0.4.3"
 some-verifier-lib = { version = "*", path = "../some-verifier-lib" }
 tower-http = { version = "0.4.3", features = ["fs"] }
+http = "0.2.9"
+tonic = { version = "0.8", features = ["tls-roots", "tls"] }
+thiserror = "1.0.44"
+chrono = { version = "0.4.26", features = ["serde"] }
+sha2 = "0.10.7"
+itertools = "0.11.0"

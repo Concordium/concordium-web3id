@@ -4,23 +4,13 @@ import '../scss/Issuer.scss';
 import { useEffect, useMemo, useState } from 'react';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import { ListGroup, ListGroupItem, ListGroupItemHeading } from 'reactstrap';
-import _config from '../../config.json';
 import { nanoid } from 'nanoid';
+import { Config, Issuer, Platform } from '../lib/types';
+import _config from '../../config.json';
 const config = _config as Config;
 
-interface Config {
-  discordClientId: string;
-  issuers: Record<Platform, Issuer>;
-}
-
-enum Platform {
-  Telegram = 'telegram',
-  Discord = 'discord',
-}
-
-interface Issuer {
-  url: string;
-  did: string;
+function getContractDid(issuer: Issuer): string {
+  return `$did:ccd:${issuer.chain}:sci:${issuer.index}:${issuer.subindex}/issuer`;
 }
 
 interface DiscordWindowMessage {
@@ -185,7 +175,7 @@ async function requestCredential(
       'ConcordiumVerifiableCredential',
       'SoMeCredential',
     ],
-    issuer: issuer.did,
+    issuer: getContractDid(issuer),
     issuanceDate: new Date().toISOString(),
     credentialSubject: { userId },
     credentialSchema: {

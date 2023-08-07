@@ -2,7 +2,7 @@ use std::fmt::{self, Display, Formatter};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Platform {
     Telegram,
     Discord,
@@ -18,8 +18,14 @@ impl Display for Platform {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Verification {
-    pub platform: Platform,
-    pub username: String,
-    pub revoked: bool,
+pub enum Verification {
+    Platform {
+        platform: Platform,
+        username: String,
+        revoked: bool,
+    },
+    Name {
+        first_name: String,
+        last_name: String,
+    },
 }
