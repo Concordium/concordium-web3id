@@ -5,7 +5,6 @@ import {
     InitContractPayload,
     ModuleReference,
     UpdateContractPayload,
-    serializeTypeValue,
     toBuffer,
 } from '@concordium/web-sdk';
 import { WalletConnection } from '@concordium/react-components';
@@ -14,18 +13,38 @@ import { SmartContractParameters } from '@concordium/browser-wallet-api-helpers'
 import {
     CONTRACT_SUB_INDEX,
     CREDENTIAL_REGISTRY_BASE_64_SCHEMA,
-    STORAGE_CONTRACT_STORE_PARAMETER_SCHEMA,
+    MODULE_REFERENCE_CREDENTIAL_REGISTRY,
 } from './constants';
 
 export async function createNewIssuer(
     connection: WalletConnection,
     account: string,
     issuerMetaData: string,
-    schemas: string,
-    revocationKeys: string
+    issuerKey: string,
+    schemaCredential: string,
+    revocationKeys: string,
+    credentialType: string
 ) {
+    // Consider adding issuer_account as input paramter
+
     if (issuerMetaData === '') {
         throw new Error(`Set issuerMetaData`);
+    }
+
+    if (issuerKey === '') {
+        throw new Error(`Set issuerKey`);
+    }
+
+    if (credentialType === '') {
+        throw new Error(`Set credentialType`);
+    }
+
+    if (schemaCredential === '') {
+        throw new Error(`Set credentialSchemaURL`);
+    }
+
+    if (credentialType === '') {
+        throw new Error(`Set credentialType`);
     }
 
     const parameter = {
@@ -35,12 +54,12 @@ export async function createNewIssuer(
             },
             url: issuerMetaData,
         },
-        storage_address: {
-            index: 4791,
-            subindex: 0,
+        credential_type: {
+            credential_type: credentialType,
         },
-        schemas: JSON.parse(schemas),
-        issuer: {
+        issuer_key: issuerKey,
+        schema: JSON.parse(schemaCredential),
+        issuer_account: {
             None: [],
         },
         revocation_keys: JSON.parse(revocationKeys),
@@ -56,7 +75,7 @@ export async function createNewIssuer(
         AccountTransactionType.InitContract,
         {
             amount: new CcdAmount(BigInt(0)),
-            moduleRef: new ModuleReference('d39cb3fa33561edc8c2d691a622a5cd0851ed38655ecdb82d67b8a12068259e8'),
+            moduleRef: new ModuleReference(MODULE_REFERENCE_CREDENTIAL_REGISTRY),
             initName: 'credential_registry',
             param: toBuffer(''),
             maxContractExecutionEnergy: 30000n,
@@ -68,20 +87,15 @@ export async function createNewIssuer(
 export async function issueCredential(
     connection: WalletConnection,
     account: string,
-    signatureInput: string,
     browserPublicKey: string,
-    signature: string,
     validFromDate: string,
     validUntilDate: string,
     credentialMetaDataURL: string,
     credentialType: string,
     isHolderRevocable: boolean,
-    credentialRegistryContratIndex: number
+    credentialRegistryContratIndex: number,
+    auxiliaryData: number[]
 ) {
-    if (signature === '') {
-        throw new Error(`Generate signature`);
-    }
-
     if (validFromDate === '') {
         throw new Error(`Set validFromDate`);
     }
@@ -102,17 +116,6 @@ export async function issueCredential(
         throw new Error(`Set credentialRegistryContratIndex`);
     }
 
-    const storageInputParameter = {
-        data: JSON.parse(signatureInput),
-        public_key: browserPublicKey,
-        signature,
-    };
-
-    const serializedMessage = serializeTypeValue(
-        storageInputParameter,
-        toBuffer(STORAGE_CONTRACT_STORE_PARAMETER_SCHEMA, 'base64')
-    );
-
     const validFromDateISOString = new Date(Date.parse(validFromDate)).toISOString();
     const validUntilDateISOString = new Date(Date.parse(validUntilDate)).toISOString();
 
@@ -120,13 +123,9 @@ export async function issueCredential(
         credential_info: {
             holder_id: browserPublicKey,
             holder_revocable: isHolderRevocable,
-            commitment: [4, 2, 52, 3],
             valid_from: validFromDateISOString,
             valid_until: {
                 Some: [validUntilDateISOString],
-            },
-            credential_type: {
-                credential_type: credentialType,
             },
             metadata_url: {
                 hash: {
@@ -135,7 +134,7 @@ export async function issueCredential(
                 url: credentialMetaDataURL,
             },
         },
-        auxiliary_data: Array.from(serializedMessage),
+        auxiliary_data: auxiliaryData,
     } as SmartContractParameters;
 
     const schema = {

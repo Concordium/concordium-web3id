@@ -1,9 +1,11 @@
-# Issuer Front End
+# Issuer Front End Wallet Testing
+
+This is front end is used for testing the new browser wallet functionalities. 
 
 The front end has two flows:
 
-- An issuer should be able to deploy a new smart contract instance of the credential_registry_smart_contract.
-- This issuer should be able to issue new credentials by invoking the corresponding function in the credential_registry_smart_contract.
+- An issuer can deploy a new smart contract instance of the credential_registry_smart_contract.
+- Someone can issue a new credentials by invoking the corresponding function in the credential_registry_smart_contract via the concordium browser wallet.
 
 Only the browser wallet (no walletConnect) is supported in the first version.
 
