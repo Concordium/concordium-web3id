@@ -33,11 +33,11 @@ use rust_tdlib::tdjson;
 use rust_tdlib::types::{GetUser, TdlibParameters};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use some_verifier_lib::{Platform, Verification};
+use some_verifier_lib::{Account, Platform, Verification};
 use tonic::transport::ClientTlsConfig;
 use tower_http::services::ServeDir;
 
-use crate::db::{Account, Database, DbError, DbPlatform, Discord, Telegram};
+use crate::db::{Database, DbAccount, DbError, DbPlatform, Discord, Telegram};
 
 mod db;
 
@@ -227,11 +227,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/verifications", post(add_verification))
         .route(
             "/verifications/telegram/:id",
-            get(get_verifications::<Telegram>),
+            get(get_verification::<Telegram>),
         )
         .route(
             "/verifications/discord/:id",
-            get(get_verifications::<Discord>),
+            get(get_verification::<Discord>),
         )
         .with_state(state);
 
@@ -431,6 +431,7 @@ fn proof_to_column_entry(
     entries: &mut Vec<ColumnEntry>,
 ) -> Result<(), Error> {
     match proof {
+        // Platform verification (Telegram, Discord, etc.)
         CredentialProof::Web3Id {
             network,
             contract,
@@ -461,6 +462,7 @@ fn proof_to_column_entry(
             entries.push(ColumnEntry::PlatformId { platform, user_id });
             Ok(())
         }
+        // Full name
         CredentialProof::Account {
             network,
             // issuer, TODO: should we care about this?
@@ -505,16 +507,16 @@ fn proof_to_column_entry(
     }
 }
 
-async fn get_verifications<P: DbPlatform>(
+async fn get_verification<P: DbPlatform>(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Json<Vec<Verification>> {
-    let accounts = state.database.get_accounts::<P>(id).await;
-    match accounts {
-        Ok(accounts) => {
+) -> Json<Verification> {
+    let verification = state.database.get_verification::<P>(id).await;
+    match verification {
+        Ok(verification) => {
             // Futures that simultaneously look up username and revocation status of user
-            // The futures are then mapped to Verifications
-            let futures = accounts.iter().map(|acc| {
+            // The futures are then mapped to Accounts
+            let futures = verification.accounts.iter().map(|acc| {
                 future::try_join3(
                     async { Ok(acc.platform) },
                     get_username(&state, acc),
@@ -523,7 +525,7 @@ async fn get_verifications<P: DbPlatform>(
                         .get_revocation_status(acc)
                         .map_err(|e| anyhow!(e)),
                 )
-                .map_ok(|(platform, username, revoked)| Verification::Platform {
+                .map_ok(|(platform, username, revoked)| Account {
                     platform,
                     username,
                     revoked,
@@ -533,19 +535,25 @@ async fn get_verifications<P: DbPlatform>(
             // Keep all the non-error values since the others could not get a username
             // or a revocation status for whatever reason, probably because the user
             // is not verified with that platform
-            let verifications = future::join_all(futures)
+            let accounts = future::join_all(futures)
                 .await
                 .into_iter()
                 .filter_map(|res| res.ok())
                 .collect();
-            Json(verifications)
+
+            let result = Verification {
+                accounts,
+                full_name: verification.full_name,
+            };
+
+            Json(result)
         }
-        Err(_) => Json(vec![]),
+        Err(_) => Json(Verification::default()),
     }
 }
 
 /// Looks up the username of the given account.
-async fn get_username(state: &AppState, account: &Account) -> anyhow::Result<String> {
+async fn get_username(state: &AppState, account: &DbAccount) -> anyhow::Result<String> {
     #[derive(Deserialize)]
     struct DiscordUser {
         username: String,

@@ -1,9 +1,11 @@
 use itertools::Itertools;
-use some_verifier_lib::Platform;
+use some_verifier_lib::{FullName, Platform};
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Row};
 
-const ACCOUNTS_TABLE: &'static str = "accounts";
+const VERIFICATIONS_TABLE: &'static str = "verifications";
+const FIRST_NAME_COLUMN: &'static str = "first_name";
+const LAST_NAME_COLUMN: &'static str = "last_name";
 
 /// A social media platform that can be stored in the database.
 pub trait DbPlatform {
@@ -42,8 +44,18 @@ macro_rules! db_platforms {
             }
         }
 
-        fn accounts_from_row(row: Row) -> Vec<Account> {
-            vec![ $( Account::from_row::<$name>(&row)),* ]
+        fn verification_from_row(row: Row) -> DbVerification {
+            let full_name = row.try_get(FIRST_NAME_COLUMN)
+                .and_then(|first_name| {
+                    let last_name = row.try_get(LAST_NAME_COLUMN)?;
+                    let full_name = FullName { first_name, last_name };
+                    Ok(full_name)
+                })
+                .ok();
+            DbVerification {
+                accounts: vec![ $( DbAccount::from_row::<$name>(&row)),* ],
+                full_name,
+            }
         }
     };
 }
@@ -51,7 +63,7 @@ macro_rules! db_platforms {
 // Produces:
 // * Types each implementing DbPlatform
 // * Implements the DbName trait for the Platform enum
-// * Function accounts_from_row(row: Row) -> Vec<Account>
+// * Function accounts_from_row(row: Row) -> Verification
 db_platforms! {
     Telegram {
         db_name = "telegram",
@@ -64,18 +76,23 @@ db_platforms! {
 /// A platform and an user ID for that platform.
 ///
 /// Note: In the future `id` may change to a different type.
-pub struct Account {
+pub struct DbAccount {
     pub platform: Platform,
     pub id: i64,
 }
 
-impl Account {
-    fn from_row<P: DbPlatform>(row: &Row) -> Account {
+impl DbAccount {
+    fn from_row<P: DbPlatform>(row: &Row) -> DbAccount {
         Self {
             platform: P::PLATFORM,
             id: row.get(P::PLATFORM.column_name()),
         }
     }
+}
+
+pub struct DbVerification {
+    pub accounts: Vec<DbAccount>,
+    pub full_name: Option<FullName>,
 }
 
 pub struct Database {
@@ -105,8 +122,8 @@ impl ColumnEntry {
         match self {
             ColumnEntry::PlatformId { platform, .. } => platform.column_name(),
             ColumnEntry::Presentation(_) => "presentation",
-            ColumnEntry::FirstName(_) => "first_name",
-            ColumnEntry::LastName(_) => "last_name",
+            ColumnEntry::FirstName(_) => FIRST_NAME_COLUMN,
+            ColumnEntry::LastName(_) => LAST_NAME_COLUMN,
         }
     }
 
@@ -133,22 +150,23 @@ impl Database {
         Ok(Self { client })
     }
 
-    pub async fn get_accounts<P: DbPlatform>(&self, id: i64) -> DbResult<Vec<Account>> {
-        let accounts = self
+    pub async fn get_verification<P: DbPlatform>(&self, id: i64) -> DbResult<DbVerification> {
+        let verification = self
             .client
             .query_one(
                 &format!(
-                    "SELECT * FROM {ACCOUNTS_TABLE} WHERE {} = $1",
+                    "SELECT * FROM {VERIFICATIONS_TABLE} WHERE {} = $1",
                     P::PLATFORM.column_name()
                 ),
                 &[&id],
             )
             .await
-            .map(accounts_from_row)?;
-        Ok(accounts)
+            .map(verification_from_row)?;
+
+        Ok(verification)
     }
 
-    pub async fn get_revocation_status(&self, account: &Account) -> DbResult<bool> {
+    pub async fn get_revocation_status(&self, account: &DbAccount) -> DbResult<bool> {
         let status = self
             .client
             .query_one(
@@ -179,7 +197,7 @@ impl Database {
         }
 
         let statement = format!(
-            "INSERT INTO {ACCOUNTS_TABLE} ({}) VALUES ({})",
+            "INSERT INTO {VERIFICATIONS_TABLE} ({}) VALUES ({})",
             columns.join(", "),
             (1..=columns.len()).format_with(", ", |i, f| f(&format_args!("${i}")))
         );

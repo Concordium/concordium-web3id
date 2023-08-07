@@ -17,15 +17,21 @@ impl Display for Platform {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub enum Verification {
-    Platform {
-        platform: Platform,
-        username: String,
-        revoked: bool,
-    },
-    Name {
-        first_name: String,
-        last_name: String,
-    },
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Account {
+    pub platform: Platform,
+    pub username: String,
+    pub revoked: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FullName {
+    pub first_name: String,
+    pub last_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct Verification {
+    pub accounts: Vec<Account>,
+    pub full_name: Option<FullName>,
 }
