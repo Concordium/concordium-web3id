@@ -445,8 +445,8 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
-        .with_default_metrics()
         .with_prefix("web3id-issuer")
+        .with_default_metrics()
         .build_pair();
 
     let prometheus_handle = if let Some(prometheus_address) = app.prometheus_address {
