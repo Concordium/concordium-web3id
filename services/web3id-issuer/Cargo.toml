@@ -8,11 +8,11 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 axum = { version = "0.6", features = ["tracing"] }
-axum-prometheus = "0.3.3"
-chrono = { version = "0.4.26", features = ["serde"] }
+axum-prometheus = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.3", features = ["env", "derive"] }
 concordium-rust-sdk = { version = "*", path = "../../deps/concordium-rust-sdk" }
-serde = { version = "1.0.163", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 rand = { version = "0.7" }
 thiserror = "1.0.40"

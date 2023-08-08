@@ -25,24 +25,24 @@ Some commands, such as `register` need attributes of a credential to be provided
 An example of a JSON file that can be used is
 ```json
 {
-    "0": "foo",
-    "3": 3
+    "HelloAttribute": "foo",
+    "WorldAttribute": 3
 }
 ```
 
-which states that attribute at tag `0` should have a string value `foo` and attribute at tag `3`
+which states that attribute `HelloAttribute` should have a string value `foo` and attribute `WorldAttribute`
 should have attribute integer value `3`.
 
 Similarly, the `prove` command requires a statement to be proved. An example is
 ```json
 [
   {
-    "attributeTag": 0,
+    "attributeTag": "HelloAttribute",
     "type": "AttributeInSet",
     "set": ["foo", "bar", "baz", "qux"]
   },
   {
-    "attributeTag": 3,
+    "attributeTag": "WorldAttribute",
     "lower": 0,
     "upper": 17,
     "type": "AttributeInRange"

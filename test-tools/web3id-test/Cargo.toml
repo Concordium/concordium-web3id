@@ -11,6 +11,7 @@ anyhow = "1.0"
 chrono = "0.4.24"
 clap = { version = "4.3", features = ["derive", "env"] }
 concordium-rust-sdk = { version = "3", path = "../../deps/concordium-rust-sdk" }
+web3id-issuer = { version = "*", path = "../../services/web3id-issuer/" }
 ed25519-dalek = "1.0.1"
 hex = "0.4"
 key_derivation = { version = "*", path = "../../deps/concordium-rust-sdk/concordium-base/rust-src/key_derivation" }

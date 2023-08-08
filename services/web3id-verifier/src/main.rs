@@ -164,8 +164,7 @@ async fn verify_presentation(
         return Err(Error::InactiveCredentials);
     }
     // And then verify the cryptographic proofs.
-    let request =
-        presentation.verify(&state.params, public_data.iter().map(|cm| &cm.commitments))?;
+    let request = presentation.verify(&state.params, public_data.iter().map(|cm| &cm.inputs))?;
     Ok(axum::Json(Response {
         block: bi.block_hash,
         block_time: bi.response.block_slot_time,
@@ -227,8 +226,8 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
-        .with_default_metrics()
         .with_prefix("web3id-verifier")
+        .with_default_metrics()
         .build_pair();
 
     let prometheus_handle = if let Some(prometheus_address) = app.prometheus_address {

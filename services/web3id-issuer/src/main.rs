@@ -12,18 +12,25 @@ use concordium_rust_sdk::{
     common::types::{KeyPair, TransactionTime},
     contract_client::CredentialInfo,
     id::{constants::ArCurve, pedersen_commitment},
-    smart_contracts::common::Amount,
+    smart_contracts::common::{Amount, Timestamp},
     types::{
         hashes::{BlockHash, TransactionHash},
         transactions::send::GivenEnergy,
         ContractAddress, CryptographicParameters, Energy, Nonce, WalletAccount,
     },
     v2::{self, BlockIdentifier, QueryError},
-    web3id::{SignedCommitments, Web3IdAttribute, Web3IdCredential},
+    web3id::{
+        did::Network, CredentialHolderId, SignedCommitments, Web3IdAttribute, Web3IdCredential,
+    },
 };
-use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
+    sync::Arc,
+};
 use tonic::transport::ClientTlsConfig;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
+use web3id_issuer::{IssueRequest, IssueResponse};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -82,6 +89,12 @@ struct App {
     )]
     issuer_key:          PathBuf,
     #[clap(
+        long = "network",
+        help = "Network on which this issuer operates.",
+        env = "CONCORDIUM_WEB3ID_NETWORK"
+    )]
+    network:             Network,
+    #[clap(
         long = "prometheus-address",
         help = "Listen address for the server.",
         env = "CONCORDIUM_WEB3ID_ISSUER_PROMETHEUS_ADDRESS"
@@ -110,6 +123,12 @@ enum Error {
     Query(#[from] QueryError),
     #[error("Internal error: {0}.")]
     Internal(String),
+    #[error("Invalid time ranges.")]
+    InvalidTimeRange,
+    #[error("The network was not as expected.")]
+    InvalidNetwork,
+    #[error("Invalid Id.")]
+    InvalidId,
 }
 
 impl axum::response::IntoResponse for Error {
@@ -127,6 +146,30 @@ impl axum::response::IntoResponse for Error {
                 (
                     StatusCode::BAD_REQUEST,
                     axum::Json(format!("Invalid path: {e}")),
+                )
+            }
+            Error::InvalidTimeRange => {
+                tracing::warn!("Invalid request. Validity range is not within allowed.");
+                (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json("Invalid validity range.".to_string()),
+                )
+            }
+            Error::InvalidNetwork => {
+                tracing::warn!(
+                    "Invalid request. The network does not match the network the service is \
+                     configured with."
+                );
+                (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json("Invalid network.".to_string()),
+                )
+            }
+            Error::InvalidId => {
+                tracing::warn!("Invalid request. Credential ID not a public key.");
+                (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json("Invalid ID.".to_string()),
                 )
             }
             Error::CouldNotSubmit(e) => {
@@ -169,21 +212,10 @@ struct State {
     issuer:              Arc<WalletAccount>,
     issuer_key:          Arc<KeyPair>,
     nonce_counter:       Arc<tokio::sync::Mutex<Nonce>>,
+    network:             Network,
+    credential_schema:   String,
+    credential_type:     BTreeSet<String>,
     max_register_energy: Energy,
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct IssueRequest {
-    credential: CredentialInfo,
-    values:     BTreeMap<u8, Web3IdAttribute>,
-}
-
-#[derive(Debug, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct IssueResponse {
-    tx_hash:    TransactionHash,
-    credential: Web3IdCredential<ArCurve, Web3IdAttribute>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -214,36 +246,44 @@ async fn status(
 
 fn make_secrets(
     state: &State,
-    values: BTreeMap<u8, Web3IdAttribute>,
-    credential: &CredentialInfo,
+    holder_id: CredentialHolderId,
+    request: IssueRequest,
 ) -> Result<Web3IdCredential<ArCurve, Web3IdAttribute>, Error> {
     let mut randomness = BTreeMap::new();
     {
         let mut rng = rand::thread_rng();
-        for idx in values.keys() {
-            randomness.insert(*idx, pedersen_commitment::Randomness::generate(&mut rng));
+        for idx in request.credential_subject.attributes.keys() {
+            randomness.insert(
+                idx.clone(),
+                pedersen_commitment::Randomness::generate(&mut rng),
+            );
         }
     }
 
     let signed_commitments = SignedCommitments::from_secrets(
         &state.crypto_params,
-        &values,
+        &request.credential_subject.attributes,
         &randomness,
-        &credential.holder_id,
+        &holder_id,
         state.issuer_key.as_ref(),
+        state.client.address,
     )
     .ok_or_else(|| {
         Error::Internal("Incorrect number of values vs. randomness. This should not happen.".into())
     })?;
 
     Ok(Web3IdCredential {
-        issuance_date: chrono::Utc::now(),
         registry: state.client.address,
         issuer_key: state.issuer_key.public.into(),
-        values,
+        values: request.credential_subject.attributes,
         randomness,
         signature: signed_commitments.signature,
-        holder_id: credential.holder_id,
+        holder_id,
+        network: state.network,
+        credential_type: state.credential_type.clone(),
+        credential_schema: state.credential_schema.clone(),
+        valid_from: request.valid_from,
+        valid_until: request.valid_until,
     })
 }
 
@@ -268,13 +308,48 @@ async fn issue_credential(
         amount: Amount::zero(),
     };
 
+    let holder_id = request
+        .credential_subject
+        .id
+        .ty
+        .extract_public_key()
+        .ok_or(Error::InvalidId)?
+        .into();
+    if request.credential_subject.id.network != state.network {
+        return Err(Error::InvalidNetwork);
+    }
+    let valid_from = Timestamp::from_timestamp_millis(
+        u64::try_from(request.valid_from.timestamp_millis())
+            .map_err(|_| Error::InvalidTimeRange)?,
+    );
+    let valid_until = request
+        .valid_until
+        .map(|v| {
+            u64::try_from(v.timestamp_millis())
+                .map_err(|_| Error::InvalidTimeRange)
+                .map(Timestamp::from_timestamp_millis)
+        })
+        .transpose()?;
+    if let Some(vu) = valid_until {
+        if vu < valid_from {
+            return Err(Error::InvalidTimeRange);
+        }
+    }
+    let cred_info = CredentialInfo {
+        holder_id,
+        holder_revocable: request.holder_revocable,
+        valid_from,
+        valid_until,
+        metadata_url: request.metadata_url.clone(),
+    };
+
     let tx_hash = state
         .client
-        .register_credential(&*state.issuer, &metadata, &request.credential, &[])
+        .register_credential(&*state.issuer, &metadata, &cred_info, &[])
         .await?;
     nonce_guard.next_mut();
     drop(nonce_guard);
-    let credential = make_secrets(&state, request.values, &request.credential)?;
+    let credential = make_secrets(&state, holder_id, request)?;
 
     Ok(axum::Json(IssueResponse {
         tx_hash,
@@ -347,20 +422,31 @@ async fn main() -> anyhow::Result<()> {
         .get_cryptographic_parameters(BlockIdentifier::LastFinal)
         .await?
         .response;
-    let client = Cis4Contract::create(client, app.registry).await?;
+    let mut client = Cis4Contract::create(client, app.registry).await?;
+
+    let credential_schema = client.registry_metadata(BlockIdentifier::LastFinal).await?;
 
     let state = State {
-        issuer,
         crypto_params: Arc::new(crypto_params),
-        issuer_key,
         client,
+        network: app.network,
+        credential_schema: credential_schema.credential_schema.schema_ref.url().into(),
+        credential_type: [
+            "VerifiableCredential".into(),
+            "ConcordiumVerifiableCredential".into(),
+            credential_schema.credential_type.credential_type,
+        ]
+        .into_iter()
+        .collect(),
+        issuer,
+        issuer_key,
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
         max_register_energy: app.max_register_energy,
     };
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
-        .with_default_metrics()
         .with_prefix("web3id-issuer")
+        .with_default_metrics()
         .build_pair();
 
     let prometheus_handle = if let Some(prometheus_address) = app.prometheus_address {
