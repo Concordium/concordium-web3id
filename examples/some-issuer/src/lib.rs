@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use axum::Json;
-use axum_sessions::async_session::chrono;
+use axum_sessions::async_session::chrono::{self, TimeZone};
 use concordium_rust_sdk::cis4::{Cis4Contract, Cis4TransactionMetadata};
 use concordium_rust_sdk::common::types::{KeyPair, TransactionTime};
 use concordium_rust_sdk::contract_client::CredentialInfo;
@@ -13,6 +13,7 @@ use concordium_rust_sdk::smart_contracts::common::{Amount, Duration, Timestamp};
 use concordium_rust_sdk::types::hashes::TransactionHash;
 use concordium_rust_sdk::types::transactions::send::GivenEnergy;
 use concordium_rust_sdk::types::{CryptographicParameters, Energy, Nonce, WalletAccount};
+use concordium_rust_sdk::web3id::did::Network;
 use concordium_rust_sdk::web3id::{SignedCommitments, Web3IdAttribute, Web3IdCredential};
 use reqwest::{StatusCode, Url};
 use serde::Serialize;
@@ -21,11 +22,13 @@ use serde::Serialize;
 pub struct IssuerState {
     pub crypto_params: Arc<CryptographicParameters>,
     pub contract_client: Cis4Contract,
+    pub network: Network,
     pub issuer: Arc<WalletAccount>,
     pub issuer_key: Arc<KeyPair>,
     pub nonce_counter: Arc<tokio::sync::Mutex<Nonce>>,
     pub max_register_energy: Energy,
     pub metadata_url: Arc<Url>,
+    pub credential_schema_url: Arc<Url>,
 }
 
 #[derive(Debug, Serialize)]
@@ -109,8 +112,10 @@ async fn register_credential(
         .await?;
     nonce_guard.next_mut();
     drop(nonce_guard);
-    let values: BTreeMap<u8, Web3IdAttribute> =
-        BTreeMap::from([(0, Web3IdAttribute::String(AttributeKind(user_id)))]);
+    let values: BTreeMap<_, _> = BTreeMap::from([(
+        String::from("userId"),
+        Web3IdAttribute::String(AttributeKind(user_id)),
+    )]);
     let credential = make_secrets(&issuer, values, &credential)?;
 
     Ok(IssueResponse {
@@ -121,14 +126,17 @@ async fn register_credential(
 
 fn make_secrets(
     issuer: &IssuerState,
-    values: BTreeMap<u8, Web3IdAttribute>,
+    values: BTreeMap<String, Web3IdAttribute>,
     credential: &CredentialInfo,
 ) -> anyhow::Result<Web3IdCredential<ArCurve, Web3IdAttribute>> {
     let mut randomness = BTreeMap::new();
     {
         let mut rng = rand::thread_rng();
         for idx in values.keys() {
-            randomness.insert(*idx, pedersen_commitment::Randomness::generate(&mut rng));
+            randomness.insert(
+                idx.clone(),
+                pedersen_commitment::Randomness::generate(&mut rng),
+            );
         }
     }
 
@@ -138,16 +146,31 @@ fn make_secrets(
         &randomness,
         &credential.holder_id,
         issuer.issuer_key.as_ref(),
+        issuer.contract_client.address,
     )
     .context("Incorrect number of values vs. randomness. This should not happen.")?;
 
+    let valid_from = chrono::Utc
+        .timestamp_millis_opt(credential.valid_from.timestamp_millis() as i64)
+        .single()
+        .context("Failed to convert valid_from time.")?;
+
     Ok(Web3IdCredential {
-        issuance_date: chrono::Utc::now(),
+        holder_id: credential.holder_id,
+        network: issuer.network,
         registry: issuer.contract_client.address,
+        credential_type: [
+            String::from("VerifiableCredential"),
+            String::from("ConcordiumVerifiableCredential"),
+            String::from("TelegramCredential"),
+        ]
+        .into(),
+        valid_from,
+        valid_until: None,
         issuer_key: issuer.issuer_key.public.into(),
         values,
         randomness,
         signature: signed_commitments.signature,
-        holder_id: credential.holder_id,
+        credential_schema: "todo!()".into(),
     })
 }

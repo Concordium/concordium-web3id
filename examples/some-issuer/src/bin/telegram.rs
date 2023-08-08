@@ -1,5 +1,6 @@
 use axum::extract::State;
 use concordium_rust_sdk::contract_client::CredentialInfo;
+use concordium_rust_sdk::web3id::did::Network;
 use hmac::{Hmac, Mac};
 use http::{HeaderValue, StatusCode};
 use reqwest::Url;
@@ -7,6 +8,7 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use some_issuer::{issue_credential, IssueResponse, IssuerState};
 use std::fmt::{self, Display};
+use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
@@ -54,6 +56,13 @@ struct App {
     )]
     registry: ContractAddress,
     #[clap(
+        long = "network",
+        help = "The network of the issuer.",
+        default_value = "testnet",
+        env = "TELEGRAM_ISSUER_NETWORK"
+    )]
+    network: Network,
+    #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "TELEGRAM_ISSUER_WALLET"
@@ -81,19 +90,19 @@ struct App {
     )]
     telegram_bot_token: String,
     #[clap(
-        long = "port",
-        help = "Port of the issuer.",
-        default_value = "8080",
-        env = "TELEGRAM_ISSUER_PORT"
+        long = "listen-address",
+        help = "Socket addres for the Telegram issuer.",
+        default_value = "0.0.0.0:8080",
+        env = "TELEGRAM_ISSUER_LISTEN_ADDRESS"
     )]
-    port: u16,
+    listen_address: SocketAddr,
     #[clap(
-        long = "metadata",
-        help = "URL of the credential metadata.",
-        default_value = "http://127.0.0.1:8080/json-schemas/credential-metadata.json",
-        env = "TELEGRAM_ISSUER_METADATA_URL"
+        long = "url",
+        help = "URL of the Telegram issuer.",
+        default_value = "http://127.0.0.1:8080/",
+        env = "TELEGRAM_ISSUER_URL"
     )]
-    metadata_url: Url,
+    url: Url,
     #[clap(
         long = "dapp-domain",
         help = "The domain of the dApp, used for CORS.",
@@ -242,14 +251,19 @@ async fn main() -> anyhow::Result<()> {
 
     let contract_client = Cis4Contract::create(node_client, app.registry).await?;
 
+    let metadata_url = app.url.join("json-schemas/credential-metadata.json")?;
+    let credential_schema_url = app.url.join("json-schemas/JsonSchema2023-discord.json")?;
+
     let issuer = IssuerState {
         crypto_params: Arc::new(crypto_params),
         contract_client,
+        network: app.network,
         issuer: Arc::new(issuer_account),
         issuer_key: Arc::new(issuer_key),
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
         max_register_energy: app.max_register_energy,
-        metadata_url: Arc::new(app.metadata_url),
+        metadata_url: Arc::new(metadata_url),
+        credential_schema_url: Arc::new(credential_schema_url),
     };
     let state = AppState {
         issuer,
@@ -273,9 +287,9 @@ async fn main() -> anyhow::Result<()> {
         .layer(cors)
         .with_state(state);
 
-    tracing::info!("Starting server on port {}...", app.port);
+    tracing::info!("Starting server on {}...", app.listen_address);
 
-    axum::Server::bind(&format!("0.0.0.0:{}", app.port).parse().unwrap())
+    axum::Server::bind(&app.listen_address)
         .serve(router.into_make_service())
         .await
         .context("Unable to start server.")

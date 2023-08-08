@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -16,6 +17,7 @@ use concordium_rust_sdk::cis4::Cis4Contract;
 use concordium_rust_sdk::contract_client::CredentialInfo;
 use concordium_rust_sdk::types::{ContractAddress, Energy, WalletAccount};
 use concordium_rust_sdk::v2::{self, BlockIdentifier};
+use concordium_rust_sdk::web3id::did::Network;
 use handlebars::Handlebars;
 use http::{HeaderValue, StatusCode};
 use rand::Rng;
@@ -44,6 +46,13 @@ struct App {
         env = "DISCORD_ISSUER_LOG_LEVEL"
     )]
     log_level: tracing_subscriber::filter::LevelFilter,
+    #[clap(
+        long = "network",
+        help = "The network of the issuer.",
+        default_value = "testnet",
+        env = "DISCORD_ISSUER_NETWORK"
+    )]
+    network: Network,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
@@ -91,15 +100,15 @@ struct App {
     )]
     discord_client_secret: String,
     #[clap(
-        long = "port",
-        help = "Port of the issuer.",
-        default_value = "8081",
-        env = "DISCORD_ISSUER_PORT"
+        long = "listen-address",
+        help = "Socket addres for the Discord issuer.",
+        default_value = "0.0.0.0:8081",
+        env = "DISCORD_ISSUER_LISTEN_ADDRESS"
     )]
-    port: u16,
+    listen_address: SocketAddr,
     #[clap(
         long = "url",
-        help = "URL of Discord issuer.",
+        help = "URL of the Discord issuer.",
         default_value = "http://127.0.0.1:8081/",
         env = "DISCORD_ISSUER_URL"
     )]
@@ -328,14 +337,18 @@ async fn main() -> anyhow::Result<()> {
     handlebars.register_template_file("oauth", "./templates/discord-oauth.hbs")?;
 
     let metadata_url = app.url.join("json-schemas/credential-metadata.json")?;
+    let credential_schema_url = app.url.join("json-schemas/JsonSchema2023-discord.json")?;
+
     let issuer = IssuerState {
         crypto_params: Arc::new(crypto_params),
         contract_client,
+        network: app.network,
         issuer: Arc::new(issuer_account),
         issuer_key: Arc::new(issuer_key),
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
         max_register_energy: app.max_register_energy,
         metadata_url: Arc::new(metadata_url),
+        credential_schema_url: Arc::new(credential_schema_url),
     };
 
     let discord_redirect_uri = app.url.join("discord-oauth2")?;
@@ -375,9 +388,9 @@ async fn main() -> anyhow::Result<()> {
         .layer(cors)
         .with_state(state);
 
-    tracing::info!("Starting server on port {}...", app.port);
+    tracing::info!("Starting server on {}...", app.listen_address);
 
-    axum::Server::bind(&format!("0.0.0.0:{}", app.port).parse().unwrap())
+    axum::Server::bind(&app.listen_address)
         .serve(router.into_make_service())
         .await
         .context("Unable to start server.")
