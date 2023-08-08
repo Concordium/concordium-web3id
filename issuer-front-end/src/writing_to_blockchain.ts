@@ -25,8 +25,6 @@ export async function createNewIssuer(
     revocationKeys: string,
     credentialType: string
 ) {
-    // Consider adding issuer_account as input paramter
-
     if (issuerMetaData === '') {
         throw new Error(`Set issuerMetaData`);
     }
@@ -60,7 +58,7 @@ export async function createNewIssuer(
         issuer_key: issuerKey,
         schema: JSON.parse(schemaCredential),
         issuer_account: {
-            None: [],
+            Some: [account],
         },
         revocation_keys: JSON.parse(revocationKeys),
     } as SmartContractParameters;
@@ -91,7 +89,6 @@ export async function issueCredential(
     validFromDate: string,
     validUntilDate: string,
     credentialMetaDataURL: string,
-    credentialType: string,
     isHolderRevocable: boolean,
     credentialRegistryContratIndex: number,
     auxiliaryData: number[]
@@ -106,10 +103,6 @@ export async function issueCredential(
 
     if (credentialMetaDataURL === '') {
         throw new Error(`Set credentialMetaDataURL`);
-    }
-
-    if (credentialType === '') {
-        throw new Error(`Set credentialType`);
     }
 
     if (credentialRegistryContratIndex === 0) {

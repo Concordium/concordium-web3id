@@ -7,7 +7,7 @@
         "node": ">=16.x"
     },
     "dependencies": {
-        "@concordium/browser-wallet-api-helpers": "^2.5.0",
+        "@concordium/browser-wallet-api-helpers": "file:../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers",
         "@concordium/react-components": "^0.3.0",
         "@concordium/wallet-connectors": "^0.3.1",
         "@concordium/web-sdk": "^3.4.0",

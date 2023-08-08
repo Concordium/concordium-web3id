@@ -260,6 +260,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@concordium/browser-wallet-api-helpers@file:../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers::locator=issuer-front-end%40workspace%3A.":
+  version: 2.5.1
+  resolution: "@concordium/browser-wallet-api-helpers@file:../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers#../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers::hash=679dc5&locator=issuer-front-end%40workspace%3A."
+  dependencies:
+    "@concordium/web-sdk": ^6.1.0-alpha
+  checksum: c8293ddbba2bd149e66f8a2de84f9a4200a26cdf0aaed5c5b98e972a75ce29013a8419818627fb76c682ee7e3f0d0fd4bffcec57f3c23324f0508d77ee209840
+  languageName: node
+  linkType: hard
+
 "@concordium/browser-wallet-api-helpers@npm:^2.5.0":
   version: 2.5.0
   resolution: "@concordium/browser-wallet-api-helpers@npm:2.5.0"
@@ -289,6 +298,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@concordium/common-sdk@npm:9.1.0-alpha":
+  version: 9.1.0-alpha
+  resolution: "@concordium/common-sdk@npm:9.1.0-alpha"
+  dependencies:
+    "@concordium/rust-bindings": 1.2.0-alpha
+    "@grpc/grpc-js": ^1.3.4
+    "@noble/ed25519": ^1.7.1
+    "@protobuf-ts/runtime-rpc": ^2.8.2
+    "@scure/bip39": ^1.1.0
+    bs58check: ^2.1.2
+    buffer: ^6.0.3
+    cross-fetch: 3.1.5
+    hash.js: ^1.1.7
+    iso-3166-1: ^2.1.1
+    json-bigint: ^1.0.0
+    uuid: ^8.3.2
+  checksum: 5e900f3c65de4d196c3c9c54b95b3e11604567aa480ce79b252327f0322fb1ca9fbb1e374deff96e4b2f890d809491b46ddec1ee0b5c473abd01479ddd5ce5f9
+  languageName: node
+  linkType: hard
+
 "@concordium/react-components@npm:^0.3.0":
   version: 0.3.0
   resolution: "@concordium/react-components@npm:0.3.0"
@@ -304,6 +333,13 @@ __metadata:
   version: 0.11.1
   resolution: "@concordium/rust-bindings@npm:0.11.1"
   checksum: fe1bbcd0a98a7e148cfe9fa5ec69a693b19608b64b01723aedd9a7616958d5069cef006f8dfa610f7fad3cd3e8d356c99c76ff2606ea44d90138a43897118277
+  languageName: node
+  linkType: hard
+
+"@concordium/rust-bindings@npm:1.2.0-alpha":
+  version: 1.2.0-alpha
+  resolution: "@concordium/rust-bindings@npm:1.2.0-alpha"
+  checksum: 907df900b4be8696042cb392696aee9894db80b3cdb02cacee01303f882b278af15245bce8b9499a8086bc8e7d33864a307e133fce70f318a57d6e5580b741f0
   languageName: node
   linkType: hard
 
@@ -329,6 +365,20 @@ __metadata:
     buffer: ^6.0.3
     process: ^0.11.10
   checksum: 681cfdb2533bba93ac62f44b0fcf5596a0fd89a5895085e3e6a416fa162bc1d22ac3bc1a6f8b89a196c46e89e9fd6401c25c493079f406bf8dfa9c6a7eb0aaa7
+  languageName: node
+  linkType: hard
+
+"@concordium/web-sdk@npm:^6.1.0-alpha":
+  version: 6.1.0-alpha
+  resolution: "@concordium/web-sdk@npm:6.1.0-alpha"
+  dependencies:
+    "@concordium/common-sdk": 9.1.0-alpha
+    "@concordium/rust-bindings": 1.2.0-alpha
+    "@grpc/grpc-js": ^1.3.4
+    "@protobuf-ts/grpcweb-transport": ^2.8.2
+    buffer: ^6.0.3
+    process: ^0.11.10
+  checksum: 6f87653c893a7e30db84a442a78e4ae91acf34cc7bea148fca72ab605636c72c027c28bf62a4350b54b74674e5a5dd8ec8d406d6592c20bed95432e2c38b9b91
   languageName: node
   linkType: hard
 
@@ -5225,7 +5275,7 @@ cors@latest:
   version: 0.0.0-use.local
   resolution: "issuer-front-end@workspace:."
   dependencies:
-    "@concordium/browser-wallet-api-helpers": ^2.5.0
+    "@concordium/browser-wallet-api-helpers": "file:../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers"
     "@concordium/react-components": ^0.3.0
     "@concordium/wallet-connectors": ^0.3.1
     "@concordium/web-sdk": ^3.4.0

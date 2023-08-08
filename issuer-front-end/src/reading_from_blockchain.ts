@@ -13,7 +13,7 @@ export async function getCredentialEntry(
     credentialRegistryContratIndex: number
 ) {
     if (publicKey.length !== 64) {
-        throw new Error(`Set credentialRegistryContratIndex`);
+        throw new Error(`PublicKey needs a length of 64`);
     }
 
     if (credentialRegistryContratIndex === 0) {

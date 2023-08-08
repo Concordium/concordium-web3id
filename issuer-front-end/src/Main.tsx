@@ -3,6 +3,7 @@ import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'reac
 import Switch from 'react-switch';
 import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
+import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
@@ -26,6 +27,8 @@ function TestBox({ header, children, note }: TestBoxProps) {
         </fieldset>
     );
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function addRevokationKey(
     revocationKeys: string[],
@@ -74,24 +77,25 @@ export default function Main(props: WalletConnectionProps) {
     const [issuerMetaData, setIssuerMetaData] = useState('https://issuer/metaData/');
     const [issuerKey, setIssuerKey] = useState('8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82');
 
-    const [credentialMetaDataURL, setCredentialMetaDataURL] = useState('myType');
-    const [credentialType, setCredentialType] = useState('https://credential/metaData/');
-    const [isHolderRevocable, setIsHolderRevocable] = useState(true);
+    const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(
+        'https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json'
+    );
+    const [credentialType, setCredentialType] = useState('JsonSchema2023');
+    const [schemaCredential, setSchemaCredential] = useState<object>({
+        schema_ref: {
+            hash: {
+                None: [],
+            },
+            url: `https://raw.githubusercontent.com/Concordium/concordium-web3id/main/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`,
+        },
+    });
 
     const [revocationKeys, setRevocationKeys] = useState<string[]>([]);
     const [revocationKeyInput, setRevocationKeyInput] = useState(
         '8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82'
     );
 
-    const [schemaCredential, setSchemaCredential] = useState<object>({
-        schema_ref: {
-            hash: {
-                None: [],
-            },
-            url: `https://credentialSchema/metaData/`,
-        },
-    });
-
+    const [isHolderRevocable, setIsHolderRevocable] = useState(true);
     const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
     const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
 
@@ -272,7 +276,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialType"
                                     type="text"
-                                    placeholder="myType"
+                                    placeholder="JsonSchema2023"
                                     onChange={changeCredentialTypeHandler}
                                 />
                                 <br />
@@ -282,7 +286,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialSchemaURL"
                                     type="text"
-                                    placeholder="https://credential/schema/url"
+                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/main/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json"
                                     onChange={changeCredentialSchemaURLHandler}
                                 />
                                 {revocationKeys.length !== 0 && (
@@ -426,7 +430,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURL"
                                     type="text"
-                                    placeholder="https://credential/metaData/"
+                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json"
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -459,24 +463,81 @@ export default function Main(props: WalletConnectionProps) {
                                 <button
                                     className="btn btn-primary"
                                     type="button"
-                                    onClick={() => {
+                                    onClick={async () => {
                                         setTxHash('');
                                         setTransactionError('');
-                                        const tx = issueCredential(
-                                            connection,
-                                            account,
-                                            browserPublicKey,
-                                            validFromDate,
-                                            validUntilDate,
-                                            credentialType,
-                                            credentialMetaDataURL,
-                                            isHolderRevocable,
-                                            credentialRegistryContratIndex,
-                                            auxiliaryData
-                                        );
-                                        tx.then(setTxHash).catch((err: Error) => {
-                                            setTransactionError((err as Error).message);
-                                        });
+
+                                        if (credentialRegistryContratIndex === 0) {
+                                            setTransactionError(`Input Smart Contract Index in Step 2`);
+                                            throw new Error(`Input Smart Contract Index in Step 2`);
+                                        }
+
+                                        const provider = await detectConcordiumProvider();
+
+                                        const values = {
+                                            degreeType: 'BachelorDegree',
+                                            degreeName: 'Bachelor of Science and Arts',
+                                            graduationDate: '2023-08-07T00:00:00.000Z',
+                                        };
+                                        const metadataUrl = {
+                                            url: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json',
+                                        };
+
+                                        provider
+                                            .addWeb3IdCredential(
+                                                {
+                                                    $schema: './JsonSchema2023-education-certificate.json',
+                                                    type: [
+                                                        'VerifiableCredential',
+                                                        'ConcordiumVerifiableCredential',
+                                                        'UniversityDegreeCredential',
+                                                    ],
+                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                                    issuanceDate: new Date().toISOString(),
+                                                    credentialSubject: values,
+                                                    credentialSchema: {
+                                                        id: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/main/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json',
+                                                        type: 'JsonSchema2023',
+                                                    },
+                                                },
+                                                metadataUrl,
+                                                async (id) => {
+                                                    console.log('publicKey: ');
+                                                    console.log(id);
+
+                                                    const tx = issueCredential(
+                                                        connection,
+                                                        account,
+                                                        id,
+                                                        validFromDate,
+                                                        validUntilDate,
+                                                        credentialMetaDataURL,
+                                                        isHolderRevocable,
+                                                        credentialRegistryContratIndex,
+                                                        auxiliaryData
+                                                    );
+
+                                                    const txHashReturned = await tx;
+                                                    console.log("txHash:");
+                                                    console.log(txHashReturned);
+
+                                                    console.log('Waiting for 30000ms...');
+                                                    await sleep(30000);
+                                                    console.log('30000ms have passed.');
+
+                                                    setTxHash(txHashReturned); // TODO: handle error
+
+                                                    // Dummy signature/randomness since no checking has been implemented in the wallets yet.
+                                                    // The plan is that the corresponding private key to the `issuer_key(public_key)` registered in the smart contract needs to create this signature.
+                                                    const signature =
+                                                        'E051028C0011B76A2BA6B17A51B4A1FF0BDC9404E7033FCFACB6AFC4F615A15C74DE53AAF2E8C4316BCD4A5D971B49A85FB1B24111A8A52DB24A45B343880C01';
+                                                    const randomness: Record<string, string> = {};
+                                                    return { signature, randomness };
+                                                }
+                                            )
+                                            .catch((e) => {
+                                                console.log(e);
+                                            });
                                     }}
                                 >
                                     Register Credential
