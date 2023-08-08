@@ -1,5 +1,7 @@
 use std::sync::Arc;
+use std::time::Duration;
 
+use anyhow::Context;
 use clap::Parser;
 use reqwest::Url;
 use some_verifier_lib::{Platform, Verification};
@@ -26,10 +28,17 @@ struct App {
     )]
     log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
+        long = "request-timeout",
+        help = "Request timeout in milliseconds.",
+        default_value = "5000",
+        env = "TELEGRAM_BOT_REQUEST_TIMEOUT"
+    )]
+    request_timeout: u64,
+    #[clap(
         long = "verifier-url",
-        default_value = "http://127.0.0.1:8080/",
+        default_value = "http://127.0.0.1/",
         help = "URL of the SoMe verifier.",
-        env = "SOME_VERIFIER_URL"
+        env = "TELEGRAM_BOT_VERIFIER_URL"
     )]
     verifier_url: Url,
 }
@@ -37,7 +46,7 @@ struct App {
 #[derive(BotCommands, Clone)]
 #[command(
     rename_rule = "lowercase",
-    description = "These commands are supported:"
+    description = "The following commands are supported:"
 )]
 enum Command {
     #[command(description = "start a new chat.")]
@@ -70,7 +79,11 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting Telegram bot...");
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(app.request_timeout))
+        .build()
+        .context("Failed to start HTTP server.")?;
+
     let bot = Bot::new(app.bot_token);
     let cfg = BotConfig {
         verifier_url: Arc::new(app.verifier_url),
