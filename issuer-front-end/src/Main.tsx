@@ -6,6 +6,7 @@ import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
+import { Web3StatementBuilder } from '@concordium/web-sdk';
 
 import { accountInfo, getCredentialEntry } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer } from './writing_to_blockchain';
@@ -48,6 +49,9 @@ async function addRevokationKey(
     }
 }
 
+const defaultCredentialSchema = `https://raw.githubusercontent.com/Concordium/concordium-web3id/main/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`;
+const defaultCredentialMetaData = `https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json`;
+
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
 
@@ -72,21 +76,21 @@ export default function Main(props: WalletConnectionProps) {
     const [txHash, setTxHash] = useState('');
     const [publicKey, setPublicKey] = useState('');
 
+    const [credentialPublicKey, setCredentialPublicKey] = useState('');
+
     const [browserPublicKey, setBrowserPublicKey] = useState('');
 
     const [issuerMetaData, setIssuerMetaData] = useState('https://issuer/metaData/');
     const [issuerKey, setIssuerKey] = useState('8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82');
 
-    const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(
-        'https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json'
-    );
+    const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(defaultCredentialMetaData);
     const [credentialType, setCredentialType] = useState('JsonSchema2023');
     const [schemaCredential, setSchemaCredential] = useState<object>({
         schema_ref: {
             hash: {
                 None: [],
             },
-            url: `https://raw.githubusercontent.com/Concordium/concordium-web3id/main/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`,
+            url: defaultCredentialSchema,
         },
     });
 
@@ -248,6 +252,7 @@ export default function Main(props: WalletConnectionProps) {
                                 note="
                                         Expected result after pressing the button and confirming in wallet: The
                                         transaction hash or an error message should appear in the right column.
+                                        Pressing the button without any user input will create an example tx with the provided placeholder values.
                                         "
                             >
                                 Add `IssuerMetadata`:
@@ -396,9 +401,12 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 3: Register a credential for the account connected"
-                                note="Expected result after pressing the button and confirming in wallet: The
-                                        transaction hash or an error message should appear in the right column."
+                                header="Step 3: Register a credential"
+                                note="Expected result after pressing the button: There should be two popups happening in the wallet
+                                    (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
+                                    The transaction hash or an error message should appear in the right column and the 
+                                    credential public key or an error message should appear in the above test unit. 
+                                    Pressing the button without any user input will create an example tx with the provided placeholder values."
                             >
                                 Add `valid_from`:
                                 <br />
@@ -466,10 +474,11 @@ export default function Main(props: WalletConnectionProps) {
                                     onClick={async () => {
                                         setTxHash('');
                                         setTransactionError('');
+                                        setCredentialPublicKey('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Input Smart Contract Index in Step 2`);
-                                            throw new Error(`Input Smart Contract Index in Step 2`);
+                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
                                         }
 
                                         const provider = await detectConcordiumProvider();
@@ -502,8 +511,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 },
                                                 metadataUrl,
                                                 async (id) => {
-                                                    console.log('publicKey: ');
-                                                    console.log(id);
+                                                    setCredentialPublicKey(id);
 
                                                     const tx = issueCredential(
                                                         connection,
@@ -517,15 +525,13 @@ export default function Main(props: WalletConnectionProps) {
                                                         auxiliaryData
                                                     );
 
-                                                    const txHashReturned = await tx;
-                                                    console.log("txHash:");
-                                                    console.log(txHashReturned);
+                                                    tx.then(setTxHash).catch((err: Error) =>
+                                                        setTransactionError((err as Error).message)
+                                                    );
 
-                                                    console.log('Waiting for 30000ms...');
+                                                    console.log('Waiting for 30000ms...'); // TODO: write logic that waits until the txHash is finalized on chain.
                                                     await sleep(30000);
                                                     console.log('30000ms have passed.');
-
-                                                    setTxHash(txHashReturned); // TODO: handle error
 
                                                     // Dummy signature/randomness since no checking has been implemented in the wallets yet.
                                                     // The plan is that the corresponding private key to the `issuer_key(public_key)` registered in the smart contract needs to create this signature.
@@ -535,13 +541,23 @@ export default function Main(props: WalletConnectionProps) {
                                                     return { signature, randomness };
                                                 }
                                             )
-                                            .catch((e) => {
+                                            .catch((e: Error) => {
                                                 console.log(e);
                                             });
                                     }}
                                 >
                                     Register Credential
                                 </button>
+                                {credentialPublicKey && (
+                                    <>
+                                        <br />
+                                        <br />
+                                        <div className="actionResultBox">
+                                            Credential Public Key:
+                                            <div>{credentialPublicKey}</div>
+                                        </div>
+                                    </>
+                                )}
                             </TestBox>
                             <TestBox
                                 header="Step 4: View Credential Entry in Registry Contract"
@@ -550,7 +566,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 <br />
                                 <label className="field">
-                                    Public Key:
+                                    Credential Public Key:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -581,6 +597,71 @@ export default function Main(props: WalletConnectionProps) {
                                 >
                                     View Credential Entry in Registry Contract
                                 </button>
+                                <br />
+                                <br />
+                                {credentialRegistryState !== '' && (
+                                    <div className="actionResultBox">
+                                        <div>Your return value is:</div>
+                                        <br />
+                                        <pre className="largeText">
+                                            {JSON.stringify(credentialRegistryState, null, '\t')}
+                                        </pre>
+                                    </div>
+                                )}
+                                {!credentialRegistryState && credentialRegistryStateError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {credentialRegistryStateError}.
+                                    </div>
+                                )}
+                            </TestBox>
+                            <TestBox
+                                header="Step 5: Create Proof"
+                                note="Expected result after pressing the button: The return value or an error message
+                                        should appear in the above test unit."
+                            >
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={async () => {
+                                        setCredentialRegistryState('');
+                                        setCredentialRegistryStateError('');
+
+                                        if (credentialRegistryContratIndex === 0) {
+                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
+                                        }
+
+                                        const provider = await detectConcordiumProvider();
+
+                                        const statement = new Web3StatementBuilder()
+                                            .addForVerifiableCredentials([{ index: credentialRegistryContratIndex, subindex: 0 }], (b) =>
+                                                b
+                                                    .revealAttribute(0)
+                                                    .addMembership(1, ['Bachelor of Science and Arts', 'Bachelor of New'])
+                                            )
+                                            .getStatements();
+
+                                        console.log(statement)
+
+                                        // Should be not be hardcoded
+                                        const challenge = '94d3e85bbc8ff0091e562ad8ef6c30d57f29b19f17c98ce155df2a30100dAAAA';
+                                        provider
+                                            .requestVerifiablePresentation(challenge, statement)
+                                            .then((proof) => {
+                                                console.log(proof);
+                                                alert('Proof received! (check the console)');
+                                            })
+                                            .catch((error) => {
+                                                console.log(error);
+                                                alert(error);
+                                            });
+                                    }}
+                                >
+                                    Create Proof
+                                </button>
+                                <br />
+                                <br />
                                 {credentialRegistryState !== '' && (
                                     <div className="actionResultBox">
                                         <div>Your return value is:</div>

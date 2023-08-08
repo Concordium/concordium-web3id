@@ -10,7 +10,7 @@
         "@concordium/browser-wallet-api-helpers": "file:../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers",
         "@concordium/react-components": "^0.3.0",
         "@concordium/wallet-connectors": "^0.3.1",
-        "@concordium/web-sdk": "^3.4.0",
+        "@concordium/web-sdk": "^6.1.0-alpha",
         "@walletconnect/types": "^2.1.4",
         "eslint": "^8.37.0",
         "moment": "^2.29.4",
