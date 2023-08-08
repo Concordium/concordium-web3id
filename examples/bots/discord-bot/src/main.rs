@@ -1,5 +1,10 @@
+use std::fmt::Display;
+use std::time::Duration;
+
+use anyhow::Context as AnyhowContext;
 use clap::Parser;
 use poise::serenity_prelude::{self as serenity, Mentionable};
+use poise::FrameworkError;
 use reqwest::Url;
 use some_verifier_lib::{Platform, Verification};
 
@@ -21,10 +26,17 @@ struct App {
     )]
     log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
+        long = "request-timeout",
+        help = "Request timeout in milliseconds.",
+        default_value = "5000",
+        env = "DISCORD_BOT_REQUEST_TIMEOUT"
+    )]
+    request_timeout: u64,
+    #[clap(
         long = "verifier-url",
-        default_value = "http://127.0.0.1:8080/",
+        default_value = "http://127.0.0.1/",
         help = "URL of the SoMe verifier.",
-        env = "SOME_VERIFIER_URL"
+        env = "DISCORD_BOT_VERIFIER_URL"
     )]
     verifier_url: Url,
 }
@@ -50,55 +62,69 @@ async fn help(
         poise::builtins::HelpConfiguration::default(),
     )
     .await?;
+
     Ok(())
 }
 
+// Ephemeral: only the recipient can see the message
 /// Verify with Concordium
-#[poise::command(slash_command, prefix_command)]
+#[poise::command(slash_command, prefix_command, ephemeral)]
 async fn verify(ctx: Context<'_>) -> anyhow::Result<()> {
     ctx.send(|reply| {
         reply
             .content("Please verify with your wallet.")
             .components(link_button(&ctx.data().verifier_url, "Verify"))
-            // Only the recipient can see the message
-            .ephemeral(true)
     })
     .await?;
+
     Ok(())
 }
 
 /// Checks the verification status of a user
-#[poise::command(slash_command, prefix_command)]
+#[poise::command(slash_command, prefix_command, ephemeral)]
 async fn check(
     ctx: Context<'_>,
     #[description = "Selected user"] user: serenity::User,
 ) -> anyhow::Result<()> {
-    match get_verifications(ctx.data(), user.id).await {
-        Ok(verifications) => {
-            let mention = user.mention();
-            let message = if verifications.is_empty() {
-                format!("{mention} is not verified with Concordium.")
-            } else {
-                let mut message = format!("{mention} is verified with Concordium.");
-                for verification in verifications
-                    .into_iter()
-                    .filter(|v| v.platform != Platform::Discord && !v.revoked)
-                {
-                    message.push_str(&format!(
-                        "\n- {}: {}",
-                        verification.platform, verification.username
-                    ));
-                }
-                message
-            };
-            // .ephemeral(true) means only the recipient can see the message
-            ctx.send(|reply| reply.content(message).ephemeral(true))
-                .await?;
+    let verification = get_verification(ctx.data(), user.id).await?;
+    let mention = user.mention();
+    let message = if verification.is_empty() {
+        format!("{mention} is not verified with Concordium.")
+    } else {
+        let mut message = format!("{mention} is verified with Concordium.");
+        for verification in verification
+            .into_iter()
+            .filter(|v| v.platform != Platform::Discord && !v.revoked)
+        {
+            message.push_str(&format!(
+                "\n- {}: {}",
+                verification.platform, verification.username
+            ));
         }
-        Err(err) => tracing::error!("{err}"),
-    }
+        message
+    };
+    ctx.say(message).await?;
 
     Ok(())
+}
+
+async fn on_error<U, E: Display>(err: FrameworkError<'_, U, E>) {
+    match err {
+        FrameworkError::Command { ctx, error } => {
+            tracing::error!("{error}");
+
+            if let Err(send_err) = ctx
+                .send(|msg| {
+                    msg.content("An error occured, please try again later.")
+                        .ephemeral(true)
+                })
+                .await
+            {
+                tracing::error!("Unable to send reply: {send_err}");
+            }
+        }
+        _ => tracing::warn!("{err}"),
+    }
 }
 
 #[tokio::main]
@@ -113,9 +139,14 @@ async fn main() -> anyhow::Result<()> {
             .init();
     }
 
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(app.request_timeout))
+        .build()
+        .context("Unable to start HTTP client.")?;
+
     let cfg = BotConfig {
         verifier_url: app.verifier_url,
-        client: reqwest::Client::new(),
+        client,
     };
 
     tracing::info!("Starting Discord bot...");
@@ -123,6 +154,7 @@ async fn main() -> anyhow::Result<()> {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![help(), verify(), check()],
+            on_error: |err| Box::pin(on_error(err)),
             ..Default::default()
         })
         .token(app.bot_token)
@@ -156,14 +188,14 @@ fn link_button<'btn>(
     }
 }
 
-async fn get_verifications(
+async fn get_verification(
     cfg: &BotConfig,
     id: serenity::UserId,
 ) -> anyhow::Result<Vec<Verification>> {
     let url = cfg
         .verifier_url
         .join("verifications/discord/")
-        .expect("URLs can be joined with a string path")
+        .expect("URLs can be joined with a basic path")
         .join(&id.to_string())
         .expect("URLs can be joined with a UserId");
     Ok(cfg.client.get(url).send().await?.json().await?)
