@@ -502,9 +502,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.19"
+version = "4.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fd304a20bff958a57f04c4e96a2e7594cc4490a0e809cbd48bb6437edaa452d"
+checksum = "c27cdf28c0f604ba3f512b0c9a409f8de8513e4816705deb0498b627e7c3a3fd"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -513,9 +513,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.19"
+version = "4.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01c6a3f08f1fe5662a35cfe393aec09c4df95f60ee93b7556505260f75eee9e1"
+checksum = "08a9f1ab5e9f01a9b81f202e8562eb9a10de70abf9eaeac1be465c28b75aa4aa"
 dependencies = [
  "anstream",
  "anstyle",
@@ -2756,6 +2756,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-issuer-backend"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "axum",
+ "clap",
+ "concordium-rust-sdk",
+ "ed25519-dalek",
+ "hex",
+ "key_derivation",
+ "rand 0.7.3",
+ "rand_chacha 0.2.2",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.10.7",
+ "thiserror",
+ "tokio",
+ "tonic",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "web3id-issuer",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3318,26 +3346,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "web3id-test"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "concordium-rust-sdk",
- "ed25519-dalek",
- "hex",
- "key_derivation",
- "rand 0.7.3",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "url",
- "web3id-issuer",
 ]
 
 [[package]]
