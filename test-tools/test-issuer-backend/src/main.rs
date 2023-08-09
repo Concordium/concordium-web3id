@@ -34,7 +34,7 @@ struct App {
         long = "listen-address",
         default_value = "0.0.0.0:8080",
         help = "Listen address for the server.",
-        env = "CONCORDIUM_TEST_ISSUER_BACKEND_ISSUER_API_LISTEN_ADDRESS"
+        env = "CONCORDIUM_TEST_ISSUER_BACKEND_LISTEN_ADDRESS"
     )]
     listen_address:  std::net::SocketAddr,
     #[clap(
@@ -47,14 +47,14 @@ struct App {
     #[clap(
         long = "log-headers",
         help = "Whether to log headers for requests and responses.",
-        env = "CONCORDIUM_TEST_ISSUER_BACKEND_ISSUER_LOG_HEADERS"
+        env = "CONCORDIUM_TEST_ISSUER_BACKEND_LOG_HEADERS"
     )]
     log_headers:     bool,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
-        env = "CONCORDIUM_TEST_ISSUER_BACKEND_ISSUER_REQUEST_TIMEOUT"
+        env = "CONCORDIUM_TEST_ISSUER_BACKEND_REQUEST_TIMEOUT"
     )]
     request_timeout: u64,
 }
