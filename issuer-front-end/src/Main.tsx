@@ -4,9 +4,9 @@ import Switch from 'react-switch';
 import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
+import { Web3StatementBuilder } from '@concordium/web-sdk';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
-import { Web3StatementBuilder } from '@concordium/web-sdk';
 
 import { accountInfo, getCredentialEntry } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer } from './writing_to_blockchain';
@@ -67,6 +67,9 @@ export default function Main(props: WalletConnectionProps) {
     const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState(0);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
+
+    const [proofError, setProofError] = useState('');
+    const [proof, setProof] = useState('');
 
     const [accountBalance, setAccountBalance] = useState('');
 
@@ -624,8 +627,8 @@ export default function Main(props: WalletConnectionProps) {
                                     className="btn btn-primary"
                                     type="button"
                                     onClick={async () => {
-                                        setCredentialRegistryState('');
-                                        setCredentialRegistryStateError('');
+                                        setProof('');
+                                        setProofError('');
 
                                         if (credentialRegistryContratIndex === 0) {
                                             setTransactionError(`Set Input Smart Contract Index in Step 2`);
@@ -635,26 +638,30 @@ export default function Main(props: WalletConnectionProps) {
                                         const provider = await detectConcordiumProvider();
 
                                         const statement = new Web3StatementBuilder()
-                                            .addForVerifiableCredentials([{ index: credentialRegistryContratIndex, subindex: 0 }], (b) =>
-                                                b
-                                                    .revealAttribute(0)
-                                                    .addMembership(1, ['Bachelor of Science and Arts', 'Bachelor of New'])
+                                            .addForVerifiableCredentials(
+                                                [{ index: credentialRegistryContratIndex, subindex: 0 }],
+                                                (b) =>
+                                                    b
+                                                        .revealAttribute(0)
+                                                        .addMembership(1, [
+                                                            'Bachelor of Science and Arts',
+                                                            'Bachelor of New',
+                                                        ])
                                             )
                                             .getStatements();
 
-                                        console.log(statement)
+                                        console.log(statement);
 
                                         // Should be not be hardcoded
-                                        const challenge = '94d3e85bbc8ff0091e562ad8ef6c30d57f29b19f17c98ce155df2a30100dAAAA';
+                                        const challenge =
+                                            '94d3e85bbc8ff0091e562ad8ef6c30d57f29b19f17c98ce155df2a30100dAAAA';
                                         provider
                                             .requestVerifiablePresentation(challenge, statement)
-                                            .then((proof) => {
-                                                console.log(proof);
-                                                alert('Proof received! (check the console)');
+                                            .then((proofReturned) => {
+                                                setProof(proofReturned);
                                             })
-                                            .catch((error) => {
-                                                console.log(error);
-                                                alert(error);
+                                            .catch((error: Error) => {
+                                                setProofError(error.message);
                                             });
                                     }}
                                 >
@@ -662,19 +669,336 @@ export default function Main(props: WalletConnectionProps) {
                                 </button>
                                 <br />
                                 <br />
-                                {credentialRegistryState !== '' && (
+                                {proof !== '' && (
                                     <div className="actionResultBox">
-                                        <div>Your return value is:</div>
+                                        <div>Your proof is:</div>
                                         <br />
-                                        <pre className="largeText">
-                                            {JSON.stringify(credentialRegistryState, null, '\t')}
-                                        </pre>
+                                        <pre className="largeText">{proof}</pre>
                                     </div>
                                 )}
-                                {!credentialRegistryState && credentialRegistryStateError && (
+                                {proofError && (
                                     <div className="alert alert-danger" role="alert">
-                                        Error: {credentialRegistryStateError}.
+                                        Error: {proofError}.
                                     </div>
+                                )}
+                            </TestBox>
+                            <br />
+                            <br />
+                            <div className="textCenter">Negative Test Scenarios</div>
+                            <br />
+                            <br />
+                            <TestBox
+                                header="Step 6: Register a credential  (Issuer registers credential delayed)"
+                                note="Expected result after pressing the two buttons in order: There should be two popups happening in the wallet
+                                    (first action when pressing the first button to add the credential,second action when pressing the second button to send the `issueCredential` tx to the smart contract).
+                                    The transaction hash or an error message should appear in the right column and the 
+                                    credential public key or an error message should appear in the above test unit. 
+                                    Pressing the button without any user input will create an example tx with the provided placeholder values."
+                            >
+                                Add `valid_from`:
+                                <br />
+                                <br />
+                                <input
+                                    type="datetime-local"
+                                    id="valid_from"
+                                    name="valid_from"
+                                    value={validFromDate}
+                                    onChange={handleValidFromDateChange}
+                                />
+                                <br />
+                                <br />
+                                Add `valid_until`:
+                                <br />
+                                <br />
+                                <input
+                                    type="datetime-local"
+                                    id="valid_until"
+                                    name="valid_until"
+                                    value={validUntilDate}
+                                    onChange={handleValidUntilDateChange}
+                                />
+                                <br />
+                                <br />
+                                Add `CredentialMetadata`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialMetaDataURL"
+                                    type="text"
+                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json"
+                                    onChange={changeCredentialMetaDataURLHandler}
+                                />
+                                <br />
+                                Add `AuxiliaryData`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="auxiliaryData"
+                                    type="text"
+                                    placeholder="[23,2,1,5,3,2]"
+                                    onChange={changeAuxiliaryDataHandler}
+                                />
+                                <div className="switch-wrapper">
+                                    <div>Holder can revoke credential</div>
+                                    <Switch
+                                        onChange={() => {
+                                            setIsHolderRevocable(!isHolderRevocable);
+                                        }}
+                                        onColor="#308274"
+                                        offColor="#308274"
+                                        onHandleColor="#174039"
+                                        offHandleColor="#174039"
+                                        checked={!isHolderRevocable}
+                                        checkedIcon={false}
+                                        uncheckedIcon={false}
+                                    />
+                                    <div>Holder can NOT revoke credential</div>
+                                </div>
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={async () => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        setCredentialPublicKey('');
+
+                                        if (credentialRegistryContratIndex === 0) {
+                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
+                                        }
+
+                                        const provider = await detectConcordiumProvider();
+
+                                        const values = {
+                                            degreeType: 'BachelorDegree',
+                                            degreeName: 'Bachelor of Science and Arts',
+                                            graduationDate: '2023-08-07T00:00:00.000Z',
+                                        };
+                                        const metadataUrl = {
+                                            url: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json',
+                                        };
+
+                                        provider
+                                            .addWeb3IdCredential(
+                                                {
+                                                    $schema: './JsonSchema2023-education-certificate.json',
+                                                    type: [
+                                                        'VerifiableCredential',
+                                                        'ConcordiumVerifiableCredential',
+                                                        'UniversityDegreeCredential',
+                                                    ],
+                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                                    issuanceDate: new Date().toISOString(),
+                                                    credentialSubject: values,
+                                                    credentialSchema: {
+                                                        id: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/main/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json',
+                                                        type: 'JsonSchema2023',
+                                                    },
+                                                },
+                                                metadataUrl,
+                                                async (id) => {
+                                                    setCredentialPublicKey(id);
+
+                                                    // Issuer fails to issue credential in time here but still does it delayed when pressing the next button.
+
+                                                    // Dummy signature/randomness since no checking has been implemented in the wallets yet.
+                                                    // The plan is that the corresponding private key to the `issuer_key(public_key)` registered in the smart contract needs to create this signature.
+                                                    const signature =
+                                                        'E051028C0011B76A2BA6B17A51B4A1FF0BDC9404E7033FCFACB6AFC4F615A15C74DE53AAF2E8C4316BCD4A5D971B49A85FB1B24111A8A52DB24A45B343880C01';
+                                                    const randomness: Record<string, string> = {};
+                                                    return { signature, randomness };
+                                                }
+                                            )
+                                            .catch((e: Error) => {
+                                                console.log(e);
+                                            });
+                                    }}
+                                >
+                                    Register Credential
+                                </button>
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={async () => {
+                                        setTxHash('');
+                                        setTransactionError('');
+
+                                        if (credentialRegistryContratIndex === 0) {
+                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
+                                        }
+
+                                        // Issuer fails to issue credential in time but still does it delayed here.
+
+                                        const tx = issueCredential(
+                                            connection,
+                                            account,
+                                            credentialPublicKey,
+                                            validFromDate,
+                                            validUntilDate,
+                                            credentialMetaDataURL,
+                                            isHolderRevocable,
+                                            credentialRegistryContratIndex,
+                                            auxiliaryData
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Issuer Registers Credential Delayed
+                                </button>
+                                {credentialPublicKey && (
+                                    <>
+                                        <br />
+                                        <br />
+                                        <div className="actionResultBox">
+                                            Credential Public Key:
+                                            <div>{credentialPublicKey}</div>
+                                        </div>
+                                    </>
+                                )}
+                            </TestBox>
+                            <TestBox
+                                header="Step 7: Register a credential (Issuer fails to register credential in smart contract)"
+                                note="Expected result after pressing the button: There should be one popup happening in the wallet
+                                    to add the credential to the wallet.
+                                    The credential public key or an error message should appear in the above test unit. 
+                                    Pressing the button without any user input will create an example with the provided placeholder values."
+                            >
+                                Add `valid_from`:
+                                <br />
+                                <br />
+                                <input
+                                    type="datetime-local"
+                                    id="valid_from"
+                                    name="valid_from"
+                                    value={validFromDate}
+                                    onChange={handleValidFromDateChange}
+                                />
+                                <br />
+                                <br />
+                                Add `valid_until`:
+                                <br />
+                                <br />
+                                <input
+                                    type="datetime-local"
+                                    id="valid_until"
+                                    name="valid_until"
+                                    value={validUntilDate}
+                                    onChange={handleValidUntilDateChange}
+                                />
+                                <br />
+                                <br />
+                                Add `CredentialMetadata`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialMetaDataURL"
+                                    type="text"
+                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json"
+                                    onChange={changeCredentialMetaDataURLHandler}
+                                />
+                                <br />
+                                Add `AuxiliaryData`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="auxiliaryData"
+                                    type="text"
+                                    placeholder="[23,2,1,5,3,2]"
+                                    onChange={changeAuxiliaryDataHandler}
+                                />
+                                <div className="switch-wrapper">
+                                    <div>Holder can revoke credential</div>
+                                    <Switch
+                                        onChange={() => {
+                                            setIsHolderRevocable(!isHolderRevocable);
+                                        }}
+                                        onColor="#308274"
+                                        offColor="#308274"
+                                        onHandleColor="#174039"
+                                        offHandleColor="#174039"
+                                        checked={!isHolderRevocable}
+                                        checkedIcon={false}
+                                        uncheckedIcon={false}
+                                    />
+                                    <div>Holder can NOT revoke credential</div>
+                                </div>
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={async () => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        setCredentialPublicKey('');
+
+                                        if (credentialRegistryContratIndex === 0) {
+                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
+                                        }
+
+                                        const provider = await detectConcordiumProvider();
+
+                                        const values = {
+                                            degreeType: 'BachelorDegree',
+                                            degreeName: 'Bachelor of Science and Arts',
+                                            graduationDate: '2023-08-07T00:00:00.000Z',
+                                        };
+                                        const metadataUrl = {
+                                            url: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json',
+                                        };
+
+                                        provider
+                                            .addWeb3IdCredential(
+                                                {
+                                                    $schema: './JsonSchema2023-education-certificate.json',
+                                                    type: [
+                                                        'VerifiableCredential',
+                                                        'ConcordiumVerifiableCredential',
+                                                        'UniversityDegreeCredential',
+                                                    ],
+                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                                    issuanceDate: new Date().toISOString(),
+                                                    credentialSubject: values,
+                                                    credentialSchema: {
+                                                        id: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/main/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json',
+                                                        type: 'JsonSchema2023',
+                                                    },
+                                                },
+                                                metadataUrl,
+                                                async (id) => {
+                                                    setCredentialPublicKey(id);
+
+                                                    // Issuer fails to register credential in smart contract
+
+                                                    // Dummy signature/randomness since no checking has been implemented in the wallets yet.
+                                                    // The plan is that the corresponding private key to the `issuer_key(public_key)` registered in the smart contract needs to create this signature.
+                                                    const signature =
+                                                        'E051028C0011B76A2BA6B17A51B4A1FF0BDC9404E7033FCFACB6AFC4F615A15C74DE53AAF2E8C4316BCD4A5D971B49A85FB1B24111A8A52DB24A45B343880C01';
+                                                    const randomness: Record<string, string> = {};
+                                                    return { signature, randomness };
+                                                }
+                                            )
+                                            .catch((e: Error) => {
+                                                console.log(e);
+                                            });
+                                    }}
+                                >
+                                    Register Credential
+                                </button>
+                                {credentialPublicKey && (
+                                    <>
+                                        <br />
+                                        <br />
+                                        <div className="actionResultBox">
+                                            Credential Public Key:
+                                            <div>{credentialPublicKey}</div>
+                                        </div>
+                                    </>
                                 )}
                             </TestBox>
                         </div>
