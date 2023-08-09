@@ -11,6 +11,13 @@ h3 {
     text-align: center;
 }
 
+textarea {
+    left: 10px;
+    top: 10px;
+    width: 100%;
+    height: 300px;
+}
+
 pre {
     font-family: "Verdana" !important;
     text-align: left !important;

@@ -30,7 +30,7 @@ export async function createNewIssuer(
     }
 
     if (issuerKey === '') {
-        throw new Error(`Set issuerKey`);
+        throw new Error(`Create issuer verifyKey in step 1`);
     }
 
     if (credentialType === '') {

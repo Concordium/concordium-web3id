@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren } from 'react';
+import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useRef } from 'react';
 import Switch from 'react-switch';
 import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
@@ -10,13 +10,27 @@ import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { accountInfo, getCredentialEntry } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer } from './writing_to_blockchain';
+import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
-import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
+import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_COMMITMENTS } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
     note: string;
 }>;
+
+type RequestSignatureResponse = {
+    signedCommitments: {
+        signature: string;
+        commitments: object;
+    };
+    randomness: object;
+};
+
+type RequestIssuerKeysResponse = {
+    signKey: string;
+    verifyKey: string;
+};
 
 function TestBox({ header, children, note }: TestBoxProps) {
     return (
@@ -71,6 +85,11 @@ export default function Main(props: WalletConnectionProps) {
     const [proofError, setProofError] = useState('');
     const [proof, setProof] = useState('');
 
+    const [seed, setSeed] = useState('myRandomSeedString');
+    const [issuerKeys, setIssuerKeys] = useState<RequestIssuerKeysResponse>();
+    const [parsingError, setParsingError] = useState('');
+    const [commitments, setCommitments] = useState<object>({});
+
     const [accountBalance, setAccountBalance] = useState('');
 
     const [credentialRegistryState, setCredentialRegistryState] = useState('');
@@ -84,7 +103,6 @@ export default function Main(props: WalletConnectionProps) {
     const [browserPublicKey, setBrowserPublicKey] = useState('');
 
     const [issuerMetaData, setIssuerMetaData] = useState('https://issuer/metaData/');
-    const [issuerKey, setIssuerKey] = useState('8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82');
 
     const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(defaultCredentialMetaData);
     const [credentialType, setCredentialType] = useState('JsonSchema2023');
@@ -106,6 +124,8 @@ export default function Main(props: WalletConnectionProps) {
     const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
     const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
 
+    const commitmentsTextAreaRef = useRef(null);
+
     const handleValidFromDateChange = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setValidFromDate(target.value);
@@ -126,14 +146,31 @@ export default function Main(props: WalletConnectionProps) {
         setIssuerMetaData(target.value);
     };
 
-    const changeIssuerKeyHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setIssuerKey(target.value);
-    };
-
     const changeAuxiliaryDataHandler = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setAuxiliaryData(Array.from(JSON.parse(target.value)));
+    };
+
+    const changeSeedHandler = (event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setSeed(target.value);
+    };
+
+    const changeCommitmentsTextAreaHandler = (event: ChangeEvent) => {
+        setParsingError('');
+        setCommitments({});
+        const inputTextArea = commitmentsTextAreaRef.current as unknown as HTMLTextAreaElement;
+        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+        const target = event.target as HTMLTextAreaElement;
+
+        try {
+            JSON.parse(target.value);
+        } catch (e) {
+            setParsingError((e as Error).message);
+            return;
+        }
+
+        setCommitments(JSON.parse(target.value));
     };
 
     const changeCredentialSchemaURLHandler = (event: ChangeEvent) => {
@@ -207,6 +244,8 @@ export default function Main(props: WalletConnectionProps) {
                     setBrowserPublicKey('');
                 });
         }
+
+        setCommitments(EXAMPLE_COMMITMENTS);
     }, [connection, account]);
 
     return (
@@ -251,7 +290,45 @@ export default function Main(props: WalletConnectionProps) {
                     {connection && account !== undefined && (
                         <div className="col-lg-6">
                             <TestBox
-                                header="Step 1: Create New Issuer"
+                                header="Step 1: Create Issuer Keys"
+                                note="Expected result after pressing the button: The return value or an error message
+                                      should appear in the above test unit."
+                            >
+                                Add `Seed`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="seed"
+                                    type="text"
+                                    placeholder="myRandomSeedString"
+                                    onChange={changeSeedHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={async () => {
+                                        const requestIssuerKeysResponse = (await requestIssuerKeys(
+                                            seed
+                                        )) as RequestIssuerKeysResponse;
+                                        setIssuerKeys(requestIssuerKeysResponse);
+                                    }}
+                                >
+                                    Create Issuer Keys
+                                </button>
+                                {issuerKeys && (
+                                    <>
+                                        <br />
+                                        <br />
+                                        <div className="actionResultBox">
+                                            Issuer Keys:
+                                            <div>{JSON.stringify(issuerKeys, null, '\t')}</div>
+                                        </div>
+                                    </>
+                                )}
+                            </TestBox>
+                            <TestBox
+                                header="Step 2: Create New Issuer"
                                 note="
                                         Expected result after pressing the button and confirming in wallet: The
                                         transaction hash or an error message should appear in the right column.
@@ -268,15 +345,6 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changeIssuerMetaDataURLHandler}
                                 />
                                 <br />
-                                Add `IssuerKey`:
-                                <br />
-                                <input
-                                    className="inputFieldStyle"
-                                    id="issuerKey"
-                                    type="text"
-                                    placeholder="8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82"
-                                    onChange={changeIssuerKeyHandler}
-                                />
                                 <br />
                                 Add `CredentialType`:
                                 <br />
@@ -364,7 +432,7 @@ export default function Main(props: WalletConnectionProps) {
                                             connection,
                                             account,
                                             issuerMetaData,
-                                            issuerKey,
+                                            issuerKeys?.verifyKey || '',
                                             JSON.stringify(schemaCredential),
                                             JSON.stringify(revocationKeys),
                                             credentialType
@@ -378,7 +446,7 @@ export default function Main(props: WalletConnectionProps) {
                                 </button>
                             </TestBox>
                             <TestBox
-                                header="Step 2: Input Smart Contract Index"
+                                header="Step 3: Input Smart Contract Index"
                                 note="
                                 Expected result after inputing a value: The inex or
                                 an error message should appear in the above test unit.
@@ -404,13 +472,23 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 3: Register a credential"
+                                header="Step 4: Register a credential"
                                 note="Expected result after pressing the button: There should be two popups happening in the wallet
                                     (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
                                     The transaction hash or an error message should appear in the right column and the 
                                     credential public key or an error message should appear in the above test unit. 
                                     Pressing the button without any user input will create an example tx with the provided placeholder values."
                             >
+                                Add `credentialCommitments`:
+                                <textarea
+                                    id="commitmentsTextArea"
+                                    ref={commitmentsTextAreaRef}
+                                    onChange={changeCommitmentsTextAreaHandler}
+                                >
+                                    {JSON.stringify(EXAMPLE_COMMITMENTS, undefined, 2)}
+                                </textarea>
+                                <br />
+                                <br />
                                 Add `valid_from`:
                                 <br />
                                 <br />
@@ -480,8 +558,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
+                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
                                         }
 
                                         const provider = await detectConcordiumProvider();
@@ -536,16 +614,19 @@ export default function Main(props: WalletConnectionProps) {
                                                     await sleep(30000);
                                                     console.log('30000ms have passed.');
 
-                                                    // Dummy signature/randomness since no checking has been implemented in the wallets yet.
-                                                    // The plan is that the corresponding private key to the `issuer_key(public_key)` registered in the smart contract needs to create this signature.
-                                                    const signature =
-                                                        'E051028C0011B76A2BA6B17A51B4A1FF0BDC9404E7033FCFACB6AFC4F615A15C74DE53AAF2E8C4316BCD4A5D971B49A85FB1B24111A8A52DB24A45B343880C01';
-                                                    const randomness: Record<string, string> = {};
-                                                    return { signature, randomness };
+                                                    const requestSignatureResponse = (await requestSignature(
+                                                        seed,
+                                                        JSON.stringify(commitments)
+                                                    )) as RequestSignatureResponse;
+
+                                                    return {
+                                                        signature: requestSignatureResponse.signedCommitments.signature,
+                                                        randomness: requestSignatureResponse.randomness,
+                                                    };
                                                 }
                                             )
                                             .catch((e: Error) => {
-                                                console.log(e);
+                                                console.error(e);
                                             });
                                     }}
                                 >
@@ -561,9 +642,14 @@ export default function Main(props: WalletConnectionProps) {
                                         </div>
                                     </>
                                 )}
+                                {parsingError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {parsingError}.
+                                    </div>
+                                )}
                             </TestBox>
                             <TestBox
-                                header="Step 4: View Credential Entry in Registry Contract"
+                                header="Step 5: View Credential Entry in Registry Contract"
                                 note="Expected result after pressing the button: The return value or an error message
                                         should appear in the above test unit."
                             >
@@ -618,7 +704,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 5: Create Proof"
+                                header="Step 6: Create Proof"
                                 note="Expected result after pressing the button: The return value or an error message
                                         should appear in the above test unit."
                             >
@@ -631,8 +717,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setProofError('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
+                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
                                         }
 
                                         const provider = await detectConcordiumProvider();
@@ -649,8 +735,6 @@ export default function Main(props: WalletConnectionProps) {
                                                         ])
                                             )
                                             .getStatements();
-
-                                        console.log(statement);
 
                                         // Should be not be hardcoded
                                         const challenge =
@@ -688,13 +772,23 @@ export default function Main(props: WalletConnectionProps) {
                             <br />
                             <br />
                             <TestBox
-                                header="Step 6: Register a credential  (Issuer registers credential delayed)"
+                                header="Step 7: Register a credential  (Issuer registers credential delayed)"
                                 note="Expected result after pressing the two buttons in order: There should be two popups happening in the wallet
                                     (first action when pressing the first button to add the credential,second action when pressing the second button to send the `issueCredential` tx to the smart contract).
                                     The transaction hash or an error message should appear in the right column and the 
                                     credential public key or an error message should appear in the above test unit. 
                                     Pressing the button without any user input will create an example tx with the provided placeholder values."
                             >
+                                Add `credentialCommitments`:
+                                <textarea
+                                    id="commitmentsTextArea"
+                                    ref={commitmentsTextAreaRef}
+                                    onChange={changeCommitmentsTextAreaHandler}
+                                >
+                                    {JSON.stringify(EXAMPLE_COMMITMENTS, undefined, 2)}
+                                </textarea>
+                                <br />
+                                <br />
                                 Add `valid_from`:
                                 <br />
                                 <br />
@@ -764,8 +858,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
+                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
                                         }
 
                                         const provider = await detectConcordiumProvider();
@@ -802,21 +896,29 @@ export default function Main(props: WalletConnectionProps) {
 
                                                     // Issuer fails to issue credential in time here but still does it delayed when pressing the next button.
 
-                                                    // Dummy signature/randomness since no checking has been implemented in the wallets yet.
-                                                    // The plan is that the corresponding private key to the `issuer_key(public_key)` registered in the smart contract needs to create this signature.
-                                                    const signature =
-                                                        'E051028C0011B76A2BA6B17A51B4A1FF0BDC9404E7033FCFACB6AFC4F615A15C74DE53AAF2E8C4316BCD4A5D971B49A85FB1B24111A8A52DB24A45B343880C01';
-                                                    const randomness: Record<string, string> = {};
-                                                    return { signature, randomness };
+                                                    const requestSignatureResponse = (await requestSignature(
+                                                        seed,
+                                                        JSON.stringify(commitments)
+                                                    )) as RequestSignatureResponse;
+
+                                                    return {
+                                                        signature: requestSignatureResponse.signedCommitments.signature,
+                                                        randomness: requestSignatureResponse.randomness,
+                                                    };
                                                 }
                                             )
                                             .catch((e: Error) => {
-                                                console.log(e);
+                                                console.error(e);
                                             });
                                     }}
                                 >
                                     Register Credential
                                 </button>
+                                {parsingError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {parsingError}.
+                                    </div>
+                                )}
                                 <button
                                     className="btn btn-primary"
                                     type="button"
@@ -825,8 +927,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setTransactionError('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
+                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
                                         }
 
                                         // Issuer fails to issue credential in time but still does it delayed here.
@@ -862,12 +964,22 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 7: Register a credential (Issuer fails to register credential in smart contract)"
+                                header="Step 8: Register a credential (Issuer fails to register credential in smart contract)"
                                 note="Expected result after pressing the button: There should be one popup happening in the wallet
                                     to add the credential to the wallet.
                                     The credential public key or an error message should appear in the above test unit. 
                                     Pressing the button without any user input will create an example with the provided placeholder values."
                             >
+                                Add `credentialCommitments`:
+                                <textarea
+                                    id="commitmentsTextArea"
+                                    ref={commitmentsTextAreaRef}
+                                    onChange={changeCommitmentsTextAreaHandler}
+                                >
+                                    {JSON.stringify(EXAMPLE_COMMITMENTS, undefined, 2)}
+                                </textarea>
+                                <br />
+                                <br />
                                 Add `valid_from`:
                                 <br />
                                 <br />
@@ -937,8 +1049,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 2`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 2`);
+                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
                                         }
 
                                         const provider = await detectConcordiumProvider();
@@ -975,16 +1087,19 @@ export default function Main(props: WalletConnectionProps) {
 
                                                     // Issuer fails to register credential in smart contract
 
-                                                    // Dummy signature/randomness since no checking has been implemented in the wallets yet.
-                                                    // The plan is that the corresponding private key to the `issuer_key(public_key)` registered in the smart contract needs to create this signature.
-                                                    const signature =
-                                                        'E051028C0011B76A2BA6B17A51B4A1FF0BDC9404E7033FCFACB6AFC4F615A15C74DE53AAF2E8C4316BCD4A5D971B49A85FB1B24111A8A52DB24A45B343880C01';
-                                                    const randomness: Record<string, string> = {};
-                                                    return { signature, randomness };
+                                                    const requestSignatureResponse = (await requestSignature(
+                                                        seed,
+                                                        JSON.stringify(commitments)
+                                                    )) as RequestSignatureResponse;
+
+                                                    return {
+                                                        signature: requestSignatureResponse.signedCommitments.signature,
+                                                        randomness: requestSignatureResponse.randomness,
+                                                    };
                                                 }
                                             )
                                             .catch((e: Error) => {
-                                                console.log(e);
+                                                console.error(e);
                                             });
                                     }}
                                 >
@@ -999,6 +1114,11 @@ export default function Main(props: WalletConnectionProps) {
                                             <div>{credentialPublicKey}</div>
                                         </div>
                                     </>
+                                )}
+                                {parsingError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {parsingError}.
+                                    </div>
                                 )}
                             </TestBox>
                         </div>
