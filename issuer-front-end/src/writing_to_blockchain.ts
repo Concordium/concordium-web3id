@@ -85,7 +85,7 @@ export async function createNewIssuer(
 export async function issueCredential(
     connection: WalletConnection,
     account: string,
-    browserPublicKey: string,
+    credentialPublicKey: string,
     validFromDate: string,
     validUntilDate: string,
     credentialMetaDataURL: string,
@@ -114,7 +114,7 @@ export async function issueCredential(
 
     const parameter = {
         credential_info: {
-            holder_id: browserPublicKey,
+            holder_id: credentialPublicKey,
             holder_revocable: isHolderRevocable,
             valid_from: validFromDateISOString,
             valid_until: {

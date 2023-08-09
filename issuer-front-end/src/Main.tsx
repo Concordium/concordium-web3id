@@ -12,7 +12,7 @@ import { accountInfo, getCredentialEntry } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer } from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
-import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_COMMITMENTS } from './constants';
+import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ATTRIBUTES } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -88,7 +88,7 @@ export default function Main(props: WalletConnectionProps) {
     const [seed, setSeed] = useState('myRandomSeedString');
     const [issuerKeys, setIssuerKeys] = useState<RequestIssuerKeysResponse>();
     const [parsingError, setParsingError] = useState('');
-    const [commitments, setCommitments] = useState<object>({});
+    const [attributes, setAttributes] = useState<object>({});
 
     const [accountBalance, setAccountBalance] = useState('');
 
@@ -124,7 +124,7 @@ export default function Main(props: WalletConnectionProps) {
     const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
     const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
 
-    const commitmentsTextAreaRef = useRef(null);
+    const attributesTextAreaRef = useRef(null);
 
     const handleValidFromDateChange = (event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
@@ -156,10 +156,10 @@ export default function Main(props: WalletConnectionProps) {
         setSeed(target.value);
     };
 
-    const changeCommitmentsTextAreaHandler = (event: ChangeEvent) => {
+    const changeAttributesTextAreaHandler = (event: ChangeEvent) => {
         setParsingError('');
-        setCommitments({});
-        const inputTextArea = commitmentsTextAreaRef.current as unknown as HTMLTextAreaElement;
+        setAttributes({});
+        const inputTextArea = attributesTextAreaRef.current as unknown as HTMLTextAreaElement;
         inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
         const target = event.target as HTMLTextAreaElement;
 
@@ -170,7 +170,7 @@ export default function Main(props: WalletConnectionProps) {
             return;
         }
 
-        setCommitments(JSON.parse(target.value));
+        setAttributes(JSON.parse(target.value));
     };
 
     const changeCredentialSchemaURLHandler = (event: ChangeEvent) => {
@@ -245,7 +245,7 @@ export default function Main(props: WalletConnectionProps) {
                 });
         }
 
-        setCommitments(EXAMPLE_COMMITMENTS);
+        setAttributes(EXAMPLE_ATTRIBUTES);
     }, [connection, account]);
 
     return (
@@ -479,13 +479,13 @@ export default function Main(props: WalletConnectionProps) {
                                     credential public key or an error message should appear in the above test unit. 
                                     Pressing the button without any user input will create an example tx with the provided placeholder values."
                             >
-                                Add `credentialCommitments`:
+                                Add `credentialAttributes`:
                                 <textarea
-                                    id="commitmentsTextArea"
-                                    ref={commitmentsTextAreaRef}
-                                    onChange={changeCommitmentsTextAreaHandler}
+                                    id="attributesTextArea"
+                                    ref={attributesTextAreaRef}
+                                    onChange={changeAttributesTextAreaHandler}
                                 >
-                                    {JSON.stringify(EXAMPLE_COMMITMENTS, undefined, 2)}
+                                    {JSON.stringify(EXAMPLE_ATTRIBUTES, undefined, 2)}
                                 </textarea>
                                 <br />
                                 <br />
@@ -558,8 +558,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
+                                            setTransactionError(`Set Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
 
                                         const provider = await detectConcordiumProvider();
@@ -613,6 +613,17 @@ export default function Main(props: WalletConnectionProps) {
                                                     console.log('Waiting for 30000ms...'); // TODO: write logic that waits until the txHash is finalized on chain.
                                                     await sleep(30000);
                                                     console.log('30000ms have passed.');
+
+                                                    let commitments = {
+                                                        attributes,
+                                                        holderId: id,
+                                                        issuer: {
+                                                            index: credentialRegistryContratIndex,
+                                                            subindex: 0,
+                                                        },
+                                                    }
+
+                                                    console.log(commitments)
 
                                                     const requestSignatureResponse = (await requestSignature(
                                                         seed,
@@ -717,8 +728,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setProofError('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
+                                            setTransactionError(`Set Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
 
                                         const provider = await detectConcordiumProvider();
@@ -779,13 +790,13 @@ export default function Main(props: WalletConnectionProps) {
                                     credential public key or an error message should appear in the above test unit. 
                                     Pressing the button without any user input will create an example tx with the provided placeholder values."
                             >
-                                Add `credentialCommitments`:
+                                Add `credentialAttributes`:
                                 <textarea
-                                    id="commitmentsTextArea"
-                                    ref={commitmentsTextAreaRef}
-                                    onChange={changeCommitmentsTextAreaHandler}
+                                    id="attributesTextArea"
+                                    ref={attributesTextAreaRef}
+                                    onChange={changeAttributesTextAreaHandler}
                                 >
-                                    {JSON.stringify(EXAMPLE_COMMITMENTS, undefined, 2)}
+                                    {JSON.stringify(EXAMPLE_ATTRIBUTES, undefined, 2)}
                                 </textarea>
                                 <br />
                                 <br />
@@ -858,8 +869,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
+                                            setTransactionError(`Set Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
 
                                         const provider = await detectConcordiumProvider();
@@ -896,6 +907,15 @@ export default function Main(props: WalletConnectionProps) {
 
                                                     // Issuer fails to issue credential in time here but still does it delayed when pressing the next button.
 
+                                                    let commitments = {
+                                                        attributes,
+                                                        holderId: id,
+                                                        issuer: {
+                                                            index: credentialRegistryContratIndex,
+                                                            subindex: 0,
+                                                        },
+                                                    }
+
                                                     const requestSignatureResponse = (await requestSignature(
                                                         seed,
                                                         JSON.stringify(commitments)
@@ -927,8 +947,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setTransactionError('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
+                                            setTransactionError(`Set Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
 
                                         // Issuer fails to issue credential in time but still does it delayed here.
@@ -970,13 +990,13 @@ export default function Main(props: WalletConnectionProps) {
                                     The credential public key or an error message should appear in the above test unit. 
                                     Pressing the button without any user input will create an example with the provided placeholder values."
                             >
-                                Add `credentialCommitments`:
+                                Add `credentialAttributes`:
                                 <textarea
-                                    id="commitmentsTextArea"
-                                    ref={commitmentsTextAreaRef}
-                                    onChange={changeCommitmentsTextAreaHandler}
+                                    id="attributesTextArea"
+                                    ref={attributesTextAreaRef}
+                                    onChange={changeAttributesTextAreaHandler}
                                 >
-                                    {JSON.stringify(EXAMPLE_COMMITMENTS, undefined, 2)}
+                                    {JSON.stringify(EXAMPLE_ATTRIBUTES, undefined, 2)}
                                 </textarea>
                                 <br />
                                 <br />
@@ -1049,8 +1069,8 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
 
                                         if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Input Smart Contract Index in Step 3`);
-                                            throw new Error(`Set Input Smart Contract Index in Step 3`);
+                                            setTransactionError(`Set Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
 
                                         const provider = await detectConcordiumProvider();
@@ -1086,6 +1106,15 @@ export default function Main(props: WalletConnectionProps) {
                                                     setCredentialPublicKey(id);
 
                                                     // Issuer fails to register credential in smart contract
+
+                                                    let commitments = {
+                                                        attributes,
+                                                        holderId: id,
+                                                        issuer: {
+                                                            index: credentialRegistryContratIndex,
+                                                            subindex: 0,
+                                                        },
+                                                    }
 
                                                     const requestSignatureResponse = (await requestSignature(
                                                         seed,

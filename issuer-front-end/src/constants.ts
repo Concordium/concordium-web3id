@@ -1,17 +1,11 @@
 import { BrowserWalletConnector, ephemeralConnectorType, Network } from '@concordium/react-components';
 import moment from 'moment';
 
-export const EXAMPLE_COMMITMENTS = {
-    attributes: {
-        Hello: 'World',
-        No: 'Yes',
-        Three: 3,
-    },
-    holderId: 'e9df2e0b7e18d36f91a80f042707847138f4655653643cfd8b18d4abdad79f63',
-    issuer: {
-        index: 17,
-        subindex: 0,
-    },
+export const EXAMPLE_ATTRIBUTES =
+{
+    Hello: 'World',
+    No: 'Yes',
+    Three: 3,
 };
 
 export const BACKEND_API = 'http://localhost:8080';
