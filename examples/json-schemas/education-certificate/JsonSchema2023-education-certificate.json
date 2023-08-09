@@ -13,31 +13,38 @@
                     "type": "string",
                     "description": "Credential subject identifier"
                 },
-                "degreeType": {
-                    "title": "Degree type",
-                    "type": "string",
-                    "description": "Degree type",
-                    "index": "0"
-                },
-                "degreeName": {
-                    "title": "Degree name",
-                    "type": "string",
-                    "description": "Degree name",
-                    "index": "1"
-                },
-                "graduationDate": {
-                    "title": "Graduation date",
-                    "type": "string",
-                    "format": "date-time",
-                    "description": "Graduation date",
-                    "index": "2"
+                "attributes": {
+                    "title": "Attributes",
+                    "description": "Credential attributes",
+                    "type": "object",
+                    "properties": {
+                        "degreeType": {
+                            "title": "Degree type",
+                            "type": "string",
+                            "description": "Degree type"
+                        },
+                        "degreeName": {
+                            "title": "Degree name",
+                            "type": "string",
+                            "description": "Degree name"
+                        },
+                        "graduationDate": {
+                            "title": "Graduation date",
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Graduation date"
+                        }
+                    },
+                    "required": [
+                        "degreeType",
+                        "degreeName",
+                        "graduationDate"
+                    ]
                 }
             },
             "required": [
                 "id",
-                "degreeType",
-                "degreeName",
-                "graduationDate"
+                "attributes"
             ]
         }
     },
