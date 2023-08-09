@@ -77,6 +77,7 @@ To build run `cargo build --release`. This produces the binary `target/release/t
 To run the service the following configuration options should be set unless the
 stated defaults suffice.
 
+
 - `CONCORDIUM_TEST_ISSUER_BACKEND_ISSUER_NODE` the address of the node to
   connect to. Both `http` and `https` schemas are supported.
 - `CONCORDIUM_TEST_ISSUER_BACKEND_LISTEN_ADDRESS` the address where the server
@@ -87,3 +88,9 @@ stated defaults suffice.
 - `CONCORDIUM_TEST_ISSUER_BACKEND_REQUEST_TIMEOUT` - timeout of requests in
   milliseconds (defaults to 5s)
 
+
+The most common invocation for local development would be
+
+```console
+    cargo run -- --node http://node.testnet.concordium.com:20000 --log-level=debug
+```

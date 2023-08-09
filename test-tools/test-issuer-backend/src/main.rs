@@ -26,7 +26,7 @@ struct App {
     #[clap(
         long = "node",
         help = "GRPC V2 interface of the node.",
-        default_value = "http://localhost:20000",
+        default_value = "http://node.testnet.concordium.com:20000",
         env = "CONCORDIUM_TEST_ISSUER_BACKEND_ISSUER_NODE"
     )]
     endpoint:        v2::Endpoint,

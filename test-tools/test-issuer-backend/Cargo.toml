@@ -6,18 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-aes-gcm = {version = "0.10", features = ["std"]}
 anyhow = "1.0"
 clap = { version = "4.3", features = ["derive", "env"] }
 concordium-rust-sdk = { version = "3", path = "../../deps/concordium-rust-sdk" }
-web3id-issuer = { version = "*", path = "../../services/web3id-issuer/" }
 ed25519-dalek = "1.0.1"
 hex = "0.4"
-key_derivation = { version = "*", path = "../../deps/concordium-rust-sdk/concordium-base/rust-src/key_derivation" }
 rand = "0.7"
-reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1.28", features = ["rt-multi-thread", "time", "macros"] }
-url = "2.3.1"
 thiserror = "1.0"
 axum = { version = "0.6", features = ["tracing"] }
 serde = { version = "1.0", features = ["derive"] }
