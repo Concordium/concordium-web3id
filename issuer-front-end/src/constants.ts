@@ -1,11 +1,16 @@
 import { BrowserWalletConnector, ephemeralConnectorType, Network } from '@concordium/react-components';
 import moment from 'moment';
 
-export const EXAMPLE_ATTRIBUTES =
-{
-    Hello: 'World',
-    No: 'Yes',
-    Three: 3,
+export const EXAMPLE_COMMITMENTS_ATTRIBUTES = {
+    0: 'BachelorDegree',
+    1: 'Bachelor of Science and Arts',
+    2: '2023-08-07T00:00:00.000Z',
+};
+
+export const EXAMPLE_ATTRIBUTES = {
+    degreeType: 'BachelorDegree',
+    degreeName: 'Bachelor of Science and Arts',
+    graduationDate: '2023-08-07T00:00:00.000Z',
 };
 
 export const BACKEND_API = 'http://localhost:8080';
