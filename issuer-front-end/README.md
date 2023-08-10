@@ -27,6 +27,10 @@ cd ./issuer-front-end
 ```
 
 -   Run `yarn install` in this folder.
+-   Run `yarn preinstall` in this folder.
+-   Run `yarn install` in this folder.
+
+These extra intall steps are needed because some helpers packages need to be built from the submodule links.
 
 To start the front end locally, do the following:
 

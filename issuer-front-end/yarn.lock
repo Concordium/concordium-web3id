@@ -260,9 +260,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@concordium/browser-wallet-api-helpers@file:../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers::locator=issuer-front-end%40workspace%3A.":
+"@concordium/browser-wallet-api-helpers@file:../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers::locator=issuer-front-end%40workspace%3A.":
   version: 2.5.1
-  resolution: "@concordium/browser-wallet-api-helpers@file:../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers#../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers::hash=3912e5&locator=issuer-front-end%40workspace%3A."
+  resolution: "@concordium/browser-wallet-api-helpers@file:../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers#../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers::hash=3912e5&locator=issuer-front-end%40workspace%3A."
   dependencies:
     "@concordium/web-sdk": ^5.0.0
   checksum: 956469f4f60c479ef00c30e6d3737da906f65aa887a713b82613bb31f946a00c5e1a420a97616303721fc1d6a77ecc7c40b3fd25853d4ade80cb60f168659cbb
@@ -5316,7 +5316,7 @@ cors@latest:
   version: 0.0.0-use.local
   resolution: "issuer-front-end@workspace:."
   dependencies:
-    "@concordium/browser-wallet-api-helpers": "file:../../../web3IDFrontEnd/concordium-browser-wallet/packages/browser-wallet-api-helpers"
+    "@concordium/browser-wallet-api-helpers": "file:../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers"
     "@concordium/react-components": ^0.3.0
     "@concordium/wallet-connectors": ^0.3.1
     "@concordium/web-sdk": ^6.1.0-alpha
