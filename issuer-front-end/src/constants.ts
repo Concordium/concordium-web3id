@@ -13,6 +13,10 @@ export const EXAMPLE_ATTRIBUTES = {
     graduationDate: '2023-08-07T00:00:00.000Z',
 };
 
+export const EXAMPLE_CREDENTIAL_SCHEMA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/287ca9c47dc43037a21d1544e9ccf87d0c6108c6/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`;
+
+export const EXAMPLE_CREDENTIAL_METADATA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json`;
+
 export const BACKEND_API = 'http://localhost:8080';
 
 export const REFRESH_INTERVAL = moment.duration(10, 'seconds');

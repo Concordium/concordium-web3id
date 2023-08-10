@@ -12,7 +12,14 @@ import { accountInfo, getCredentialEntry } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer } from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
-import { BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ATTRIBUTES, EXAMPLE_COMMITMENTS_ATTRIBUTES } from './constants';
+import {
+    EXAMPLE_CREDENTIAL_SCHEMA,
+    EXAMPLE_CREDENTIAL_METADATA,
+    BROWSER_WALLET,
+    REFRESH_INTERVAL,
+    EXAMPLE_ATTRIBUTES,
+    EXAMPLE_COMMITMENTS_ATTRIBUTES,
+} from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -32,6 +39,15 @@ type RequestIssuerKeysResponse = {
     verifyKey: string;
 };
 
+type SchemaRef = {
+    schema_ref: {
+        hash: {
+            None: [];
+        };
+        url: string;
+    };
+};
+
 function TestBox({ header, children, note }: TestBoxProps) {
     return (
         <fieldset className="testBox">
@@ -42,8 +58,6 @@ function TestBox({ header, children, note }: TestBoxProps) {
         </fieldset>
     );
 }
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function addRevokationKey(
     revocationKeys: string[],
@@ -62,9 +76,6 @@ async function addRevokationKey(
         setRevoationKeyInput('');
     }
 }
-
-const defaultCredentialSchema = `https://raw.githubusercontent.com/Concordium/concordium-web3id/287ca9c47dc43037a21d1544e9ccf87d0c6108c6/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`;
-const defaultCredentialMetaData = `https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json`;
 
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
@@ -105,14 +116,14 @@ export default function Main(props: WalletConnectionProps) {
 
     const [issuerMetaData, setIssuerMetaData] = useState('https://issuer/metaData/');
 
-    const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(defaultCredentialMetaData);
+    const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(EXAMPLE_CREDENTIAL_METADATA);
     const [credentialType, setCredentialType] = useState('JsonSchema2023');
-    const [schemaCredential, setSchemaCredential] = useState<object>({
+    const [schemaCredential, setSchemaCredential] = useState<SchemaRef>({
         schema_ref: {
             hash: {
                 None: [],
             },
-            url: defaultCredentialSchema,
+            url: EXAMPLE_CREDENTIAL_SCHEMA,
         },
     });
 
@@ -597,7 +608,7 @@ export default function Main(props: WalletConnectionProps) {
                                         const values = attributes;
 
                                         const metadataUrl = {
-                                            url: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json',
+                                            url: credentialMetaDataURL,
                                         };
 
                                         provider
@@ -613,8 +624,8 @@ export default function Main(props: WalletConnectionProps) {
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: values,
                                                     credentialSchema: {
-                                                        id: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/287ca9c47dc43037a21d1544e9ccf87d0c6108c6/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json',
-                                                        type: 'JsonSchema2023',
+                                                        id: schemaCredential.schema_ref.url,
+                                                        type: credentialType,
                                                     },
                                                 },
                                                 metadataUrl,
@@ -636,10 +647,6 @@ export default function Main(props: WalletConnectionProps) {
                                                     tx.then(setTxHash).catch((err: Error) =>
                                                         setTransactionError((err as Error).message)
                                                     );
-
-                                                    console.log('Waiting for 30000ms...'); // TODO: write logic that waits until the txHash is finalized on chain.
-                                                    await sleep(30000);
-                                                    console.log('30000ms have passed.');
 
                                                     const commitments = {
                                                         attributes: commitmentesAttributes,
@@ -809,9 +816,9 @@ export default function Main(props: WalletConnectionProps) {
                             <br />
                             <br />
                             <TestBox
-                                header="Step 7: Register a credential  (Issuer registers credential delayed)"
+                                header="Step 7: Register a credential  (Issuer registers credential can be delayed)"
                                 note="Expected result after pressing the two buttons in order: There should be two popups happening in the wallet
-                                    (first action when pressing the first button to add the credential,second action when pressing the second button to send the `issueCredential` tx to the smart contract).
+                                    (first action when pressing the first button to add the credential, second action when pressing the second button to send the `issueCredential` tx to the smart contract).
                                     The transaction hash or an error message should appear in the right column and the 
                                     credential public key or an error message should appear in the above test unit. 
                                     Pressing the button without any user input will create an example tx with the provided placeholder values."
@@ -914,7 +921,7 @@ export default function Main(props: WalletConnectionProps) {
                                         const values = attributes;
 
                                         const metadataUrl = {
-                                            url: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json',
+                                            url: credentialMetaDataURL,
                                         };
 
                                         provider
@@ -930,18 +937,16 @@ export default function Main(props: WalletConnectionProps) {
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: values,
                                                     credentialSchema: {
-                                                        id: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/287ca9c47dc43037a21d1544e9ccf87d0c6108c6/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json',
-                                                        type: 'JsonSchema2023',
+                                                        id: schemaCredential.schema_ref.url,
+                                                        type: credentialType,
                                                     },
                                                 },
                                                 metadataUrl,
                                                 async (id) => {
                                                     setCredentialPublicKey(id);
 
-                                                    // Issuer fails to issue credential in time here but still does it delayed when pressing the next button.
-
                                                     const commitments = {
-                                                        attributes,
+                                                        attributes: commitmentesAttributes,
                                                         holderId: id,
                                                         issuer: {
                                                             index: credentialRegistryContratIndex,
@@ -984,7 +989,7 @@ export default function Main(props: WalletConnectionProps) {
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
 
-                                        // Issuer fails to issue credential in time but still does it delayed here.
+                                        // Issuer registers credential delayed.
 
                                         const tx = issueCredential(
                                             connection,
@@ -1121,24 +1126,20 @@ export default function Main(props: WalletConnectionProps) {
                                         const values = attributes;
 
                                         const metadataUrl = {
-                                            url: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json',
+                                            url: credentialMetaDataURL,
                                         };
 
                                         provider
                                             .addWeb3IdCredential(
                                                 {
                                                     $schema: './JsonSchema2023-education-certificate.json',
-                                                    type: [
-                                                        'VerifiableCredential',
-                                                        'ConcordiumVerifiableCredential',
-                                                        'UniversityDegreeCredential',
-                                                    ],
+                                                    type: ['VerifiableCredential', 'ConcordiumVerifiableCredential'],
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: values,
                                                     credentialSchema: {
-                                                        id: 'https://raw.githubusercontent.com/Concordium/concordium-web3id/287ca9c47dc43037a21d1544e9ccf87d0c6108c6/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json',
-                                                        type: 'JsonSchema2023',
+                                                        id: schemaCredential.schema_ref.url,
+                                                        type: credentialType,
                                                     },
                                                 },
                                                 metadataUrl,
@@ -1148,7 +1149,7 @@ export default function Main(props: WalletConnectionProps) {
                                                     // Issuer fails to register credential in smart contract
 
                                                     const commitments = {
-                                                        attributes,
+                                                        attributes: commitmentesAttributes,
                                                         holderId: id,
                                                         issuer: {
                                                             index: credentialRegistryContratIndex,
