@@ -1,17 +1,30 @@
 # Issuer Front End Wallet Testing
 
-This is front end is used for testing the new browser wallet functionalities. 
+This front end is used for testing the new browser wallet functionalities concerning the web3ID infrastructure.
+You can manually issue/create credentials using this front end. Only the browser wallet (no walletConnect) is supported in the first version.
+The front end initializes and interacts with the [`credential_registry` smart contract](https://github.com/Concordium/concordium-rust-smart-contracts/tree/main/examples/credential-registry).
 
-The front end has two flows:
+The available front-end flows are:
 
-- An issuer can deploy a new smart contract instance of the credential_registry_smart_contract.
-- Someone can issue a new credentials by invoking the corresponding function in the credential_registry_smart_contract via the concordium browser wallet.
+Positive test cases:
 
-Only the browser wallet (no walletConnect) is supported in the first version.
+- 1. step to create issuer keys.
+- 2. step to deploy new `credential_registry` smart contract (each issuer deploys their own smart contract).
+- 3. step to input the newly created `credential_registry` smart contract index.
+- 4. step to issue a new credential.
+- 5. step to display the credential entry in the `credential_registry` smart contract.
+- 6. step to create a zero-knowledge proof about the credential.
+
+Negative test cases:
+
+- 7. step to issue a new credential (Issuer registers credential delayed in the smart contract).
+- 8. step to issue a new credential (Issuer fails to use the correct randomness/signature to register the credential in the wallet).
 
 ## Prerequisites
 
--   Browser wallet extension must be installed in Chrome browser and the Concordium testnet needs to be selected.
+- Browser wallet extension must be installed and the Concordium testnet needs to be selected.
+- The [test issuer backend](https://github.com/Concordium/concordium-web3id/tree/main/test-tools/test-issuer-backend) has to be set up and running:
+```cargo run -- --node  http://node.testnet.concordium.com:20000```
 
 ## Running the front end
 
@@ -30,7 +43,7 @@ cd ./issuer-front-end
 -   Run `yarn preinstall` in this folder.
 -   Run `yarn install` in this folder.
 
-These extra intall steps are needed because some helpers packages need to be built from the submodule links.
+These extra install steps are needed because some packages have to be built from the submodule link.
 
 To start the front end locally, do the following:
 
