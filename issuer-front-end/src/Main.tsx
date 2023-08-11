@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useRef } from 'react';
+import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useRef, useCallback } from 'react';
 import Switch from 'react-switch';
 import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
@@ -138,97 +138,111 @@ export default function Main(props: WalletConnectionProps) {
 
     const attributesTextAreaRef = useRef(null);
     const commitmentsAttributesTextAreaRef = useRef(null);
+    const schemaMetaDataURLRef = useRef(null);
+    const schemaCredentialURLRef = useRef(null);
 
-    const handleValidFromDateChange = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setValidFromDate(target.value);
-    };
+    const handleValidFromDateChange =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setValidFromDate(target.value);
+        }, []);
 
-    const handleValidUntilDateChange = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setValidUntilDate(target.value);
-    };
+    const handleValidUntilDateChange =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setValidUntilDate(target.value);
+        }, []);
 
-    const changePublicKeyHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setPublicKey(target.value);
-    };
+    const changePublicKeyHandler =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setPublicKey(target.value);
+        }, []);
 
-    const changeIssuerMetaDataURLHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setIssuerMetaData(target.value);
-    };
+    const changeIssuerMetaDataURLHandler =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setIssuerMetaData(target.value);
+        }, []);
 
-    const changeAuxiliaryDataHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setAuxiliaryData(Array.from(JSON.parse(target.value)));
-    };
+    const changeAuxiliaryDataHandler =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setAuxiliaryData(Array.from(JSON.parse(target.value)));
+        }, []);
 
-    const changeSeedHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setSeed(target.value);
-    };
+    const changeSeedHandler =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setSeed(target.value);
+        }, []);
 
-    const changeAttributesTextAreaHandler = (event: ChangeEvent) => {
-        setParsingError('');
-        setAttributes({});
-        const inputTextArea = attributesTextAreaRef.current as unknown as HTMLTextAreaElement;
-        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
-        const target = event.target as HTMLTextAreaElement;
+    const changeAttributesTextAreaHandler =
+        useCallback((event: ChangeEvent) => {
+            setParsingError('');
+            setAttributes({});
+            const inputTextArea = attributesTextAreaRef.current as unknown as HTMLTextAreaElement;
+            inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+            const target = event.target as HTMLTextAreaElement;
 
-        try {
-            JSON.parse(target.value);
-        } catch (e) {
-            setParsingError((e as Error).message);
-            return;
-        }
+            try {
+                JSON.parse(target.value);
+            } catch (e) {
+                setParsingError((e as Error).message);
+                return;
+            }
 
-        setAttributes(JSON.parse(target.value));
-    };
+            setAttributes(JSON.parse(target.value));
+        }, []);
 
-    const changeCommitmentsTextAreaHandler = (event: ChangeEvent) => {
-        setParsingError('');
-        setCommitmentsAttributes({});
-        const inputTextArea = commitmentsAttributesTextAreaRef.current as unknown as HTMLTextAreaElement;
-        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
-        const target = event.target as HTMLTextAreaElement;
+    const changeCommitmentsTextAreaHandler =
+        useCallback((event: ChangeEvent) => {
+            setParsingError('');
+            setCommitmentsAttributes({});
+            const inputTextArea = commitmentsAttributesTextAreaRef.current as unknown as HTMLTextAreaElement;
+            inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
+            const target = event.target as HTMLTextAreaElement;
 
-        try {
-            JSON.parse(target.value);
-        } catch (e) {
-            setParsingError((e as Error).message);
-            return;
-        }
+            try {
+                JSON.parse(target.value);
+            } catch (e) {
+                setParsingError((e as Error).message);
+                return;
+            }
 
-        setCommitmentsAttributes(JSON.parse(target.value));
-    };
+            setCommitmentsAttributes(JSON.parse(target.value));
+        }, []);
 
-    const changeCredentialSchemaURLHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setSchemaCredential({
-            schema_ref: {
-                hash: {
-                    None: [],
+    const changeCredentialSchemaURLHandler =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setSchemaCredential({
+                schema_ref: {
+                    hash: {
+                        None: [],
+                    },
+                    url: target.value,
                 },
-                url: target.value,
-            },
-        });
-    };
+            });
+        }, []);
 
-    const changeCredentialMetaDataURLHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialMetaDataURL(target.value);
-    };
+    const changeCredentialMetaDataURLHandler =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setCredentialMetaDataURL(target.value);
+        }, []);
 
-    const changeCredentialTypeHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialType(target.value);
-    };
+    const changeCredentialTypeHandler =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setCredentialType(target.value);
+        }, []);
 
-    const changeCredentialRegistryContratIndexHandler = (event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialRegistryContratIndex(Number(target.value));
-    };
+    const changeCredentialRegistryContratIndexHandler =
+        useCallback((event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setCredentialRegistryContratIndex(Number(target.value));
+        }, []);
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -277,6 +291,13 @@ export default function Main(props: WalletConnectionProps) {
 
         setAttributes(EXAMPLE_ATTRIBUTES);
         setCommitmentsAttributes(EXAMPLE_COMMITMENTS_ATTRIBUTES);
+
+        const schemaMetaData = schemaMetaDataURLRef.current as unknown as HTMLFormElement
+        schemaMetaData?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_METADATA);
+
+        const schemaCredential = schemaCredentialURLRef.current as unknown as HTMLFormElement
+        schemaCredential?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_SCHEMA);
+
     }, [connection, account]);
 
     return (
@@ -393,7 +414,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialSchemaURL"
                                     type="text"
-                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/287ca9c47dc43037a21d1544e9ccf87d0c6108c6/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json"
+                                    ref={schemaCredentialURLRef}
                                     onChange={changeCredentialSchemaURLHandler}
                                 />
                                 {revocationKeys.length !== 0 && (
@@ -560,7 +581,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURL"
                                     type="text"
-                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json"
+                                    ref={schemaMetaDataURLRef}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />

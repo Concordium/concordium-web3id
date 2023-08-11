@@ -17,7 +17,7 @@ export const EXAMPLE_CREDENTIAL_SCHEMA = `https://raw.githubusercontent.com/Conc
 
 export const EXAMPLE_CREDENTIAL_METADATA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json`;
 
-export const BACKEND_API = 'http://localhost:8080';
+export const BACKEND_API = 'http://localhost:3000';
 
 export const REFRESH_INTERVAL = moment.duration(10, 'seconds');
 
