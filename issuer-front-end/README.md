@@ -24,7 +24,7 @@ Negative test cases:
 
 - Browser wallet extension must be installed and the Concordium testnet needs to be selected.
 - The [test issuer backend](https://github.com/Concordium/concordium-web3id/tree/main/test-tools/test-issuer-backend) has to be set up and running:
-```cargo run -- --node http://node.testnet.concordium.com:20000 --listen-address 0:0:0:0:3000```
+```cargo run -- --node http://node.testnet.concordium.com:20000 --listen-address 0.0.0.0:3000```
 
 ## Running the front end
 

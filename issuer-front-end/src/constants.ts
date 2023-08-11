@@ -1,21 +1,15 @@
 import { BrowserWalletConnector, ephemeralConnectorType, Network } from '@concordium/react-components';
 import moment from 'moment';
 
-export const EXAMPLE_COMMITMENTS_ATTRIBUTES = {
-    0: 'BachelorDegree',
-    1: 'Bachelor of Science and Arts',
-    2: '2023-08-07T00:00:00.000Z',
-};
-
 export const EXAMPLE_ATTRIBUTES = {
     degreeType: 'BachelorDegree',
     degreeName: 'Bachelor of Science and Arts',
     graduationDate: '2023-08-07T00:00:00.000Z',
 };
 
-export const EXAMPLE_CREDENTIAL_SCHEMA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/287ca9c47dc43037a21d1544e9ccf87d0c6108c6/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`;
+export const EXAMPLE_CREDENTIAL_SCHEMA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/ac803895b1ffaa50888cfc6667331f6ebb0b889e/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`;
 
-export const EXAMPLE_CREDENTIAL_METADATA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json`;
+export const EXAMPLE_CREDENTIAL_METADATA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/21bc43872c5d972f6c1b48af7956ec74f2e3e6ef/examples/json-schemas/metadata/credential-metadata.json`;
 
 export const BACKEND_API = 'http://localhost:3000';
 
