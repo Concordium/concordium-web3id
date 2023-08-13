@@ -1,14 +1,14 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useRef, useCallback } from 'react';
 import Switch from 'react-switch';
-import { withJsonRpcClient, WalletConnectionProps, useConnection, useConnect } from '@concordium/react-components';
+import { WalletConnectionProps, useConnection, useConnect, useGrpcClient, TESTNET } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
-import { Web3StatementBuilder } from '@concordium/web-sdk';
+import { AccountAddress, Web3StatementBuilder } from '@concordium/web-sdk';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
-import { accountInfo, getCredentialEntry } from './reading_from_blockchain';
+import { getCredentialEntry } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer } from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
@@ -168,6 +168,8 @@ export default function Main(props: WalletConnectionProps) {
         setSeed(target.value);
     }, []);
 
+    const grpcClient = useGrpcClient(TESTNET);
+
     const changeAttributesTextAreaHandler = useCallback((event: ChangeEvent) => {
         setParsingError('');
         setAttributes({});
@@ -218,7 +220,7 @@ export default function Main(props: WalletConnectionProps) {
         if (connection && account) {
             const interval = setInterval(() => {
                 console.log('refreshing');
-                withJsonRpcClient(connection, (rpcClient) => accountInfo(rpcClient, account))
+                grpcClient?.getAccountInfo(new AccountAddress(account))
                     .then((value) => {
                         if (value !== undefined) {
                             setAccountBalance(value.accountAmount.toString());
@@ -240,7 +242,7 @@ export default function Main(props: WalletConnectionProps) {
 
     useEffect(() => {
         if (connection && account) {
-            withJsonRpcClient(connection, (rpcClient) => accountInfo(rpcClient, account))
+            grpcClient?.getAccountInfo(new AccountAddress(account))
                 .then((value) => {
                     if (value !== undefined) {
                         setAccountBalance(value.accountAmount.toString());
@@ -698,9 +700,8 @@ export default function Main(props: WalletConnectionProps) {
                                     onClick={() => {
                                         setCredentialRegistryState('');
                                         setCredentialRegistryStateError('');
-                                        withJsonRpcClient(connection, (rpcClient) =>
-                                            getCredentialEntry(rpcClient, publicKey, credentialRegistryContratIndex)
-                                        )
+                                        getCredentialEntry(grpcClient, publicKey, credentialRegistryContratIndex)
+                                        
                                             .then((value) => {
                                                 if (value !== undefined) {
                                                     setCredentialRegistryState(JSON.parse(value));

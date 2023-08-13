@@ -1,8 +1,7 @@
 import React from 'react';
 
-import { WithWalletConnector } from '@concordium/react-components';
+import { TESTNET, WithWalletConnector } from '@concordium/react-components';
 import Main from './Main';
-import { TESTNET } from './constants';
 
 /**
  * Connect to wallet, setup application state context, and render children when the wallet API is ready for use.
