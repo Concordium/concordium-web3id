@@ -82,6 +82,55 @@ export async function createNewIssuer(
     );
 }
 
+export async function revokeCredential(
+    connection: WalletConnection,
+    account: string,
+    credentialPublicKey: string,
+    credentialRegistryContratIndex: number,
+    auxiliaryData: number[],
+    reason: string
+) {
+    if (credentialPublicKey === '') {
+        throw new Error(`Set credentialPublicKey`);
+    }
+
+    if (credentialPublicKey.length !== 64) {
+        throw new Error(`credentialPublicKey needs a length of 64`);
+    }
+
+    if (credentialRegistryContratIndex === 0) {
+        throw new Error(`Set credentialRegistryContratIndex`);
+    }
+
+    const reasonOption = reason === '' ? { None: [] } : { Some: [{ reason }] };
+
+    const parameter = {
+        credential_id: credentialPublicKey,
+        reason: reasonOption,
+        auxiliary_data: auxiliaryData,
+    } as unknown as SmartContractParameters;
+
+    const schema = {
+        parameters: parameter,
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(0)),
+            address: {
+                index: BigInt(credentialRegistryContratIndex),
+                subindex: CONTRACT_SUB_INDEX,
+            },
+            receiveName: 'credential_registry.revokeCredentialIssuer',
+            maxContractExecutionEnergy: 30000n,
+        } as UpdateContractPayload,
+        schema
+    );
+}
+
 export async function issueCredential(
     connection: WalletConnection,
     account: string,
@@ -93,6 +142,14 @@ export async function issueCredential(
     credentialRegistryContratIndex: number,
     auxiliaryData: number[]
 ) {
+    if (credentialPublicKey === '') {
+        throw new Error(`Set credentialPublicKey`);
+    }
+
+    if (credentialPublicKey.length !== 64) {
+        throw new Error(`credentialPublicKey needs a length of 64`);
+    }
+
     if (validFromDate === '') {
         throw new Error(`Set validFromDate`);
     }

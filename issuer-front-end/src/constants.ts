@@ -1,4 +1,4 @@
-import { BrowserWalletConnector, ephemeralConnectorType, Network } from '@concordium/react-components';
+import { BrowserWalletConnector, ephemeralConnectorType } from '@concordium/react-components';
 import moment from 'moment';
 
 export const EXAMPLE_ATTRIBUTES = {
@@ -13,10 +13,7 @@ export const EXAMPLE_CREDENTIAL_METADATA = `https://raw.githubusercontent.com/Co
 
 export const BACKEND_API = 'http://localhost:3000';
 
-export const REFRESH_INTERVAL = moment.duration(10, 'seconds');
-
-// The TESTNET_GENESIS_BLOCK_HASH is used to check that the user has its browser wallet connected to testnet and not to mainnet.
-export const TESTNET_GENESIS_BLOCK_HASH = '4221332d34e1694168c2a0c0b3fd0f273809612cb13d000d5c2e00e85f50f796';
+export const REFRESH_INTERVAL = moment.duration(4, 'seconds');
 
 export const BROWSER_WALLET = ephemeralConnectorType(BrowserWalletConnector.create);
 

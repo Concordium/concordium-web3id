@@ -9,7 +9,7 @@ import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { getCredentialEntry } from './reading_from_blockchain';
-import { issueCredential, createNewIssuer } from './writing_to_blockchain';
+import { issueCredential, createNewIssuer, revokeCredential } from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
 import {
@@ -99,6 +99,7 @@ export default function Main(props: WalletConnectionProps) {
     const [issuerKeys, setIssuerKeys] = useState<RequestIssuerKeysResponse>();
     const [parsingError, setParsingError] = useState('');
     const [attributes, setAttributes] = useState<object>({});
+    const [reason, setReason] = useState('');
 
     const [accountBalance, setAccountBalance] = useState('');
 
@@ -204,6 +205,11 @@ export default function Main(props: WalletConnectionProps) {
         setCredentialMetaDataURL(target.value);
     }, []);
 
+    const changeReasonRevokeHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setReason(target.value);
+    }, []);
+
     const changeCredentialTypeHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setCredentialType(target.value);
@@ -220,7 +226,8 @@ export default function Main(props: WalletConnectionProps) {
         if (connection && account) {
             const interval = setInterval(() => {
                 console.log('refreshing');
-                grpcClient?.getAccountInfo(new AccountAddress(account))
+                grpcClient
+                    ?.getAccountInfo(new AccountAddress(account))
                     .then((value) => {
                         if (value !== undefined) {
                             setAccountBalance(value.accountAmount.toString());
@@ -242,7 +249,8 @@ export default function Main(props: WalletConnectionProps) {
 
     useEffect(() => {
         if (connection && account) {
-            grpcClient?.getAccountInfo(new AccountAddress(account))
+            grpcClient
+                ?.getAccountInfo(new AccountAddress(account))
                 .then((value) => {
                     if (value !== undefined) {
                         setAccountBalance(value.accountAmount.toString());
@@ -472,17 +480,15 @@ export default function Main(props: WalletConnectionProps) {
                                 an error message should appear in the above test unit.
                                         "
                             >
-                                <label className="field">
-                                    Input smart contract index created in above step:
-                                    <br />
-                                    <input
-                                        className="inputFieldStyle"
-                                        id="credentialRegistryContratIndex"
-                                        type="text"
-                                        placeholder="1111"
-                                        onChange={changeCredentialRegistryContratIndexHandler}
-                                    />
-                                </label>
+                                Input smart contract index created in above step:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialRegistryContratIndex"
+                                    type="text"
+                                    placeholder="1111"
+                                    onChange={changeCredentialRegistryContratIndexHandler}
+                                />
                                 {credentialRegistryContratIndex !== 0 && (
                                     <div className="actionResultBox">
                                         <div> You will be using this registry contract index: </div>
@@ -683,17 +689,15 @@ export default function Main(props: WalletConnectionProps) {
                                         should appear in the above test unit."
                             >
                                 <br />
-                                <label className="field">
-                                    Credential Public Key:
-                                    <br />
-                                    <input
-                                        className="inputFieldStyle"
-                                        id="publicKey"
-                                        type="text"
-                                        placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
-                                        onChange={changePublicKeyHandler}
-                                    />
-                                </label>
+                                Credential Public Key:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="publicKey"
+                                    type="text"
+                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    onChange={changePublicKeyHandler}
+                                />
                                 <button
                                     className="btn btn-primary"
                                     type="button"
@@ -701,7 +705,6 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialRegistryState('');
                                         setCredentialRegistryStateError('');
                                         getCredentialEntry(grpcClient, publicKey, credentialRegistryContratIndex)
-                                        
                                             .then((value) => {
                                                 if (value !== undefined) {
                                                     setCredentialRegistryState(JSON.parse(value));
@@ -732,7 +735,65 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 6: Create Proof"
+                                header="Step 6: Revoke credential by the issuer"
+                                note="Expected result after pressing the button: The
+                                transaction hash or an error message should appear in the right column."
+                            >
+                                Credential Public Key:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="publicKey"
+                                    type="text"
+                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    onChange={changePublicKeyHandler}
+                                />
+                                <br />
+                                Reason:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="reason"
+                                    type="text"
+                                    placeholder="ThisShouldBeRevoked"
+                                    onChange={changeReasonRevokeHandler}
+                                />
+                                <br />
+                                Add `AuxiliaryData`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="auxiliaryData"
+                                    type="text"
+                                    placeholder="[23,2,1,5,3,2]"
+                                    onChange={changeAuxiliaryDataHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        const tx = revokeCredential(
+                                            connection,
+                                            account,
+                                            publicKey,
+                                            credentialRegistryContratIndex,
+                                            auxiliaryData,
+                                            reason
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Revoke Credential
+                                </button>
+                            </TestBox>
+                            <TestBox
+                                header="Step 7: Create Proof"
                                 note="Expected result after pressing the button: The return value or an error message
                                         should appear in the above test unit. To create a valid proof only works for the default `Bachelor of Science and Arts` example."
                             >
@@ -802,7 +863,7 @@ export default function Main(props: WalletConnectionProps) {
                             <br />
                             <br />
                             <TestBox
-                                header="Step 7: Register a credential (Issuer registers credential with some delay)"
+                                header="Step 8: Register a credential (Issuer registers credential with some delay)"
                                 note="Expected result after pressing the two buttons: There should be two popups happening in the wallet
                                     (first action when pressing the first button to add the credential, second action when pressing the second button to send the `issueCredential` tx to the smart contract).
                                     The transaction hash or an error message should appear in the right column and the 
@@ -1007,7 +1068,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 8: Register a credential (Issuer fails to provide correct randomness/signature)"
+                                header="Step 9: Register a credential (Issuer fails to provide correct randomness/signature)"
                                 note="Expected result after pressing the button: There should be two popups happening in the wallet
                                 (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 

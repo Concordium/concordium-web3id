@@ -8,7 +8,7 @@ import {
 } from './constants';
 
 export async function getCredentialEntry(
-    rpcClient: ConcordiumGRPCClient | undefined,
+    grpcClient: ConcordiumGRPCClient | undefined,
     publicKey: string,
     credentialRegistryContratIndex: number
 ) {
@@ -31,7 +31,7 @@ export async function getCredentialEntry(
         throw new Error((err as Error).message);
     }
 
-    const res = await rpcClient?.invokeContract({
+    const res = await grpcClient?.invokeContract({
         method: `${CONTRACT_REGISTRY_NAME}.credentialEntry`,
         parameter: serializedPublicKey,
         contract: { index: BigInt(credentialRegistryContratIndex), subindex: CONTRACT_SUB_INDEX },
