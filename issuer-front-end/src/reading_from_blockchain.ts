@@ -1,4 +1,4 @@
-import { toBuffer, JsonRpcClient, deserializeTypeValue, serializeTypeValue } from '@concordium/web-sdk';
+import { toBuffer, deserializeTypeValue, serializeTypeValue, ConcordiumGRPCClient } from '@concordium/web-sdk';
 
 import {
     CONTRACT_SUB_INDEX,
@@ -8,7 +8,7 @@ import {
 } from './constants';
 
 export async function getCredentialEntry(
-    rpcClient: JsonRpcClient,
+    rpcClient: ConcordiumGRPCClient | undefined,
     publicKey: string,
     credentialRegistryContratIndex: number
 ) {
@@ -31,7 +31,7 @@ export async function getCredentialEntry(
         throw new Error((err as Error).message);
     }
 
-    const res = await rpcClient.invokeContract({
+    const res = await rpcClient?.invokeContract({
         method: `${CONTRACT_REGISTRY_NAME}.credentialEntry`,
         parameter: serializedPublicKey,
         contract: { index: BigInt(credentialRegistryContratIndex), subindex: CONTRACT_SUB_INDEX },
@@ -59,8 +59,4 @@ export async function getCredentialEntry(
     } else {
         return JSON.stringify(state);
     }
-}
-
-export async function accountInfo(rpcClient: JsonRpcClient, account: string) {
-    return rpcClient.getAccountInfo(account);
 }
