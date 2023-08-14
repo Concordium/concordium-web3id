@@ -12,13 +12,7 @@ import { getCredentialEntry } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer, revokeCredential } from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
-import {
-    EXAMPLE_CREDENTIAL_SCHEMA,
-    EXAMPLE_CREDENTIAL_METADATA,
-    BROWSER_WALLET,
-    REFRESH_INTERVAL,
-    EXAMPLE_ATTRIBUTES,
-} from './constants';
+import { EXAMPLE_CREDENTIAL_SCHEMA, EXAMPLE_CREDENTIAL_METADATA, BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -46,6 +40,10 @@ type SchemaRef = {
         url: string;
     };
 };
+
+interface Attribute {
+    [key: string]: string | number;
+}
 
 function TestBox({ header, children, note }: TestBoxProps) {
     return (
@@ -98,7 +96,9 @@ export default function Main(props: WalletConnectionProps) {
     const [seed, setSeed] = useState('myRandomSeedString');
     const [issuerKeys, setIssuerKeys] = useState<RequestIssuerKeysResponse>();
     const [parsingError, setParsingError] = useState('');
-    const [attributes, setAttributes] = useState<object>({});
+
+    const [attributeSchema, setAttributeSchema] = useState<string[][]>([]);
+
     const [reason, setReason] = useState('');
 
     const [accountBalance, setAccountBalance] = useState('');
@@ -135,7 +135,6 @@ export default function Main(props: WalletConnectionProps) {
     const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
     const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
 
-    const attributesTextAreaRef = useRef(null);
     const schemaMetaDataURLRef = useRef(null);
     const schemaCredentialURLRef = useRef(null);
 
@@ -171,23 +170,6 @@ export default function Main(props: WalletConnectionProps) {
 
     const grpcClient = useGrpcClient(TESTNET);
 
-    const changeAttributesTextAreaHandler = useCallback((event: ChangeEvent) => {
-        setParsingError('');
-        setAttributes({});
-        const inputTextArea = attributesTextAreaRef.current as unknown as HTMLTextAreaElement;
-        inputTextArea?.setAttribute('style', `height:${inputTextArea.scrollHeight}px;overflow-y:hidden;`);
-        const target = event.target as HTMLTextAreaElement;
-
-        try {
-            JSON.parse(target.value);
-        } catch (e) {
-            setParsingError((e as Error).message);
-            return;
-        }
-
-        setAttributes(JSON.parse(target.value));
-    }, []);
-
     const changeCredentialSchemaURLHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setSchemaCredential({
@@ -198,6 +180,19 @@ export default function Main(props: WalletConnectionProps) {
                 url: target.value,
             },
         });
+
+        fetch(target.value)
+            .then((response) => response.json())
+            .then((json) => {
+                const { properties } = json.properties.credentialSubject.properties.attributes;
+
+                const attributeSchemaValues: string[][] = [];
+                Object.keys(properties).forEach((key) => {
+                    attributeSchemaValues.push([key, properties[key].type, '']);
+                });
+
+                setAttributeSchema(attributeSchemaValues);
+            });
     }, []);
 
     const changeCredentialMetaDataURLHandler = useCallback((event: ChangeEvent) => {
@@ -218,6 +213,17 @@ export default function Main(props: WalletConnectionProps) {
     const changeCredentialRegistryContratIndexHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setCredentialRegistryContratIndex(Number(target.value));
+    }, []);
+
+    const handleAttributeChange = useCallback((i: string, attributeSchemaValue: string[][], event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+
+        Object.keys(attributeSchemaValue).forEach((key) => {
+            if (attributeSchemaValue[Number(key)][0] === i) {
+                // eslint-disable-next-line no-param-reassign
+                attributeSchemaValue[Number(key)][2] = target.value;
+            }
+        });
     }, []);
 
     // Refresh accountInfo periodically.
@@ -267,14 +273,27 @@ export default function Main(props: WalletConnectionProps) {
                 });
         }
 
-        setAttributes(EXAMPLE_ATTRIBUTES);
-
         const schemaMetaDataURL = schemaMetaDataURLRef.current as unknown as HTMLFormElement;
         schemaMetaDataURL?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_METADATA);
 
         const schemaCredentialURL = schemaCredentialURLRef.current as unknown as HTMLFormElement;
         schemaCredentialURL?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_SCHEMA);
     }, [connection, account]);
+
+    useEffect(() => {
+        fetch(EXAMPLE_CREDENTIAL_SCHEMA)
+            .then((response) => response.json())
+            .then((json) => {
+                const { properties } = json.properties.credentialSubject.properties.attributes;
+
+                const attributeSchemaValues: string[][] = [];
+                Object.keys(properties).forEach((key) => {
+                    attributeSchemaValues.push([key, properties[key].type, '']);
+                });
+
+                setAttributeSchema(attributeSchemaValues);
+            });
+    }, []);
 
     return (
         <main className="container">
@@ -505,14 +524,24 @@ export default function Main(props: WalletConnectionProps) {
                                     credential public key or an error message should appear in the above test unit. 
                                     Pressing the button without any user input will create an example tx with the provided placeholder values."
                             >
-                                Add `credentialAttributes`:
-                                <textarea
-                                    id="attributesTextArea"
-                                    ref={attributesTextAreaRef}
-                                    onChange={changeAttributesTextAreaHandler}
-                                >
-                                    {JSON.stringify(EXAMPLE_ATTRIBUTES, undefined, 2)}
-                                </textarea>
+                                {attributeSchema.map((item) => (
+                                    <div>
+                                        Add {item[0]}:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id={item[0]}
+                                            name={item[0]}
+                                            type="text"
+                                            placeholder={item[1] === 'string' ? 'myString' : '1234'}
+                                            onChange={(event) => {
+                                                handleAttributeChange(item[0], attributeSchema, event);
+                                            }}
+                                        />
+                                        <br />
+                                        <br />
+                                    </div>
+                                ))}
                                 <br />
                                 <br />
                                 Add `valid_from`:
@@ -582,6 +611,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setTxHash('');
                                         setTransactionError('');
                                         setCredentialPublicKey('');
+                                        setParsingError('');
 
                                         if (credentialRegistryContratIndex === 0) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
@@ -593,6 +623,39 @@ export default function Main(props: WalletConnectionProps) {
                                         const metadataUrl = {
                                             url: credentialMetaDataURL,
                                         };
+
+                                        const attributes: Attribute = {};
+
+                                        Object.keys(attributeSchema).forEach((key) => {
+                                            if (attributeSchema[Number(key)][2] === '') {
+                                                setParsingError(
+                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
+                                                );
+                                            }
+
+                                            if (
+                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
+                                                JSON.stringify('string')
+                                            ) {
+                                                // eslint-disable-next-line prefer-destructuring
+                                                attributes[attributeSchema[Number(key)][0]] =
+                                                    attributeSchema[Number(key)][2];
+                                            } else if (
+                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
+                                                JSON.stringify('number')
+                                            ) {
+                                                // eslint-disable-next-line prefer-destructuring
+                                                attributes[attributeSchema[Number(key)][0]] = Number(
+                                                    attributeSchema[Number(key)][2]
+                                                );
+                                            } else {
+                                                setParsingError(
+                                                    `Attribute ${
+                                                        attributeSchema[Number(key)][1]
+                                                    } type is not supported. Only string/number supported.`
+                                                );
+                                            }
+                                        });
 
                                         provider
                                             .addWeb3IdCredential(
@@ -817,7 +880,6 @@ export default function Main(props: WalletConnectionProps) {
                                                 [{ index: credentialRegistryContratIndex, subindex: 0 }],
                                                 (b) =>
                                                     b
-
                                                         .revealAttribute('graduationDate')
                                                         .addMembership('degreeName', [
                                                             'Bachelor of Science and Arts',
@@ -870,14 +932,24 @@ export default function Main(props: WalletConnectionProps) {
                                     credential public key or an error message should appear in the above test unit. 
                                     Pressing the button without any user input will create an example tx with the provided placeholder values."
                             >
-                                Add `credentialAttributes`:
-                                <textarea
-                                    id="attributesTextArea"
-                                    ref={attributesTextAreaRef}
-                                    onChange={changeAttributesTextAreaHandler}
-                                >
-                                    {JSON.stringify(EXAMPLE_ATTRIBUTES, undefined, 2)}
-                                </textarea>
+                                {attributeSchema.map((item) => (
+                                    <div>
+                                        Add {item[0]}:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id={item[0]}
+                                            name={item[0]}
+                                            type="text"
+                                            placeholder={item[1] === 'string' ? 'myString' : '1234'}
+                                            onChange={(event) => {
+                                                handleAttributeChange(item[0], attributeSchema, event);
+                                            }}
+                                        />
+                                        <br />
+                                        <br />
+                                    </div>
+                                ))}
                                 <br />
                                 <br />
                                 Add `valid_from`:
@@ -947,6 +1019,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setTxHash('');
                                         setTransactionError('');
                                         setCredentialPublicKey('');
+                                        setParsingError('');
 
                                         if (credentialRegistryContratIndex === 0) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
@@ -958,6 +1031,39 @@ export default function Main(props: WalletConnectionProps) {
                                         const metadataUrl = {
                                             url: credentialMetaDataURL,
                                         };
+
+                                        const attributes: Attribute = {};
+
+                                        Object.keys(attributeSchema).forEach((key) => {
+                                            if (attributeSchema[Number(key)][2] === '') {
+                                                setParsingError(
+                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
+                                                );
+                                            }
+
+                                            if (
+                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
+                                                JSON.stringify('string')
+                                            ) {
+                                                // eslint-disable-next-line prefer-destructuring
+                                                attributes[attributeSchema[Number(key)][0]] =
+                                                    attributeSchema[Number(key)][2];
+                                            } else if (
+                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
+                                                JSON.stringify('number')
+                                            ) {
+                                                // eslint-disable-next-line prefer-destructuring
+                                                attributes[attributeSchema[Number(key)][0]] = Number(
+                                                    attributeSchema[Number(key)][2]
+                                                );
+                                            } else {
+                                                setParsingError(
+                                                    `Attribute ${
+                                                        attributeSchema[Number(key)][1]
+                                                    } type is not supported. Only string/number supported.`
+                                                );
+                                            }
+                                        });
 
                                         provider
                                             .addWeb3IdCredential(
@@ -1075,14 +1181,24 @@ export default function Main(props: WalletConnectionProps) {
                                 credential public key or an error message should appear in the above test unit. 
                                 Pressing the button without any user input will create an example tx with the provided placeholder values."
                             >
-                                Add `credentialAttributes`:
-                                <textarea
-                                    id="attributesTextArea"
-                                    ref={attributesTextAreaRef}
-                                    onChange={changeAttributesTextAreaHandler}
-                                >
-                                    {JSON.stringify(EXAMPLE_ATTRIBUTES, undefined, 2)}
-                                </textarea>
+                                {attributeSchema.map((item) => (
+                                    <div>
+                                        Add {item[0]}:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id={item[0]}
+                                            name={item[0]}
+                                            type="text"
+                                            placeholder={item[1] === 'string' ? 'myString' : '1234'}
+                                            onChange={(event) => {
+                                                handleAttributeChange(item[0], attributeSchema, event);
+                                            }}
+                                        />
+                                        <br />
+                                        <br />
+                                    </div>
+                                ))}
                                 <br />
                                 <br />
                                 Add `valid_from`:
@@ -1152,6 +1268,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setTxHash('');
                                         setTransactionError('');
                                         setCredentialPublicKey('');
+                                        setParsingError('');
 
                                         if (credentialRegistryContratIndex === 0) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
@@ -1163,6 +1280,39 @@ export default function Main(props: WalletConnectionProps) {
                                         const metadataUrl = {
                                             url: credentialMetaDataURL,
                                         };
+
+                                        const attributes: Attribute = {};
+
+                                        Object.keys(attributeSchema).forEach((key) => {
+                                            if (attributeSchema[Number(key)][2] === '') {
+                                                setParsingError(
+                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
+                                                );
+                                            }
+
+                                            if (
+                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
+                                                JSON.stringify('string')
+                                            ) {
+                                                // eslint-disable-next-line prefer-destructuring
+                                                attributes[attributeSchema[Number(key)][0]] =
+                                                    attributeSchema[Number(key)][2];
+                                            } else if (
+                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
+                                                JSON.stringify('number')
+                                            ) {
+                                                // eslint-disable-next-line prefer-destructuring
+                                                attributes[attributeSchema[Number(key)][0]] = Number(
+                                                    attributeSchema[Number(key)][2]
+                                                );
+                                            } else {
+                                                setParsingError(
+                                                    `Attribute ${
+                                                        attributeSchema[Number(key)][1]
+                                                    } type is not supported. Only string/number supported.`
+                                                );
+                                            }
+                                        });
 
                                         provider
                                             .addWeb3IdCredential(

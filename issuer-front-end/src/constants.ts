@@ -1,12 +1,6 @@
 import { BrowserWalletConnector, ephemeralConnectorType } from '@concordium/react-components';
 import moment from 'moment';
 
-export const EXAMPLE_ATTRIBUTES = {
-    degreeType: 'BachelorDegree',
-    degreeName: 'Bachelor of Science and Arts',
-    graduationDate: '2023-08-07T00:00:00.000Z',
-};
-
 export const EXAMPLE_CREDENTIAL_SCHEMA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/ac803895b1ffaa50888cfc6667331f6ebb0b889e/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`;
 
 export const EXAMPLE_CREDENTIAL_METADATA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/21bc43872c5d972f6c1b48af7956ec74f2e3e6ef/examples/json-schemas/metadata/credential-metadata.json`;
