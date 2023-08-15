@@ -522,7 +522,9 @@ export default function Main(props: WalletConnectionProps) {
                                     (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
                                     The transaction hash or an error message should appear in the right column and the 
                                     credential public key or an error message should appear in the above test unit. 
-                                    Pressing the button without any user input will create an example tx with the provided placeholder values."
+                                    Pressing the button without any user input will create an example tx with the provided placeholder values.
+                                    Your credential will be shown in the `Verifiable Credential` 
+                                    section in the browser wallet after the `issueCredential` tx is finalized."
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
@@ -927,10 +929,20 @@ export default function Main(props: WalletConnectionProps) {
                             <TestBox
                                 header="Step 8: Register a credential (Issuer registers credential with some delay)"
                                 note="Expected result after pressing the two buttons: There should be two popups happening in the wallet
-                                    (first action when pressing the first button to add the credential, second action when pressing the second button to send the `issueCredential` tx to the smart contract).
-                                    The transaction hash or an error message should appear in the right column and the 
-                                    credential public key or an error message should appear in the above test unit. 
-                                    Pressing the button without any user input will create an example tx with the provided placeholder values."
+                                (first action when pressing the first button to add the credential, second action when pressing the second button to send the `issueCredential` tx to the smart contract).
+                                The transaction hash or an error message should appear in the right column and the 
+                                credential public key or an error message should appear in the above test unit. 
+                                Pressing the button without any user input will create an example tx with the provided placeholder values.
+                                Explanation: Since we don't have control over the correctness of a backend when third parties run their own backend,
+                                there could be two negative scenarios:
+                                - The backend does not successfully register the credential in the smart contract but still returns 
+                                the correct signature/randomness/proof on the commitments to the front end.
+                                - The backend does successfully register the credential in the smart contract but does not wait until 
+                                the transaction is finalized and immediately returns the correct signature/randomness/proof on the commitments 
+                                to the front end.
+                                Step 8 allows you to simulate both scenarios reliably by not clicking the second button or
+                                by clicking the second button at some point later (delayed). Your credential will be shown in the `Verifiable Credential` 
+                                section in the browser wallet after the `issueCredential` tx is finalized."
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
@@ -1122,7 +1134,7 @@ export default function Main(props: WalletConnectionProps) {
                                             });
                                     }}
                                 >
-                                    Register Credential
+                                    Register Credential in Browser Wallet
                                 </button>
                                 {parsingError && (
                                     <div className="alert alert-danger" role="alert">
@@ -1160,7 +1172,7 @@ export default function Main(props: WalletConnectionProps) {
                                         );
                                     }}
                                 >
-                                    Issuer Registers Credential Delayed
+                                    Issuer sends `issueCredential` Tx
                                 </button>
                                 {credentialPublicKey && (
                                     <>
@@ -1179,7 +1191,9 @@ export default function Main(props: WalletConnectionProps) {
                                 (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 
                                 credential public key or an error message should appear in the above test unit. 
-                                Pressing the button without any user input will create an example tx with the provided placeholder values."
+                                Pressing the button without any user input will create an example tx with the provided placeholder values.
+                                Your credential should NOT be shown in the `Verifiable Credential` 
+                                section in the browser wallet because the randomness/signature is wrong."
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
