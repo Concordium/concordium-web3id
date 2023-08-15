@@ -633,6 +633,9 @@ export default function Main(props: WalletConnectionProps) {
                                                 setParsingError(
                                                     `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
                                                 );
+                                                throw new Error(
+                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
+                                                );
                                             }
 
                                             if (
@@ -652,9 +655,14 @@ export default function Main(props: WalletConnectionProps) {
                                                 );
                                             } else {
                                                 setParsingError(
-                                                    `Attribute ${
+                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
                                                         attributeSchema[Number(key)][1]
-                                                    } type is not supported. Only string/number supported.`
+                                                    }. Only the types string/number are supported.`
+                                                );
+                                                throw new Error(
+                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
+                                                        attributeSchema[Number(key)][1]
+                                                    }. Only the types string/number are supported.`
                                                 );
                                             }
                                         });
@@ -860,7 +868,11 @@ export default function Main(props: WalletConnectionProps) {
                             <TestBox
                                 header="Step 7: Create Proof"
                                 note="Expected result after pressing the button: The return value or an error message
-                                        should appear in the above test unit. To create a valid proof only works for the default `Bachelor of Science and Arts` example."
+                                        should appear in the above test unit. Creating a valid proof only works when pressing all buttons 
+                                        without any user input which will create an example with the provided placeholder values.
+                                        You also have to use e.g. the attributes (`degreeType`: `BachelorDegree`;
+                                        `degreeName`: `Bachelor of Science and Arts`;
+                                        `graduationDate`: `2023-08-07T00:00:00.000Z`) to create a valid proof with this button."
                             >
                                 <br />
                                 <button
@@ -1051,6 +1063,9 @@ export default function Main(props: WalletConnectionProps) {
                                                 setParsingError(
                                                     `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
                                                 );
+                                                throw new Error(
+                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
+                                                );
                                             }
 
                                             if (
@@ -1070,9 +1085,14 @@ export default function Main(props: WalletConnectionProps) {
                                                 );
                                             } else {
                                                 setParsingError(
-                                                    `Attribute ${
+                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
                                                         attributeSchema[Number(key)][1]
-                                                    } type is not supported. Only string/number supported.`
+                                                    }. Only the types string/number are supported.`
+                                                );
+                                                throw new Error(
+                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
+                                                        attributeSchema[Number(key)][1]
+                                                    }. Only the types string/number are supported.`
                                                 );
                                             }
                                         });
@@ -1302,6 +1322,9 @@ export default function Main(props: WalletConnectionProps) {
                                                 setParsingError(
                                                     `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
                                                 );
+                                                throw new Error(
+                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
+                                                );
                                             }
 
                                             if (
@@ -1321,9 +1344,14 @@ export default function Main(props: WalletConnectionProps) {
                                                 );
                                             } else {
                                                 setParsingError(
-                                                    `Attribute ${
+                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
                                                         attributeSchema[Number(key)][1]
-                                                    } type is not supported. Only string/number supported.`
+                                                    }. Only the types string/number are supported.`
+                                                );
+                                                throw new Error(
+                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
+                                                        attributeSchema[Number(key)][1]
+                                                    }. Only the types string/number are supported.`
                                                 );
                                             }
                                         });
