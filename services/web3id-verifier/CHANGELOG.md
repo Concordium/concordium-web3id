@@ -1,6 +1,10 @@
+## 0.4.0
+
+- Added graceful shutdown
+
 ## 0.3.0
 
-Support for revised V2 proofs.
+- Support for revised V2 proofs.
 
 ## 0.2.0
 

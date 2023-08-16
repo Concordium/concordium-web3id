@@ -1,6 +1,6 @@
 [package]
 name = "web3id-verifier"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -14,7 +14,8 @@ clap = { version = "4.3", features = ["env", "derive"] }
 concordium-rust-sdk = { version = "3", path = "../../deps/concordium-rust-sdk" }
 serde = { version = "1.0.163", features = ["derive"] }
 thiserror = "1.0.40"
-tokio = { version = "1.28", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.28", features = ["macros", "rt-multi-thread", "signal"] }
+futures = "0.3"
 tonic = { version = "0.8", features = ["tls", "tls-roots"] }
 tower-http = { version = "0.4", features = ["trace", "limit", "cors", "timeout"] }
 tracing = "0.1"
