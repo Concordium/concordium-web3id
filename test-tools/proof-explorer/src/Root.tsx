@@ -601,7 +601,7 @@ function EUAttributeIn({ nationality, setStatement }: SpecialSetProps) {
     );
 }
 
-function IdentityProviders({ idps }: { idps: { name: string; id: number }[] }): [number[], any] {
+function IdentityProviders({ idps }: { idps: { name: string; id: number }[] }): [number[], React.JSX.Element[]] {
     const [checked, setChecked] = useState<number[]>([]);
     const handleCheck = (event: ChangeEvent<HTMLInputElement>) => {
         let updatedList = [...checked];
@@ -634,7 +634,10 @@ function IdentityProviders({ idps }: { idps: { name: string; id: number }[] }): 
 const REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA =
     'FAADAAAADwAAAGlzc3Vlcl9tZXRhZGF0YRQAAgAAAAMAAAB1cmwWAQQAAABoYXNoFQIAAAAEAAAATm9uZQIEAAAAU29tZQEBAAAAHiAAAAAPAAAAY3JlZGVudGlhbF90eXBlFAABAAAADwAAAGNyZWRlbnRpYWxfdHlwZRYAEQAAAGNyZWRlbnRpYWxfc2NoZW1hFAABAAAACgAAAHNjaGVtYV9yZWYUAAIAAAADAAAAdXJsFgEEAAAAaGFzaBUCAAAABAAAAE5vbmUCBAAAAFNvbWUBAQAAAB4gAAAA';
 
-function Issuers(indexes: string, client: ConcordiumGRPCClient): [{ value: string; label: string }[], any] {
+function Issuers(
+    indexes: string,
+    client: ConcordiumGRPCClient
+): [{ value: string; label: string }[], React.JSX.Element] {
     const issuers = parseIssuers(indexes);
 
     const [tags, setTags] = useState<{ value: string; label: string }[]>([
