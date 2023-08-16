@@ -21,7 +21,10 @@ const walletConnectOpts: SignClientTypes.Options = {
 
 export abstract class WalletProvider extends EventEmitter {
     abstract connect(): Promise<string[] | undefined>;
-    abstract requestVerifiablePresentation(challenge: HexString, statement: CredentialStatements): Promise<VerifiablePresentation>;
+    abstract requestVerifiablePresentation(
+        challenge: HexString,
+        statement: CredentialStatements
+    ): Promise<VerifiablePresentation>;
     disconnect?(): Promise<void>;
 
     /**
@@ -69,7 +72,10 @@ export class BrowserWalletProvider extends WalletProvider {
         return this.provider.requestAccounts();
     }
 
-    async requestVerifiablePresentation(challenge: HexString, statement: CredentialStatements): Promise<VerifiablePresentation> {
+    async requestVerifiablePresentation(
+        challenge: HexString,
+        statement: CredentialStatements
+    ): Promise<VerifiablePresentation> {
         return this.provider.requestVerifiablePresentation(challenge, statement);
     }
 }
@@ -124,7 +130,7 @@ export class WalletConnectProvider extends WalletProvider {
         // Connecting to an existing pairing; it can be assumed that the account is already available.
         if (!uri) {
             if (this.account == undefined) {
-                return undefined
+                return undefined;
             } else {
                 return [this.account];
             }
@@ -143,14 +149,16 @@ export class WalletConnectProvider extends WalletProvider {
         QRCodeModal.close();
 
         if (this.account == undefined) {
-            return undefined
+            return undefined;
         } else {
             return [this.account];
         }
     }
 
-
-    async requestVerifiablePresentation(challenge: HexString, statement: CredentialStatements): Promise<VerifiablePresentation> {
+    async requestVerifiablePresentation(
+        challenge: HexString,
+        statement: CredentialStatements
+    ): Promise<VerifiablePresentation> {
         if (!this.topic) {
             throw new Error('No connection');
         }

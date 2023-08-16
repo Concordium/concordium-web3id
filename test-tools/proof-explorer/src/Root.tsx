@@ -16,68 +16,68 @@ import {
     deserializeTypeValue,
     SmartContractTypeValues,
 } from '@concordium/web-sdk';
-import {Buffer} from 'buffer';
-import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './wallet-connection'
+import { Buffer } from 'buffer';
+import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 
 function getVerifierURL(): string {
-    return "https://web3id-verifier.testnet.concordium.com"
+    return 'https://web3id-verifier.testnet.concordium.com';
 }
 
-type TopLevelStatement = ({type: 'account', statement: AccountStatement} | {type: 'web3id', statement: Web3IdStatement})
+type TopLevelStatement =
+    | { type: 'account'; statement: AccountStatement }
+    | { type: 'web3id'; statement: Web3IdStatement };
 
 type TopLevelStatements = TopLevelStatement[];
 
 interface AccountStatement {
-    idps: {name: string, id: number}[]
-    statement: AtomicStatementV2[],
+    idps: { name: string; id: number }[];
+    statement: AtomicStatementV2[];
 }
 
 interface Web3IdStatement {
-    issuers: ContractAddress[]
-    statement: AtomicStatementV2[],
+    issuers: ContractAddress[];
+    statement: AtomicStatementV2[];
 }
 
-function Issuer({outer_statement}: {outer_statement: TopLevelStatement}) {
+function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
     switch (outer_statement.type) {
         case 'account':
             if (outer_statement.statement.idps.length == 0) {
-                return (<div className="bg-danger"> No issuers selected. </div>)
+                return <div className="bg-danger"> No issuers selected. </div>;
             } else {
-            return (<ul className="bg-info">
-            { 
-                outer_statement.statement.idps.map(({name, id}) => {
-                    return <li> {`${id}:${name}`} </li>
-                })
-            }
-                    </ul> );
+                return (
+                    <ul className="bg-info">
+                        {outer_statement.statement.idps.map(({ name, id }) => {
+                            return <li> {`${id}:${name}`} </li>;
+                        })}
+                    </ul>
+                );
             }
         case 'web3id':
             if (outer_statement.statement.issuers.length == 0) {
-                return (<div className="bg-danger"> No issuers selected. </div>)
+                return <div className="bg-danger"> No issuers selected. </div>;
             } else {
-                return (<ul className="bg-success">
-                { 
-                    outer_statement.statement.issuers.map((inst) => {
-                        return <li> {[inst.index, inst.subindex].toString()} </li>
-                    })
-                }
-                </ul>);
+                return (
+                    <ul className="bg-success">
+                        {outer_statement.statement.issuers.map((inst) => {
+                            return <li> {[inst.index, inst.subindex].toString()} </li>;
+                        })}
+                    </ul>
+                );
             }
     }
 }
 
-
 /**
  * Component to display the statement.
  */
-function Statement({inner}: {inner: TopLevelStatements}) {
-    return (
-        inner.map((outer_statement) => 
-            <>
+function Statement({ inner }: { inner: TopLevelStatements }) {
+    return inner.map((outer_statement) => (
+        <>
             <Issuer outer_statement={outer_statement} />
             <div>
-            {outer_statement.statement.statement.map((s) => {
+                {outer_statement.statement.statement.map((s) => {
                     switch (s.type) {
                         case StatementTypes.RevealAttribute:
                             return (
@@ -152,13 +152,15 @@ function Statement({inner}: {inner: TopLevelStatements}) {
                                 </div>
                             );
                     }
-            })} </div> </>)
-    );
+                })}{' '}
+            </div>{' '}
+        </>
+    ));
 }
 
 interface RevealAttributeProps {
     setStatement: (ns: AtomicStatementV2[]) => void;
-    attributeOptions: {value: string, label: string}[]
+    attributeOptions: { value: string; label: string }[];
 }
 
 async function submitProof(
@@ -167,9 +169,9 @@ async function submitProof(
     setMessages: (cbk: (oldMessages: string[]) => string[]) => void
 ) {
     let proof: VerifiablePresentation;
-    let challengeBuffer = new Uint8Array(32);
+    const challengeBuffer = new Uint8Array(32);
     crypto.getRandomValues(challengeBuffer);
-    let challenge = Buffer.from(challengeBuffer).toString('hex');
+    const challenge = Buffer.from(challengeBuffer).toString('hex');
     try {
         proof = await provider.requestVerifiablePresentation(challenge, statement);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -200,28 +202,26 @@ async function submitProof(
 function SubmitProof({ all_statements, provider }: { all_statements: TopLevelStatements; provider: WalletProvider }) {
     const [messages, setMessages] = useState<string[]>([]);
 
-    let request = all_statements.map(
-        (s) => {
-            switch (s.type) {
-              case 'account':
+    const request = all_statements.map((s) => {
+        switch (s.type) {
+            case 'account':
                 return {
                     statement: s.statement.statement,
                     idQualifier: {
                         type: 'cred',
-                        issuers: s.statement.idps.map((x) => x.id)
-                    }
+                        issuers: s.statement.idps.map((x) => x.id),
+                    },
                 } as CredentialStatement;
-              case 'web3id':
+            case 'web3id':
                 return {
                     statement: s.statement.statement,
                     idQualifier: {
                         type: 'sci',
-                        issuers: s.statement.issuers
-                    }
+                        issuers: s.statement.issuers,
+                    },
                 } as CredentialStatement;
-            }
         }
-    );
+    });
 
     const handleProve: MouseEventHandler<HTMLButtonElement> = () => submitProof(request, provider, setMessages);
 
@@ -245,7 +245,9 @@ function SubmitProof({ all_statements, provider }: { all_statements: TopLevelSta
     );
 }
 
-const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {return {value: ak, label: ak}});
+const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
+    return { value: ak, label: ak };
+});
 
 function RevealAttribute({ setStatement, attributeOptions }: RevealAttributeProps) {
     const [selected, setSelected] = useState<string>(attributeOptions[0].label);
@@ -258,10 +260,12 @@ function RevealAttribute({ setStatement, attributeOptions }: RevealAttributeProp
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        setStatement([{
-            type: StatementTypes.RevealAttribute,
-            attributeTag: selected,
-        }]);
+        setStatement([
+            {
+                type: StatementTypes.RevealAttribute,
+                attributeTag: selected,
+            },
+        ]);
     };
 
     return (
@@ -378,12 +382,14 @@ function AttributeInRange({ setStatement, attributeOptions }: RevealAttributePro
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        setStatement([{
-            type: StatementTypes.AttributeInRange,
-            attributeTag: selected,
-            lower,
-            upper,
-        }]);
+        setStatement([
+            {
+                type: StatementTypes.AttributeInRange,
+                attributeTag: selected,
+                lower,
+                upper,
+            },
+        ]);
     };
 
     const onLowerChange: ChangeEventHandler<HTMLInputElement> = (e) => {
@@ -434,11 +440,13 @@ function AttributeInSet({ member, setStatement, attributeOptions }: SetMembershi
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        setStatement([{
-            type: member ? StatementTypes.AttributeInSet : StatementTypes.AttributeNotInSet,
-            attributeTag: selected,
-            set: set.split(',').map((s) => s.trim()),
-        }]);
+        setStatement([
+            {
+                type: member ? StatementTypes.AttributeInSet : StatementTypes.AttributeNotInSet,
+                attributeTag: selected,
+                set: set.split(',').map((s) => s.trim()),
+            },
+        ]);
     };
 
     const onLowerChange: ChangeEventHandler<HTMLInputElement> = (e) => {
@@ -553,8 +561,7 @@ function AttributeIn({ attribute, member, setStatement }: ExtendSetStatementProp
     return (
         <form>
             <div className="form-group border rounded border-primary my-2 p-1">
-                <label>{`Prove ${attribute}${member ? ' ' : ' not '}in`} </label>{' '}
-                <br />
+                <label>{`Prove ${attribute}${member ? ' ' : ' not '}in`} </label> <br />
                 <input className="my-1" onChange={onSetChange} value={set} />
                 <button onClick={onClickAdd} type="button" className="btn btn-primary">
                     {'Add'}
@@ -594,46 +601,59 @@ function EUAttributeIn({ nationality, setStatement }: SpecialSetProps) {
     );
 }
 
-function IdentityProviders({idps}: {idps: {name: string, id: number}[]}): [number[], any] {
+function IdentityProviders({ idps }: { idps: { name: string; id: number }[] }): [number[], any] {
     const [checked, setChecked] = useState<number[]>([]);
     const handleCheck = (event: ChangeEvent<HTMLInputElement>) => {
-        var updatedList = [...checked];
+        let updatedList = [...checked];
         if (event.target.checked) {
             updatedList = [...checked, parseInt(event.target.value)];
         } else {
             updatedList.splice(checked.indexOf(parseInt(event.target.value)), 1);
         }
         setChecked(updatedList);
-      };
+    };
 
-
-    return [checked, idps.map(({name, id}) => (
-        <div className="form-check">
-            <input className="form-check-input" type="checkbox" value={id} id="flexCheckChecked" onChange={handleCheck} checked={checked.includes(id)}/>
-            <label className="form-check-label">
-            {name}
-        </label>
+    return [
+        checked,
+        idps.map(({ name, id }) => (
+            <div className="form-check">
+                <input
+                    className="form-check-input"
+                    type="checkbox"
+                    value={id}
+                    id="flexCheckChecked"
+                    onChange={handleCheck}
+                    checked={checked.includes(id)}
+                />
+                <label className="form-check-label">{name}</label>
             </div>
-    ))]
+        )),
+    ];
 }
 
-const REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA = "FAADAAAADwAAAGlzc3Vlcl9tZXRhZGF0YRQAAgAAAAMAAAB1cmwWAQQAAABoYXNoFQIAAAAEAAAATm9uZQIEAAAAU29tZQEBAAAAHiAAAAAPAAAAY3JlZGVudGlhbF90eXBlFAABAAAADwAAAGNyZWRlbnRpYWxfdHlwZRYAEQAAAGNyZWRlbnRpYWxfc2NoZW1hFAABAAAACgAAAHNjaGVtYV9yZWYUAAIAAAADAAAAdXJsFgEEAAAAaGFzaBUCAAAABAAAAE5vbmUCBAAAAFNvbWUBAQAAAB4gAAAA";
+const REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA =
+    'FAADAAAADwAAAGlzc3Vlcl9tZXRhZGF0YRQAAgAAAAMAAAB1cmwWAQQAAABoYXNoFQIAAAAEAAAATm9uZQIEAAAAU29tZQEBAAAAHiAAAAAPAAAAY3JlZGVudGlhbF90eXBlFAABAAAADwAAAGNyZWRlbnRpYWxfdHlwZRYAEQAAAGNyZWRlbnRpYWxfc2NoZW1hFAABAAAACgAAAHNjaGVtYV9yZWYUAAIAAAADAAAAdXJsFgEEAAAAaGFzaBUCAAAABAAAAE5vbmUCBAAAAFNvbWUBAQAAAB4gAAAA';
 
-function Issuers(indexes: string, client: ConcordiumGRPCClient): [{value: string, label: string}[], any]{
+function Issuers(indexes: string, client: ConcordiumGRPCClient): [{ value: string; label: string }[], any] {
     const issuers = parseIssuers(indexes);
 
-    const [tags, setTags] = useState<{value: string, label: string}[]>([{value: "Dummy", label: "Dummy value for testing"}])
-    
+    const [tags, setTags] = useState<{ value: string; label: string }[]>([
+        { value: 'Dummy', label: 'Dummy value for testing' },
+    ]);
+
     useEffect(() => {
         const fetchContracts = async () => {
-            setTags([{value: "Dummy", label: "Dummy value for testing"}]);
+            setTags([{ value: 'Dummy', label: 'Dummy value for testing' }]);
             for (let i = 0; i < issuers.length; i++) {
-                console.log("FF");
-                const addr = {index: issuers[i], subindex: BigInt(0)};
+                console.log('FF');
+                const addr = { index: issuers[i], subindex: BigInt(0) };
                 try {
                     const ci = await client.getInstanceInfo(addr);
                     const name = ci.name.substring(5);
-                    const response = await client.invokeContract({contract: {index: issuers[i], subindex: BigInt(0)}, method: `${name}.registryMetadata`});
+                    const response = await client.invokeContract({
+                        contract: { index: issuers[i], subindex: BigInt(0) },
+                        method: `${name}.registryMetadata`,
+                    });
                     switch (response.tag) {
                         case 'failure':
                             console.log(`Failed to get registry metadata for ${issuers[i]}`);
@@ -646,58 +666,72 @@ function Issuers(indexes: string, client: ConcordiumGRPCClient): [{value: string
                                 [key: string]: SmartContractTypeValues;
                             };
 
-                            const schema_url = metadata["credential_schema"] as {schema_ref: {url: string}};
-                            console.log(schema_url.schema_ref.url)
+                            const schema_url = metadata['credential_schema'] as { schema_ref: { url: string } };
+                            console.log(schema_url.schema_ref.url);
                             const schema_response = await fetch(schema_url.schema_ref.url);
                             if (schema_response.ok) {
-                                const schema = await schema_response.json() as {
-                                    name: string,
-                                    properties: {credentialSubject: {
-                                        properties: {attributes: {
-                                            properties: object
-                                        }}
-                                    }}
-                                }
+                                const schema = (await schema_response.json()) as {
+                                    name: string;
+                                    properties: {
+                                        credentialSubject: {
+                                            properties: {
+                                                attributes: {
+                                                    properties: object;
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
                                 const attributes = schema.properties.credentialSubject.properties.attributes.properties;
                                 Object.entries(attributes).map(([tag, v]) => {
                                     setTags((oldTags) => {
-                                        if (oldTags.find(({label}) => {return label == tag})) {
-                                            return oldTags
+                                        if (
+                                            oldTags.find(({ label }) => {
+                                                return label == tag;
+                                            })
+                                        ) {
+                                            return oldTags;
                                         } else {
-                                            return [{value: (v as {title: string}).title, label: tag},...oldTags]
-                                            }
-                                    })
-                                }
-                                                              )
+                                            return [{ value: (v as { title: string }).title, label: tag }, ...oldTags];
+                                        }
+                                    });
+                                });
                             } else {
                                 console.log(`Unable to get schema from ${schema_url}`);
                             }
                     }
                 } catch (e) {
-                    console.log(e)
+                    console.log(e);
                 }
             }
-        }
+        };
 
         fetchContracts().catch((err) => console.log(err));
     }, [indexes]);
-    
-    return [tags, <ul>
-        {issuers.map((idx) => <li> &lt;{idx.toString()},0&gt; </li>)
-        }
-            </ul>
-        ]
+
+    return [
+        tags,
+        <ul>
+            {issuers.map((idx) => (
+                <li> &lt;{idx.toString()},0&gt; </li>
+            ))}
+        </ul>,
+    ];
 }
 
 function parseIssuers(s: string): bigint[] {
-    return s.split(',').filter((x) => x.trim().length != 0).map((x) => {
-        try {
-            return BigInt(parseInt(x))
-        } catch (e) {
-            return undefined
-        }
-    }).filter((x) => x != undefined).map((x) => x as bigint)
-
+    return s
+        .split(',')
+        .filter((x) => x.trim().length != 0)
+        .map((x) => {
+            try {
+                return BigInt(parseInt(x));
+            } catch (e) {
+                return undefined;
+            }
+        })
+        .filter((x) => x != undefined)
+        .map((x) => x as bigint);
 }
 
 /**
@@ -721,19 +755,23 @@ export default function ProofExplorer() {
 
     const [statement, setStatement] = useState<TopLevelStatements>([]);
 
-    const client = useRef(new ConcordiumGRPCClient(new GrpcWebFetchTransport({baseUrl: 'https://grpc.testnet.concordium.com:20000'})));
+    const client = useRef(
+        new ConcordiumGRPCClient(new GrpcWebFetchTransport({ baseUrl: 'https://grpc.testnet.concordium.com:20000' }))
+    );
 
-    const [idps, setIdps] = useState<{name: string, id: number}[]>([]);
-
-
+    const [idps, setIdps] = useState<{ name: string; id: number }[]>([]);
 
     useEffect(() => {
         streamToList(client.current.getIdentityProviders()).then((chainIdps) => {
-            setIdps(chainIdps.map((idp) => {
-                return {name: idp.ipDescription.name, id: idp.ipIdentity}}));
-        })}, []);
+            setIdps(
+                chainIdps.map((idp) => {
+                    return { name: idp.ipDescription.name, id: idp.ipIdentity };
+                })
+            );
+        });
+    }, []);
 
-    const [checked, idpsDisplay] = IdentityProviders({idps})
+    const [checked, idpsDisplay] = IdentityProviders({ idps });
 
     const [newStatement, setNewStatement] = useState<boolean>(true);
 
@@ -742,43 +780,45 @@ export default function ProofExplorer() {
             if (newStatement || statements.length == 0) {
                 setNewStatement(false);
                 const statement: AccountStatement = {
-                        idps: idps.filter(({id}) => checked.includes(id)),
-                        statement: a
+                    idps: idps.filter(({ id }) => checked.includes(id)),
+                    statement: a,
                 };
-                return [...statements, {type: 'account',
-                         statement: statement}]
+                return [...statements, { type: 'account', statement: statement }];
             } else {
-                statements[statements.length - 1].statement.statement = statements[statements.length - 1].statement.statement.concat(a);
-                return [...statements] // copy the array to force component updates.
+                statements[statements.length - 1].statement.statement =
+                    statements[statements.length - 1].statement.statement.concat(a);
+                return [...statements]; // copy the array to force component updates.
             }
         });
     };
 
-    const [issuers, setIssuers] = useState<string>("");
+    const [issuers, setIssuers] = useState<string>('');
 
     const addWeb3IdStatement = (a: AtomicStatementV2[]) => {
         setStatement((statements) => {
             if (newStatement || statements.length == 0) {
                 setNewStatement(false);
                 const statement: Web3IdStatement = {
-                    issuers: parseIssuers(issuers).map((i) => {return {index: i, subindex: BigInt(0)}}),
-                    statement: a
+                    issuers: parseIssuers(issuers).map((i) => {
+                        return { index: i, subindex: BigInt(0) };
+                    }),
+                    statement: a,
                 };
-                return [...statements, {type: 'web3id',
-                         statement: statement}]
+                return [...statements, { type: 'web3id', statement: statement }];
             } else {
-                statements[statements.length - 1].statement.statement = statements[statements.length - 1].statement.statement.concat(a);
-                return [...statements] // copy the array to force component updates.
+                statements[statements.length - 1].statement.statement =
+                    statements[statements.length - 1].statement.statement.concat(a);
+                return [...statements]; // copy the array to force component updates.
             }
         });
     };
 
     const handleAddTopLevel: MouseEventHandler<HTMLButtonElement> = () => {
         setNewStatement(true);
-    }
+    };
 
     const onIssuersChange: ChangeEventHandler<HTMLInputElement> = (e) => {
-        setIssuers(e.target.value)
+        setIssuers(e.target.value);
     };
 
     const [web3IdAttributes, issuersDisplay] = Issuers(issuers, client.current);
@@ -808,27 +848,25 @@ export default function ProofExplorer() {
                             Connect mobile
                         </button>
                     </div>
-                <hr />
-                <button onClick={handleAddTopLevel} type="button" className="btn btn-primary me-1 mt-1">
-                    {'New statement'}
-                </button>
+                    <hr />
+                    <button onClick={handleAddTopLevel} type="button" className="btn btn-primary me-1 mt-1">
+                        {'New statement'}
+                    </button>
 
-                <button onClick={() => setStatement([])} type="button" className="btn btn-primary mt-1">
-                    {'Clear statement'}
-                </button>
+                    <button onClick={() => setStatement([])} type="button" className="btn btn-primary mt-1">
+                        {'Clear statement'}
+                    </button>
 
-                <hr />
+                    <hr />
 
-                {provider !== undefined && <SubmitProof all_statements={statement} provider={provider} />}
+                    {provider !== undefined && <SubmitProof all_statements={statement} provider={provider} />}
 
-                <hr />
+                    <hr />
 
-                <div className="bg-success mb-3 p-3 text-white">
-                        {'Web3ID credential'}
-                    </div>
+                    <div className="bg-success mb-3 p-3 text-white">{'Web3ID credential'}</div>
                     <div className="bg-success mb-3 p-3 text-white">
-                          <input className="my-1" onChange={onIssuersChange} value={issuers.toString()} />
-                          {issuersDisplay}
+                        <input className="my-1" onChange={onIssuersChange} value={issuers.toString()} />
+                        {issuersDisplay}
                     </div>
                     <div>
                         <RevealAttribute setStatement={addWeb3IdStatement} attributeOptions={web3IdAttributes} />
@@ -837,20 +875,23 @@ export default function ProofExplorer() {
                         <AttributeInRange setStatement={addWeb3IdStatement} attributeOptions={web3IdAttributes} />
                     </div>
                     <div>
-                        <AttributeInSet member={true} setStatement={addWeb3IdStatement} attributeOptions={web3IdAttributes} />
+                        <AttributeInSet
+                            member={true}
+                            setStatement={addWeb3IdStatement}
+                            attributeOptions={web3IdAttributes}
+                        />
                     </div>
                     <div>
-                        <AttributeInSet member={false} setStatement={addWeb3IdStatement} attributeOptions={web3IdAttributes} />
+                        <AttributeInSet
+                            member={false}
+                            setStatement={addWeb3IdStatement}
+                            attributeOptions={web3IdAttributes}
+                        />
                     </div>
-
                 </div>
                 <div className="col-sm">
-                    <div className="bg-black mb-3 p-3 text-white">
-                        {'Account credential'}
-                    </div>
-                    <div className="bg-black mb-3 p-3 text-white">
-                        {idpsDisplay}
-                    </div>
+                    <div className="bg-black mb-3 p-3 text-white">{'Account credential'}</div>
+                    <div className="bg-black mb-3 p-3 text-white">{idpsDisplay}</div>
                     <div>
                         <RevealAttribute setStatement={addAccountStatement} attributeOptions={accountAttributeNames} />
                     </div>
@@ -870,7 +911,11 @@ export default function ProofExplorer() {
                         <DocumentIssuerIn setStatement={addAccountStatement} />
                     </div>
                     <div>
-                        <AttributeIn attribute={AttributeKeyString.nationality} member={true} setStatement={addAccountStatement} />
+                        <AttributeIn
+                            attribute={AttributeKeyString.nationality}
+                            member={true}
+                            setStatement={addAccountStatement}
+                        />
                     </div>
                     <div>
                         <AttributeIn
@@ -903,33 +948,41 @@ export default function ProofExplorer() {
                         <AttributeInRange setStatement={addAccountStatement} attributeOptions={accountAttributeNames} />
                     </div>
                     <div>
-                        <AttributeInSet member={true} setStatement={addAccountStatement} attributeOptions={accountAttributeNames} />
+                        <AttributeInSet
+                            member={true}
+                            setStatement={addAccountStatement}
+                            attributeOptions={accountAttributeNames}
+                        />
                     </div>
                     <div>
-                        <AttributeInSet member={false} setStatement={addAccountStatement} attributeOptions={accountAttributeNames} />
+                        <AttributeInSet
+                            member={false}
+                            setStatement={addAccountStatement}
+                            attributeOptions={accountAttributeNames}
+                        />
                     </div>
-            </div>
-            {
-                // <div className="col-sm">
-                //     <div className="bg-black mb-3 p-3 text-white">
-                //         {'Web3ID credential'}
-                //     </div>
-                //     <div>
-                //         <RevealAttribute setStatement={addStatement} />
-                //     </div>
-                //     <div>
-                //         <AttributeInRange setStatement={addStatement} />
-                //     </div>
-                //     <div>
-                //         <AttributeInSet member={true} setStatement={addStatement} />
-                //     </div>
-                //     <div>
-                //         <AttributeInSet member={false} setStatement={addStatement} />
-                //     </div>
-                // </div>
-            }
+                </div>
+                {
+                    // <div className="col-sm">
+                    //     <div className="bg-black mb-3 p-3 text-white">
+                    //         {'Web3ID credential'}
+                    //     </div>
+                    //     <div>
+                    //         <RevealAttribute setStatement={addStatement} />
+                    //     </div>
+                    //     <div>
+                    //         <AttributeInRange setStatement={addStatement} />
+                    //     </div>
+                    //     <div>
+                    //         <AttributeInSet member={true} setStatement={addStatement} />
+                    //     </div>
+                    //     <div>
+                    //         <AttributeInSet member={false} setStatement={addStatement} />
+                    //     </div>
+                    // </div>
+                }
                 <div className="col-sm">
-                  <Statement inner={statement} />
+                    <Statement inner={statement} />
                 </div>
             </div>
         </main>
