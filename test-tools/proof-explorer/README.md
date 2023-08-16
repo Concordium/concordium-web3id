@@ -11,8 +11,8 @@ yarn build
 
 This will produce `index.html` and `index.js` in a `dist` directory. That is the artifact that needs to be served.
 
-By default the frontend expects to be served from the same URL as the verifier.
 To change the verifier URL modify the `getVerifierURL` function in `index.tsx`.
+By default it uses https://web3id-verifier.testnet.concordium.com
 
 ### Development
 
