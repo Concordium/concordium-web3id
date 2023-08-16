@@ -374,7 +374,7 @@ function AttributeInRange({ setStatement, attributeOptions }: RevealAttributePro
         if (option === null) {
             return;
         }
-        setSelected(option.value);
+        setSelected(option.label);
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
@@ -430,7 +430,7 @@ function AttributeInSet({ member, setStatement, attributeOptions }: SetMembershi
         if (option === null) {
             return;
         }
-        setSelected(option.value);
+        setSelected(option.label);
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
