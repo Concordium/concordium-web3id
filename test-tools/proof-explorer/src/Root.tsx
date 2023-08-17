@@ -1005,37 +1005,45 @@ export default function ProofExplorer() {
                         >
                             Connect browser
                         </button>
-                        <button
-                            className="btn btn-secondary"
-                            disabled
-                            onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
-                        >
-                            Connect mobile
-                        </button>
+                        {
+                            // This is commented out since the mobile wallets don't support Web3ID proofs at the moment.
+                            // <button
+                            //     className="btn btn-secondary"
+                            //     disabled
+                            //     onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
+                            // >
+                            //     Connect mobile
+                            // </button>
+                        }
                     </div>
                     <hr />
-                    <button onClick={handleAddTopLevel} type="button" className="btn btn-primary me-1 mt-1">
-                        {'Start a new inner statement'}
-                    </button>
+                    <div className="row">
+                        <div className="col-sm">
+                            {' '}
+                            <button onClick={handleAddTopLevel} type="button" className="btn btn-primary me-1 mt-1">
+                                {'Start a new inner statement'}
+                            </button>{' '}
+                        </div>
 
-                    <hr />
-
-                    <button
-                        onClick={() =>
-                            setStatement((oldStatement) => {
-                                if (oldStatement.length == 0) {
-                                    return oldStatement;
-                                } else {
-                                    return oldStatement.slice(0, oldStatement.length - 1);
+                        <div className="col-sm">
+                            {' '}
+                            <button
+                                onClick={() =>
+                                    setStatement((oldStatement) => {
+                                        if (oldStatement.length == 0) {
+                                            return oldStatement;
+                                        } else {
+                                            return oldStatement.slice(0, oldStatement.length - 1);
+                                        }
+                                    })
                                 }
-                            })
-                        }
-                        type="button"
-                        className="btn btn-primary mt-1"
-                    >
-                        {'Clear last inner statement'}
-                    </button>
-
+                                type="button"
+                                className="btn btn-primary mt-1"
+                            >
+                                {'Clear last inner statement'}
+                            </button>{' '}
+                        </div>
+                    </div>
                     <hr />
 
                     <button onClick={() => setMessages([])} type="button" className="btn btn-primary mt-1">
