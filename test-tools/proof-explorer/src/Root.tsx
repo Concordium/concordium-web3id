@@ -240,9 +240,12 @@ function SubmitProof(all_statements: TopLevelStatements, provider: WalletProvide
             <div>
                 {provider === undefined && <div className="bg-danger p-1"> Not connected to wallet. </div>}
                 {provider !== undefined && (
-                    <button onClick={handleProve} type="button" className="btn btn-primary mt-1">
-                        {'Prove'}
-                    </button>
+                    <div className="row">
+                        <div className="col-sm-6 alert alert-success"> Connected to the wallet </div>
+                        <button onClick={handleProve} type="button" className="col-sm-4 btn btn-primary">
+                            {'Prove'}
+                        </button>
+                    </div>
                 )}
             </div>
             <hr />
@@ -968,7 +971,7 @@ export default function ProofExplorer() {
                             Connect browser
                         </button>
                         <button
-                            className="btn btn-primary"
+                            className="btn btn-secondary"
                             disabled
                             onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
                         >
