@@ -17,8 +17,9 @@ import {
     SmartContractTypeValues,
 } from '@concordium/web-sdk';
 import { Buffer } from 'buffer';
-import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './wallet-connection';
+import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
+import { REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA } from './constants';
 
 function getVerifierURL(): string {
     return 'https://web3id-verifier.testnet.concordium.com';
@@ -169,7 +170,7 @@ function Statement({ inner, new_statement }: { inner: TopLevelStatements; new_st
         return (
             <>
                 {' '}
-                {statements} <div className="alert alert-danger"> New statement started </div>{' '}
+                {statements} <div className="alert alert-danger"> New inner statement started </div>{' '}
             </>
         );
     } else {
@@ -676,9 +677,6 @@ function IdentityProviders({ idps }: { idps: { name: string; id: number }[] }): 
     ];
 }
 
-const REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA =
-    'FAADAAAADwAAAGlzc3Vlcl9tZXRhZGF0YRQAAgAAAAMAAAB1cmwWAQQAAABoYXNoFQIAAAAEAAAATm9uZQIEAAAAU29tZQEBAAAAHiAAAAAPAAAAY3JlZGVudGlhbF90eXBlFAABAAAADwAAAGNyZWRlbnRpYWxfdHlwZRYAEQAAAGNyZWRlbnRpYWxfc2NoZW1hFAABAAAACgAAAHNjaGVtYV9yZWYUAAIAAAADAAAAdXJsFgEEAAAAaGFzaBUCAAAABAAAAE5vbmUCBAAAAFNvbWUBAQAAAB4gAAAA';
-
 function Issuers(
     indexes: string,
     client: ConcordiumGRPCClient
@@ -1055,7 +1053,6 @@ export default function ProofExplorer() {
                     {submitProofDisplay}
 
                     <hr />
-                    <div className="bg-warning mb-3 p-3"> The statement </div>
                     <Statement inner={statement} new_statement={new_statement} />
                 </div>
             </div>
