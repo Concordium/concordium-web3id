@@ -44,26 +44,35 @@ function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
     switch (outer_statement.type) {
         case 'account':
             if (outer_statement.statement.idps.length == 0) {
-                return <div className="bg-danger"> No issuers selected. </div>;
+                return <div className="bg-danger"> No issuers selected for an account statement. </div>;
             } else {
                 return (
-                    <ul className="bg-info">
-                        {outer_statement.statement.idps.map(({ name, id }) => {
-                            return <li> {`${id}:${name}`} </li>;
-                        })}
-                    </ul>
+                    <div className="bg-info p-1">
+                        <p> Statement about an account credential </p>
+                        <p> Allowed issuers </p>
+                        <ul>
+                            {outer_statement.statement.idps.map(({ name, id }) => {
+                                return <li> {`${id}:${name}`} </li>;
+                            })}
+                        </ul>
+                    </div>
                 );
             }
         case 'web3id':
             if (outer_statement.statement.issuers.length == 0) {
-                return <div className="bg-danger"> No issuers selected. </div>;
+                return <div className="bg-danger"> No issuers selected for Web3Id credential statement. </div>;
             } else {
                 return (
-                    <ul className="bg-success">
-                        {outer_statement.statement.issuers.map((inst) => {
-                            return <li> {[inst.index, inst.subindex].toString()} </li>;
-                        })}
-                    </ul>
+                    <div className="bg-success p-1">
+                        <p> Statement about a Web3ID credential </p>
+                        <p> Allowed issuers </p>
+
+                        <ul className="bg-success">
+                            {outer_statement.statement.issuers.map((inst) => {
+                                return <li> {[inst.index, inst.subindex].toString()} </li>;
+                            })}
+                        </ul>
+                    </div>
                 );
             }
     }
@@ -648,7 +657,6 @@ function Issuers(
         const fetchContracts = async () => {
             setTags([{ value: 'Dummy', label: 'Dummy value for testing' }]);
             for (let i = 0; i < issuers.length; i++) {
-                console.log('FF');
                 const addr = { index: issuers[i], subindex: BigInt(0) };
                 try {
                     const ci = await client.getInstanceInfo(addr);
@@ -837,36 +845,10 @@ export default function ProofExplorer() {
             </nav>
             <div className="row">
                 <div className="col-sm">
-                    <div>
-                        <button
-                            className="btn btn-primary me-1"
-                            onClick={async () => connectProvider(await BrowserWalletProvider.getInstance())}
-                        >
-                            Connect browser
-                        </button>
-                        <button
-                            className="btn btn-primary"
-                            onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
-                        >
-                            Connect mobile
-                        </button>
+                    <div className="bg-success mb-3 p-3 text-white">
+                        {' '}
+                        Construct a statement about a web3id credential.{' '}
                     </div>
-                    <hr />
-                    <button onClick={handleAddTopLevel} type="button" className="btn btn-primary me-1 mt-1">
-                        {'New statement'}
-                    </button>
-
-                    <button onClick={() => setStatement([])} type="button" className="btn btn-primary mt-1">
-                        {'Clear statement'}
-                    </button>
-
-                    <hr />
-
-                    {provider !== undefined && <SubmitProof all_statements={statement} provider={provider} />}
-
-                    <hr />
-
-                    <div className="bg-success mb-3 p-3 text-white">{'Web3ID credential'}</div>
                     <div className="bg-success mb-3 p-3 text-white">
                         <input className="my-1" onChange={onIssuersChange} value={issuers.toString()} />
                         {issuersDisplay}
@@ -893,8 +875,13 @@ export default function ProofExplorer() {
                     </div>
                 </div>
                 <div className="col-sm">
-                    <div className="bg-black mb-3 p-3 text-white">{'Account credential'}</div>
-                    <div className="bg-black mb-3 p-3 text-white">{idpsDisplay}</div>
+                    <div className="bg-black mb-3 p-3 text-white">
+                        Construct a statement about an account credential
+                    </div>
+                    <div className="bg-black mb-3 p-3 text-white">
+                        Select which identity providers to allow
+                        {idpsDisplay}
+                    </div>
                     <div>
                         <RevealAttribute setStatement={addAccountStatement} attributeOptions={accountAttributeNames} />
                     </div>
@@ -965,26 +952,51 @@ export default function ProofExplorer() {
                         />
                     </div>
                 </div>
-                {
-                    // <div className="col-sm">
-                    //     <div className="bg-black mb-3 p-3 text-white">
-                    //         {'Web3ID credential'}
-                    //     </div>
-                    //     <div>
-                    //         <RevealAttribute setStatement={addStatement} />
-                    //     </div>
-                    //     <div>
-                    //         <AttributeInRange setStatement={addStatement} />
-                    //     </div>
-                    //     <div>
-                    //         <AttributeInSet member={true} setStatement={addStatement} />
-                    //     </div>
-                    //     <div>
-                    //         <AttributeInSet member={false} setStatement={addStatement} />
-                    //     </div>
-                    // </div>
-                }
                 <div className="col-sm">
+                    <div>
+                        <button
+                            className="btn btn-primary me-1"
+                            onClick={async () => connectProvider(await BrowserWalletProvider.getInstance())}
+                        >
+                            Connect browser
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            disabled
+                            onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
+                        >
+                            Connect mobile
+                        </button>
+                    </div>
+                    <hr />
+                    <button onClick={handleAddTopLevel} type="button" className="btn btn-primary me-1 mt-1">
+                        {'Start a new inner statement'}
+                    </button>
+
+                    <hr />
+
+                    <button
+                        onClick={() =>
+                            setStatement((oldStatement) => {
+                                if (oldStatement.length == 0) {
+                                    return oldStatement;
+                                } else {
+                                    return oldStatement.slice(0, oldStatement.length - 1);
+                                }
+                            })
+                        }
+                        type="button"
+                        className="btn btn-primary mt-1"
+                    >
+                        {'Clear last inner statement'}
+                    </button>
+
+                    <hr />
+
+                    {provider !== undefined && <SubmitProof all_statements={statement} provider={provider} />}
+
+                    <hr />
+                    <div className="bg-warning mb-3 p-3"> The statement </div>
                     <Statement inner={statement} />
                 </div>
             </div>
