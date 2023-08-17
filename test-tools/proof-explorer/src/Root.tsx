@@ -186,7 +186,7 @@ interface RevealAttributeProps {
 async function submitProof(
     statement: CredentialStatements,
     provider: WalletProvider,
-    setMessages: (cbk: (oldMessages: string[]) => string[]) => void
+    setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void
 ) {
     let proof: VerifiablePresentation;
     const challengeBuffer = new Uint8Array(32);
