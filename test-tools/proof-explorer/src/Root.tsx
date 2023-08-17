@@ -202,13 +202,13 @@ async function submitProof(
         }
         return;
     }
-    console.log(JSON.stringify(proof));
+    console.log(proof.toString());
     const resp = await fetch(`${getVerifierURL()}/v0/verify`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(proof),
+        body: proof.toString(),
     });
     if (resp.ok) {
         setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
@@ -395,35 +395,46 @@ function AgeBound({ younger, setStatement }: AgeBoundProps) {
 }
 
 function AttributeInRange({ setStatement, attributeOptions }: RevealAttributeProps) {
-    const [lower, setLower] = useState<string>('');
-    const [upper, setUpper] = useState<string>('');
+    const [lower, setLower] = useState<[string, string | undefined]>(['', undefined]);
+    const [upper, setUpper] = useState<[string, string | undefined]>(['', undefined]);
 
-    const [selected, setSelected] = useState<string>(attributeOptions[0].value);
+    const [selected, setSelected] = useState<[string, string | undefined]>([
+        attributeOptions[0].value,
+        attributeOptions[0].type,
+    ]);
 
-    const handleChange = (option: { value: string; label: string } | null) => {
+    const handleChange = (option: { value: string; label: string; type: string | undefined } | null) => {
         if (option === null) {
             return;
         }
-        setSelected(option.label);
+        setSelected([option.label, option.type]);
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
+        let lower_bound = lower[0];
+        if (lower[1] == 'number') {
+            lower_bound = BigInt(lower[0]);
+        }
+        let upper_bound = upper[0];
+        if (upper[1] == 'number') {
+            upper_bound = BigInt(upper[0]);
+        }
         setStatement([
             {
                 type: StatementTypes.AttributeInRange,
-                attributeTag: selected,
-                lower,
-                upper,
+                attributeTag: selected[0],
+                lower: lower_bound,
+                upper: upper_bound,
             },
         ]);
     };
 
     const onLowerChange: ChangeEventHandler<HTMLInputElement> = (e) => {
-        setLower(e.target.value);
+        setLower([e.target.value, selected[1]]);
     };
 
     const onUpperChange: ChangeEventHandler<HTMLInputElement> = (e) => {
-        setUpper(e.target.value);
+        setUpper([e.target.value, selected[1]]);
     };
 
     return (
@@ -437,10 +448,10 @@ function AttributeInRange({ setStatement, attributeOptions }: RevealAttributePro
                     defaultValue={attributeOptions[0]}
                 />
                 {'Lower bound: '}
-                <input className="my-1" onChange={onLowerChange} value={lower} />
+                <input className="my-1" onChange={onLowerChange} value={lower[0]} />
                 <br />
                 {'Upper bound: '}
-                <input className="my-1" onChange={onUpperChange} value={upper} />
+                <input className="my-1" onChange={onUpperChange} value={upper[0]} />
                 <button onClick={onClickAdd} type="button" className="btn btn-primary">
                     {'Add'}
                 </button>
@@ -456,21 +467,29 @@ interface SetMembershipProps extends RevealAttributeProps {
 function AttributeInSet({ member, setStatement, attributeOptions }: SetMembershipProps) {
     const [set, setSet] = useState<string>('');
 
-    const [selected, setSelected] = useState<string>(attributeOptions[0].value);
+    const [selected, setSelected] = useState<[string, string | undefined]>([
+        attributeOptions[0].value,
+        attributeOptions[0].type,
+    ]);
 
-    const handleChange = (option: { value: string; label: string } | null) => {
+    const handleChange = (option: { value: string; label: string; type: string | undefined } | null) => {
         if (option === null) {
             return;
         }
-        setSelected(option.label);
+        setSelected([option.label, option.type]);
     };
+
+    let proof_set = set.split(',').map((s) => s.trim());
+    if (selected[1] == 'number') {
+        proof_set = proof_set.map((x) => BigInt(x));
+    }
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
         setStatement([
             {
                 type: member ? StatementTypes.AttributeInSet : StatementTypes.AttributeNotInSet,
-                attributeTag: selected,
-                set: set.split(',').map((s) => s.trim()),
+                attributeTag: selected[0],
+                set: proof_set,
             },
         ]);
     };
@@ -712,6 +731,7 @@ function Issuers(
                                 };
                                 const attributes = schema.properties.credentialSubject.properties.attributes.properties;
                                 Object.entries(attributes).map(([tag, v]) => {
+                                    console.log((v as { type: string }).type);
                                     setTags((oldTags) => {
                                         if (
                                             oldTags.find(({ label }) => {
@@ -720,7 +740,14 @@ function Issuers(
                                         ) {
                                             return oldTags;
                                         } else {
-                                            return [{ value: (v as { title: string }).title, label: tag }, ...oldTags];
+                                            return [
+                                                {
+                                                    value: (v as { title: string }).title,
+                                                    label: tag,
+                                                    type: (v as { type: string }).type,
+                                                },
+                                                ...oldTags,
+                                            ];
                                         }
                                     });
                                 });
@@ -736,7 +763,6 @@ function Issuers(
 
         fetchContracts().catch((err) => console.log(err));
     }, [indexes]);
-
     return [
         tags,
         <ul>
