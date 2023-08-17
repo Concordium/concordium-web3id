@@ -81,8 +81,8 @@ function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
 /**
  * Component to display the statement.
  */
-function Statement({ inner }: { inner: TopLevelStatements }) {
-    return inner.map((outer_statement) => (
+function Statement({ inner, new_statement }: { inner: TopLevelStatements; new_statement: boolean }) {
+    const statements = inner.map((outer_statement) => (
         <>
             <Issuer outer_statement={outer_statement} />
             <div>
@@ -165,6 +165,16 @@ function Statement({ inner }: { inner: TopLevelStatements }) {
             </div>{' '}
         </>
     ));
+    if (new_statement) {
+        return (
+            <>
+                {' '}
+                {statements} <div className="alert alert-danger"> New statement started </div>{' '}
+            </>
+        );
+    } else {
+        return statements;
+    }
 }
 
 interface RevealAttributeProps {
@@ -791,11 +801,11 @@ export default function ProofExplorer() {
 
     const [checked, idpsDisplay] = IdentityProviders({ idps });
 
-    const [newStatement, setNewStatement] = useState<boolean>(true);
+    const [new_statement, setNewStatement] = useState<boolean>(true);
 
     const addAccountStatement = (a: AtomicStatementV2[]) => {
         setStatement((statements) => {
-            if (newStatement || statements.length == 0) {
+            if (new_statement || statements.length == 0) {
                 setNewStatement(false);
                 const statement: AccountStatement = {
                     idps: idps.filter(({ id }) => checked.includes(id)),
@@ -814,7 +824,7 @@ export default function ProofExplorer() {
 
     const addWeb3IdStatement = (a: AtomicStatementV2[]) => {
         setStatement((statements) => {
-            if (newStatement || statements.length == 0) {
+            if (new_statement || statements.length == 0) {
                 setNewStatement(false);
                 const statement: Web3IdStatement = {
                     issuers: parseIssuers(issuers).map((i) => {
@@ -1013,7 +1023,7 @@ export default function ProofExplorer() {
 
                     <hr />
                     <div className="bg-warning mb-3 p-3"> The statement </div>
-                    <Statement inner={statement} />
+                    <Statement inner={statement} new_statement={new_statement} />
                 </div>
             </div>
         </main>
