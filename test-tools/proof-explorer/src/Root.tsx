@@ -731,7 +731,6 @@ function Issuers(
                                 };
                                 const attributes = schema.properties.credentialSubject.properties.attributes.properties;
                                 Object.entries(attributes).map(([tag, v]) => {
-                                    console.log((v as { type: string }).type);
                                     setTags((oldTags) => {
                                         if (
                                             oldTags.find(({ label }) => {
