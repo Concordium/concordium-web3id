@@ -822,11 +822,14 @@ export default function ProofExplorer() {
 
     const [checked, idpsDisplay] = IdentityProviders({ idps });
 
+    const [lastAccount, setLastAccount] = useState<boolean>(true);
+
     const [new_statement, setNewStatement] = useState<boolean>(true);
 
     const addAccountStatement = (a: AtomicStatementV2[]) => {
         setStatement((statements) => {
-            if (new_statement || statements.length == 0) {
+            if (!lastAccount || new_statement || statements.length == 0) {
+                setLastAccount(true);
                 setNewStatement(false);
                 const statement: AccountStatement = {
                     idps: idps.filter(({ id }) => checked.includes(id)),
@@ -845,7 +848,8 @@ export default function ProofExplorer() {
 
     const addWeb3IdStatement = (a: AtomicStatementV2[]) => {
         setStatement((statements) => {
-            if (new_statement || statements.length == 0) {
+            if (lastAccount || new_statement || statements.length == 0) {
+                setLastAccount(false);
                 setNewStatement(false);
                 const statement: Web3IdStatement = {
                     issuers: parseIssuers(issuers).map((i) => {
