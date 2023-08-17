@@ -19,10 +19,10 @@ import {
 import { Buffer } from 'buffer';
 import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
-import { REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA } from './constants';
+import { VERIFIER_URL, GRPC_WEB_CONFIG, REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA } from './constants';
 
 function getVerifierURL(): string {
-    return 'https://web3id-verifier.testnet.concordium.com';
+    return VERIFIER_URL;
 }
 
 type TopLevelStatement =
@@ -806,9 +806,7 @@ export default function ProofExplorer() {
 
     const [statement, setStatement] = useState<TopLevelStatements>([]);
 
-    const client = useRef(
-        new ConcordiumGRPCClient(new GrpcWebFetchTransport({ baseUrl: 'https://grpc.testnet.concordium.com:20000' }))
-    );
+    const client = useRef(new ConcordiumGRPCClient(new GrpcWebFetchTransport(GRPC_WEB_CONFIG)));
 
     const [idps, setIdps] = useState<{ name: string; id: number }[]>([]);
 
