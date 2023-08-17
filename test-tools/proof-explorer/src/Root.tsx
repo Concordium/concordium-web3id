@@ -208,7 +208,7 @@ async function submitProof(
     }
 }
 
-function SubmitProof({ all_statements, provider }: { all_statements: TopLevelStatements; provider: WalletProvider }) {
+function SubmitProof(all_statements: TopLevelStatements, provider: WalletProvider | undefined): React.JSX.Element {
     const [messages, setMessages] = useState<string[]>([]);
 
     const request = all_statements.map((s) => {
@@ -234,12 +234,16 @@ function SubmitProof({ all_statements, provider }: { all_statements: TopLevelSta
 
     const handleProve: MouseEventHandler<HTMLButtonElement> = () => submitProof(request, provider, setMessages);
 
-    return (
+    return [
+        setMessages,
         <div>
             <div>
-                <button onClick={handleProve} type="button" className="btn btn-primary mt-1">
-                    {'Prove'}
-                </button>
+                {provider === undefined && <div className="bg-danger p-1"> Not connected to wallet. </div>}
+                {provider !== undefined && (
+                    <button onClick={handleProve} type="button" className="btn btn-primary mt-1">
+                        {'Prove'}
+                    </button>
+                )}
             </div>
             <hr />
             <div>
@@ -250,8 +254,8 @@ function SubmitProof({ all_statements, provider }: { all_statements: TopLevelSta
                     ))}{' '}
                 </ol>
             </div>
-        </div>
-    );
+        </div>,
+    ];
 }
 
 const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
@@ -834,6 +838,8 @@ export default function ProofExplorer() {
 
     const [web3IdAttributes, issuersDisplay] = Issuers(issuers, client.current);
 
+    const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
+
     return (
         <main className="container">
             <nav className="navbar bg-black mb-3">
@@ -994,7 +1000,13 @@ export default function ProofExplorer() {
 
                     <hr />
 
-                    {provider !== undefined && <SubmitProof all_statements={statement} provider={provider} />}
+                    <button onClick={() => setMessages([])} type="button" className="btn btn-primary mt-1">
+                        {'Clear messages.'}
+                    </button>
+
+                    <hr />
+
+                    {submitProofDisplay}
 
                     <hr />
                     <div className="bg-warning mb-3 p-3"> The statement </div>
