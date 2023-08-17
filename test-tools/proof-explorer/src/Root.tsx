@@ -895,7 +895,12 @@ export default function ProofExplorer() {
                     </div>
                     <div className="bg-success mb-3 p-3 text-white">
                         <p> List of allowed issuers, e.g., 5916,5830 </p>
-                        <input className="my-1" onChange={onIssuersChange} value={issuers.toString()} />
+                        <input
+                            className="my-1"
+                            placeholder="5916,5830"
+                            onChange={onIssuersChange}
+                            value={issuers.toString()}
+                        />
                         {issuersDisplay}
                     </div>
                     <div>
