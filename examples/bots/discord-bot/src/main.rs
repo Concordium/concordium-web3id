@@ -87,19 +87,17 @@ async fn check(
     #[description = "Selected user"] user: serenity::User,
 ) -> anyhow::Result<()> {
     let verification = get_verification(ctx.data(), user.id).await?;
+    let accounts = verification.accounts;
     let mention = user.mention();
-    let message = if verification.is_empty() {
+    let message = if accounts.is_empty() {
         format!("{mention} is not verified with Concordium.")
     } else {
         let mut message = format!("{mention} is verified with Concordium.");
-        for verification in verification
+        for account in accounts
             .into_iter()
-            .filter(|v| v.platform != Platform::Discord && !v.revoked)
+            .filter(|a| a.platform != Platform::Discord && !a.revoked)
         {
-            message.push_str(&format!(
-                "\n- {}: {}",
-                verification.platform, verification.username
-            ));
+            message.push_str(&format!("\n- {}: {}", account.platform, account.username));
         }
         message
     };
@@ -188,10 +186,7 @@ fn link_button<'btn>(
     }
 }
 
-async fn get_verification(
-    cfg: &BotConfig,
-    id: serenity::UserId,
-) -> anyhow::Result<Vec<Verification>> {
+async fn get_verification(cfg: &BotConfig, id: serenity::UserId) -> anyhow::Result<Verification> {
     let url = cfg
         .verifier_url
         .join("verifications/discord/")

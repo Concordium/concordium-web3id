@@ -162,18 +162,16 @@ async fn check_user(
     match get_verifications(cfg, target_user.id).await {
         Ok(verifications) => {
             let name = target_user.mention().unwrap_or(target_user.full_name());
-            let reply = if verifications.is_empty() {
+            let accounts = verifications.accounts;
+            let reply = if accounts.is_empty() {
                 format!("{name} is not verified with Concordium.")
             } else {
                 let mut reply = format!("{name} is verified with Concordium.");
-                for verification in verifications
+                for account in accounts
                     .into_iter()
-                    .filter(|v| v.platform != Platform::Telegram && !v.revoked)
+                    .filter(|a| a.platform != Platform::Telegram && !a.revoked)
                 {
-                    reply.push_str(&format!(
-                        "\n- {}: {}",
-                        verification.platform, verification.username
-                    ));
+                    reply.push_str(&format!("\n- {}: {}", account.platform, account.username));
                 }
                 reply
             };
@@ -202,7 +200,7 @@ async fn other(bot: Bot, msg: Message) -> ResponseResult<()> {
     Ok(())
 }
 
-async fn get_verifications(cfg: BotConfig, id: UserId) -> anyhow::Result<Vec<Verification>> {
+async fn get_verifications(cfg: BotConfig, id: UserId) -> anyhow::Result<Verification> {
     let url = cfg
         .verifier_url
         .join("verifications/telegram/")
