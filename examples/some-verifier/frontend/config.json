@@ -1,0 +1,17 @@
+{
+  "discordClientId": "1127954266213056635",
+  "issuers": {
+    "telegram": {
+      "url": "http://127.0.0.1:8080",
+      "chain": "testnet",
+      "index": "5625",
+      "subindex": "0"
+    },
+    "discord": {
+      "url": "http://127.0.0.1:8081",
+      "chain": "testnet",
+      "index": "5631",
+      "subindex": "0"
+    }
+  }
+}
