@@ -18,4 +18,4 @@ By default it uses https://web3id-verifier.testnet.concordium.com
 
 Use `yarn watch` to automatically rebuild upon changes.
 Use `yarn lint` to check formatting and common issues. Use `yarn lint-and-fix` to automatically fix a number of issues (e.g., formatting).
-Use `yarn serve` to serve the pages locally. When doing this make sure to change `getVerifierURL` to point to the URL of the verifier.
+Use `yarn start` to serve the pages locally.
