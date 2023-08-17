@@ -613,7 +613,7 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "concordium-contracts-common"
-version = "7.0.0"
+version = "7.1.0"
 dependencies = [
  "base64 0.21.2",
  "bs58",
