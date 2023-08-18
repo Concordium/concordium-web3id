@@ -1,7 +1,7 @@
 {
     "$id": "https://example-university.com/certificates/JsonSchema2023-education-certificate.json",
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "name": "Education certificate",
+    "name": "UniversityDegreeCredential",
     "description": "Simple representation of an education certificate.",
     "type": "object",
     "properties": {
