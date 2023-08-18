@@ -4,11 +4,11 @@ import Switch from 'react-switch';
 import { WalletConnectionProps, useConnection, useConnect, useGrpcClient, TESTNET } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
-import { AccountAddress, Web3StatementBuilder } from '@concordium/web-sdk';
+import { AccountAddress, ConcordiumGRPCClient, Web3StatementBuilder } from '@concordium/web-sdk';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
-import { getCredentialEntry } from './reading_from_blockchain';
+import { getCredentialEntry, registryMetadata } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer, revokeCredential } from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
@@ -220,10 +220,29 @@ export default function Main(props: WalletConnectionProps) {
         setCredentialType(target.value);
     }, []);
 
-    const changeCredentialRegistryContratIndexHandler = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialRegistryContratIndex(Number(target.value));
-    }, []);
+    const changeCredentialRegistryContratIndexHandler = useCallback(
+        async (client: ConcordiumGRPCClient | undefined, event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
+            setCredentialRegistryContratIndex(Number(target.value));
+
+            const registryMetadataReturnValue = JSON.parse(await registryMetadata(client, Number(target.value)));
+
+            fetch(registryMetadataReturnValue.credential_schema.schema_ref.url)
+                .then((response) => response.json())
+                .then((json) => {
+                    const { properties } = json.properties.credentialSubject.properties.attributes;
+
+                    const attributeSchemaValues: string[][] = [];
+                    Object.keys(properties).forEach((key) => {
+                        attributeSchemaValues.push([key, properties[key].type, '']);
+                    });
+
+                    setAttributeSchema(attributeSchemaValues);
+                })
+                .catch((e) => console.log(e));
+        },
+        []
+    );
 
     const handleAttributeChange = useCallback((i: string, attributeSchemaValue: string[][], event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
@@ -520,7 +539,9 @@ export default function Main(props: WalletConnectionProps) {
                                     id="credentialRegistryContratIndex"
                                     type="text"
                                     placeholder="1111"
-                                    onChange={changeCredentialRegistryContratIndexHandler}
+                                    onChange={(event) => {
+                                        changeCredentialRegistryContratIndexHandler(grpcClient, event);
+                                    }}
                                 />
                                 {credentialRegistryContratIndex !== 0 && (
                                     <div className="actionResultBox">
