@@ -7,6 +7,8 @@ export const EXAMPLE_CREDENTIAL_METADATA = `https://raw.githubusercontent.com/Co
 
 export const EXAMPLE_ISSUER_METADATA = `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`;
 
+export const DEFAULT_CREDENTIAL_TYPES = ['VerifiableCredential', 'ConcordiumVerifiableCredential'];
+
 export const BACKEND_API = 'http://localhost:3000';
 
 export const REFRESH_INTERVAL = moment.duration(4, 'seconds');

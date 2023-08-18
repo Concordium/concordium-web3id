@@ -41,10 +41,6 @@ export async function createNewIssuer(
         throw new Error(`Set credentialSchemaURL`);
     }
 
-    if (credentialType === '') {
-        throw new Error(`Set credentialType`);
-    }
-
     const parameter = {
         issuer_metadata: {
             hash: {

@@ -18,6 +18,7 @@ import {
     BROWSER_WALLET,
     REFRESH_INTERVAL,
     EXAMPLE_ISSUER_METADATA,
+    DEFAULT_CREDENTIAL_TYPES,
 } from './constants';
 
 type TestBoxProps = PropsWithChildren<{
@@ -122,7 +123,7 @@ export default function Main(props: WalletConnectionProps) {
     const [issuerMetaData, setIssuerMetaData] = useState(EXAMPLE_ISSUER_METADATA);
 
     const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(EXAMPLE_CREDENTIAL_METADATA);
-    const [credentialType, setCredentialType] = useState('JsonSchema2023');
+    const [credentialType, setCredentialType] = useState('myCredentialType');
     const [schemaCredential, setSchemaCredential] = useState<SchemaRef>({
         schema_ref: {
             hash: {
@@ -412,7 +413,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialType"
                                     type="text"
-                                    placeholder="JsonSchema2023"
+                                    placeholder="myCredentialType"
                                     onChange={changeCredentialTypeHandler}
                                 />
                                 <br />
@@ -708,11 +709,12 @@ export default function Main(props: WalletConnectionProps) {
                                             }
                                         });
 
+                                        const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
+
                                         provider
                                             .addWeb3IdCredential(
                                                 {
-                                                    $schema: './JsonSchema2023-education-certificate.json',
-                                                    type: ['VerifiableCredential', 'ConcordiumVerifiableCredential'],
+                                                    type: types.push(credentialType),
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
@@ -1163,11 +1165,12 @@ export default function Main(props: WalletConnectionProps) {
                                             }
                                         });
 
+                                        const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
+
                                         provider
                                             .addWeb3IdCredential(
                                                 {
-                                                    $schema: './JsonSchema2023-education-certificate.json',
-                                                    type: ['VerifiableCredential', 'ConcordiumVerifiableCredential'],
+                                                    type: types.push(credentialType),
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
@@ -1447,11 +1450,12 @@ export default function Main(props: WalletConnectionProps) {
                                             }
                                         });
 
+                                        const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
+
                                         provider
                                             .addWeb3IdCredential(
                                                 {
-                                                    $schema: './JsonSchema2023-education-certificate.json',
-                                                    type: ['VerifiableCredential', 'ConcordiumVerifiableCredential'],
+                                                    type: types.push(credentialType),
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
