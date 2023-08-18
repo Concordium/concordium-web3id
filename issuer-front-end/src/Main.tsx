@@ -12,7 +12,13 @@ import { getCredentialEntry } from './reading_from_blockchain';
 import { issueCredential, createNewIssuer, revokeCredential } from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
-import { EXAMPLE_CREDENTIAL_SCHEMA, EXAMPLE_CREDENTIAL_METADATA, BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
+import {
+    EXAMPLE_CREDENTIAL_SCHEMA,
+    EXAMPLE_CREDENTIAL_METADATA,
+    BROWSER_WALLET,
+    REFRESH_INTERVAL,
+    EXAMPLE_ISSUER_METADATA,
+} from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
@@ -113,7 +119,7 @@ export default function Main(props: WalletConnectionProps) {
 
     const [browserPublicKey, setBrowserPublicKey] = useState('');
 
-    const [issuerMetaData, setIssuerMetaData] = useState('https://issuer/metaData/');
+    const [issuerMetaData, setIssuerMetaData] = useState(EXAMPLE_ISSUER_METADATA);
 
     const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(EXAMPLE_CREDENTIAL_METADATA);
     const [credentialType, setCredentialType] = useState('JsonSchema2023');
@@ -134,9 +140,11 @@ export default function Main(props: WalletConnectionProps) {
     const [isHolderRevocable, setIsHolderRevocable] = useState(true);
     const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
     const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
+    const [credentialHasExpiryDate, setCredentialHasExpiryDate] = useState(true);
 
     const schemaMetaDataURLRef = useRef(null);
     const schemaCredentialURLRef = useRef(null);
+    const schemaIssuerURLRef = useRef(null);
 
     const handleValidFromDateChange = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
@@ -192,7 +200,8 @@ export default function Main(props: WalletConnectionProps) {
                 });
 
                 setAttributeSchema(attributeSchemaValues);
-            });
+            })
+            .catch((e) => console.log(e));
     }, []);
 
     const changeCredentialMetaDataURLHandler = useCallback((event: ChangeEvent) => {
@@ -278,6 +287,9 @@ export default function Main(props: WalletConnectionProps) {
 
         const schemaCredentialURL = schemaCredentialURLRef.current as unknown as HTMLFormElement;
         schemaCredentialURL?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_SCHEMA);
+
+        const schemaIssuerURL = schemaIssuerURLRef.current as unknown as HTMLFormElement;
+        schemaIssuerURL?.setAttribute('placeholder', EXAMPLE_ISSUER_METADATA);
     }, [connection, account]);
 
     useEffect(() => {
@@ -292,7 +304,8 @@ export default function Main(props: WalletConnectionProps) {
                 });
 
                 setAttributeSchema(attributeSchemaValues);
-            });
+            })
+            .catch((e) => console.log(e));
     }, []);
 
     return (
@@ -388,7 +401,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="issuerMetaDataURL"
                                     type="text"
-                                    placeholder="https://issuer/metaData/"
+                                    ref={schemaIssuerURLRef}
                                     onChange={changeIssuerMetaDataURLHandler}
                                 />
                                 <br />
@@ -546,6 +559,26 @@ export default function Main(props: WalletConnectionProps) {
                                 ))}
                                 <br />
                                 <br />
+                                <div style={{ fontWeight: credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has expiry date
+                                </div>
+                                <Switch
+                                    onChange={() => {
+                                        setCredentialHasExpiryDate(!credentialHasExpiryDate);
+                                    }}
+                                    onColor="#308274"
+                                    offColor="#308274"
+                                    onHandleColor="#174039"
+                                    offHandleColor="#174039"
+                                    checked={!credentialHasExpiryDate}
+                                    checkedIcon={false}
+                                    uncheckedIcon={false}
+                                />
+                                <div style={{ fontWeight: !credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has NO expiry date
+                                </div>
+                                <br />
+                                <br />
                                 Add `valid_from`:
                                 <br />
                                 <br />
@@ -558,18 +591,22 @@ export default function Main(props: WalletConnectionProps) {
                                 />
                                 <br />
                                 <br />
-                                Add `valid_until`:
-                                <br />
-                                <br />
-                                <input
-                                    type="datetime-local"
-                                    id="valid_until"
-                                    name="valid_until"
-                                    value={validUntilDate}
-                                    onChange={handleValidUntilDateChange}
-                                />
-                                <br />
-                                <br />
+                                {credentialHasExpiryDate && (
+                                    <>
+                                        Add`valid_until`:
+                                        <br />
+                                        <br />
+                                        <input
+                                            type="datetime-local"
+                                            id="valid_until"
+                                            name="valid_until"
+                                            value={validUntilDate}
+                                            onChange={handleValidUntilDateChange}
+                                        />
+                                        <br />
+                                        <br />
+                                    </>
+                                )}
                                 Add `CredentialMetadata`:
                                 <br />
                                 <input
@@ -590,7 +627,9 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
-                                    <div>Holder can revoke credential</div>
+                                    <div style={{ fontWeight: isHolderRevocable ? 'bold' : 'normal' }}>
+                                        Holder can revoke credential
+                                    </div>
                                     <Switch
                                         onChange={() => {
                                             setIsHolderRevocable(!isHolderRevocable);
@@ -603,7 +642,9 @@ export default function Main(props: WalletConnectionProps) {
                                         checkedIcon={false}
                                         uncheckedIcon={false}
                                     />
-                                    <div>Holder can NOT revoke credential</div>
+                                    <div style={{ fontWeight: !isHolderRevocable ? 'bold' : 'normal' }}>
+                                        Holder can NOT revoke credential
+                                    </div>
                                 </div>
                                 <br />
                                 <button
@@ -693,6 +734,7 @@ export default function Main(props: WalletConnectionProps) {
                                                         connection,
                                                         account,
                                                         publicKeyOfCredential,
+                                                        credentialHasExpiryDate,
                                                         validFromDate,
                                                         validUntilDate,
                                                         credentialMetaDataURL,
@@ -976,6 +1018,26 @@ export default function Main(props: WalletConnectionProps) {
                                 ))}
                                 <br />
                                 <br />
+                                <div style={{ fontWeight: credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has expiry date
+                                </div>
+                                <Switch
+                                    onChange={() => {
+                                        setCredentialHasExpiryDate(!credentialHasExpiryDate);
+                                    }}
+                                    onColor="#308274"
+                                    offColor="#308274"
+                                    onHandleColor="#174039"
+                                    offHandleColor="#174039"
+                                    checked={!credentialHasExpiryDate}
+                                    checkedIcon={false}
+                                    uncheckedIcon={false}
+                                />
+                                <div style={{ fontWeight: !credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has NO expiry date
+                                </div>
+                                <br />
+                                <br />
                                 Add `valid_from`:
                                 <br />
                                 <br />
@@ -988,18 +1050,22 @@ export default function Main(props: WalletConnectionProps) {
                                 />
                                 <br />
                                 <br />
-                                Add `valid_until`:
-                                <br />
-                                <br />
-                                <input
-                                    type="datetime-local"
-                                    id="valid_until"
-                                    name="valid_until"
-                                    value={validUntilDate}
-                                    onChange={handleValidUntilDateChange}
-                                />
-                                <br />
-                                <br />
+                                {credentialHasExpiryDate && (
+                                    <>
+                                        Add`valid_until`:
+                                        <br />
+                                        <br />
+                                        <input
+                                            type="datetime-local"
+                                            id="valid_until"
+                                            name="valid_until"
+                                            value={validUntilDate}
+                                            onChange={handleValidUntilDateChange}
+                                        />
+                                        <br />
+                                        <br />
+                                    </>
+                                )}
                                 Add `CredentialMetadata`:
                                 <br />
                                 <input
@@ -1179,6 +1245,7 @@ export default function Main(props: WalletConnectionProps) {
                                             connection,
                                             account,
                                             credentialPublicKey,
+                                            credentialHasExpiryDate,
                                             validFromDate,
                                             validUntilDate,
                                             credentialMetaDataURL,
@@ -1235,6 +1302,26 @@ export default function Main(props: WalletConnectionProps) {
                                 ))}
                                 <br />
                                 <br />
+                                <div style={{ fontWeight: credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has expiry date
+                                </div>
+                                <Switch
+                                    onChange={() => {
+                                        setCredentialHasExpiryDate(!credentialHasExpiryDate);
+                                    }}
+                                    onColor="#308274"
+                                    offColor="#308274"
+                                    onHandleColor="#174039"
+                                    offHandleColor="#174039"
+                                    checked={!credentialHasExpiryDate}
+                                    checkedIcon={false}
+                                    uncheckedIcon={false}
+                                />
+                                <div style={{ fontWeight: !credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has NO expiry date
+                                </div>
+                                <br />
+                                <br />
                                 Add `valid_from`:
                                 <br />
                                 <br />
@@ -1247,18 +1334,22 @@ export default function Main(props: WalletConnectionProps) {
                                 />
                                 <br />
                                 <br />
-                                Add `valid_until`:
-                                <br />
-                                <br />
-                                <input
-                                    type="datetime-local"
-                                    id="valid_until"
-                                    name="valid_until"
-                                    value={validUntilDate}
-                                    onChange={handleValidUntilDateChange}
-                                />
-                                <br />
-                                <br />
+                                {credentialHasExpiryDate && (
+                                    <>
+                                        Add`valid_until`:
+                                        <br />
+                                        <br />
+                                        <input
+                                            type="datetime-local"
+                                            id="valid_until"
+                                            name="valid_until"
+                                            value={validUntilDate}
+                                            onChange={handleValidUntilDateChange}
+                                        />
+                                        <br />
+                                        <br />
+                                    </>
+                                )}
                                 Add `CredentialMetadata`:
                                 <br />
                                 <input
@@ -1382,6 +1473,7 @@ export default function Main(props: WalletConnectionProps) {
                                                         connection,
                                                         account,
                                                         publicKeyOfCredential,
+                                                        credentialHasExpiryDate,
                                                         validFromDate,
                                                         validUntilDate,
                                                         credentialMetaDataURL,

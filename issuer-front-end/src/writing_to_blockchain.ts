@@ -135,6 +135,7 @@ export async function issueCredential(
     connection: WalletConnection,
     account: string,
     credentialPublicKey: string,
+    credentialHasExpiryDate: boolean,
     validFromDate: string,
     validUntilDate: string,
     credentialMetaDataURL: string,
@@ -154,8 +155,15 @@ export async function issueCredential(
         throw new Error(`Set validFromDate`);
     }
 
-    if (validUntilDate === '') {
-        throw new Error(`Set validUntilDate`);
+    const validFromDateISOString = new Date(Date.parse(validFromDate)).toISOString();
+    let validUntilDateISOString;
+
+    if (credentialHasExpiryDate) {
+        if (validUntilDate === '') {
+            throw new Error(`Set validUntilDate`);
+        } else {
+            validUntilDateISOString = new Date(Date.parse(validUntilDate)).toISOString();
+        }
     }
 
     if (credentialMetaDataURL === '') {
@@ -166,17 +174,14 @@ export async function issueCredential(
         throw new Error(`Set credentialRegistryContratIndex`);
     }
 
-    const validFromDateISOString = new Date(Date.parse(validFromDate)).toISOString();
-    const validUntilDateISOString = new Date(Date.parse(validUntilDate)).toISOString();
+    const validUntil = credentialHasExpiryDate ? { Some: [validUntilDateISOString] } : { None: [] };
 
     const parameter = {
         credential_info: {
             holder_id: credentialPublicKey,
             holder_revocable: isHolderRevocable,
             valid_from: validFromDateISOString,
-            valid_until: {
-                Some: [validUntilDateISOString],
-            },
+            valid_until: validUntil,
             metadata_url: {
                 hash: {
                     None: [],
@@ -185,7 +190,7 @@ export async function issueCredential(
             },
         },
         auxiliary_data: auxiliaryData,
-    } as SmartContractParameters;
+    } as unknown as SmartContractParameters;
 
     const schema = {
         parameters: parameter,

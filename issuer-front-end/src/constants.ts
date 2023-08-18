@@ -5,6 +5,8 @@ export const EXAMPLE_CREDENTIAL_SCHEMA = `https://raw.githubusercontent.com/Conc
 
 export const EXAMPLE_CREDENTIAL_METADATA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/21bc43872c5d972f6c1b48af7956ec74f2e3e6ef/examples/json-schemas/metadata/credential-metadata.json`;
 
+export const EXAMPLE_ISSUER_METADATA = `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`;
+
 export const BACKEND_API = 'http://localhost:3000';
 
 export const REFRESH_INTERVAL = moment.duration(4, 'seconds');
