@@ -170,7 +170,7 @@ function Statement({ inner, new_statement }: { inner: TopLevelStatements; new_st
         return (
             <>
                 {' '}
-                {statements} <div className="alert alert-danger"> New inner statement started </div>{' '}
+                {statements} <div className="alert alert-warning"> New outer statement started </div>{' '}
             </>
         );
     } else {
@@ -249,14 +249,10 @@ function SubmitProof(all_statements: TopLevelStatements, provider: WalletProvide
         setMessages,
         <div>
             <div>
-                {provider === undefined && <div className="bg-danger p-1"> Not connected to wallet. </div>}
                 {provider !== undefined && (
-                    <div className="row">
-                        <div className="col-sm-6 alert alert-success"> Connected to the wallet </div>
-                        <button onClick={handleProve} type="button" className="col-sm-4 btn btn-primary">
-                            {'Prove'}
-                        </button>
-                    </div>
+                    <button onClick={handleProve} type="button" className="col-sm-4 btn btn-primary">
+                        {'Prove'}
+                    </button>
                 )}
             </div>
             <hr />
@@ -1003,13 +999,19 @@ export default function ProofExplorer() {
                     </div>
                 </div>
                 <div className="col-sm">
-                    <div>
-                        <button
-                            className="btn btn-primary me-1"
-                            onClick={async () => connectProvider(await BrowserWalletProvider.getInstance())}
-                        >
-                            Connect browser
-                        </button>
+                    <div className="row">
+                        <div className="col-6">
+                            <button
+                                className="btn btn-primary me-1"
+                                onClick={async () => connectProvider(await BrowserWalletProvider.getInstance())}
+                            >
+                                Connect browser
+                            </button>
+                        </div>
+                        {provider !== undefined && <div className="col-4 bg-info p-2 text-center"> Connected </div>}
+                        {provider === undefined && (
+                            <div className="col-4 bg-danger p-2 text-center"> Not connected </div>
+                        )}
                         {
                             // This is commented out since the mobile wallets don't support Web3ID proofs at the moment.
                             // <button
@@ -1026,7 +1028,7 @@ export default function ProofExplorer() {
                         <div className="col-sm">
                             {' '}
                             <button onClick={handleAddTopLevel} type="button" className="btn btn-primary me-1 mt-1">
-                                {'Start a new inner statement'}
+                                {'Start a new outer statement'}
                             </button>{' '}
                         </div>
 
@@ -1045,7 +1047,7 @@ export default function ProofExplorer() {
                                 type="button"
                                 className="btn btn-primary mt-1"
                             >
-                                {'Clear last inner statement'}
+                                {'Clear last outer statement'}
                             </button>{' '}
                         </div>
                     </div>
