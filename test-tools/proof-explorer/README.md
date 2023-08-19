@@ -19,3 +19,16 @@ By default it uses https://web3id-verifier.testnet.concordium.com
 Use `yarn watch` to automatically rebuild upon changes.
 Use `yarn lint` to check formatting and common issues. Use `yarn lint-and-fix` to automatically fix a number of issues (e.g., formatting).
 Use `yarn start` to serve the pages locally.
+
+
+## Docker image
+
+A docker image that serves the frontend can be built by running (**from the root
+of the repository**)
+
+```console
+docker build -f test-tools/proof-explorer/Dockerfile .
+```
+
+It does not need any configuration options, and the resulting container has no
+configuration options. The entrypoint simply serves the frontend at port 80.

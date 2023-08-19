@@ -250,7 +250,12 @@ function SubmitProof(all_statements: TopLevelStatements, provider: WalletProvide
         <div>
             <div>
                 {provider !== undefined && (
-                    <button onClick={handleProve} type="button" className="col-sm-4 btn btn-primary">
+                    <button
+                        title="Submit the statement as a verified presentation request to the wallet."
+                        onClick={handleProve}
+                        type="button"
+                        className="col-sm-4 btn btn-primary"
+                    >
                         {'Prove'}
                     </button>
                 )}
@@ -1027,7 +1032,12 @@ export default function ProofExplorer() {
                     <div className="row">
                         <div className="col-sm">
                             {' '}
-                            <button onClick={handleAddTopLevel} type="button" className="btn btn-primary me-1 mt-1">
+                            <button
+                                title="Start creating a new statement about a potentially different credential."
+                                onClick={handleAddTopLevel}
+                                type="button"
+                                className="btn btn-primary me-1 mt-1"
+                            >
                                 {'Start a new outer statement'}
                             </button>{' '}
                         </div>
@@ -1035,6 +1045,7 @@ export default function ProofExplorer() {
                         <div className="col-sm">
                             {' '}
                             <button
+                                title="Delete the last outer statement."
                                 onClick={() =>
                                     setStatement((oldStatement) => {
                                         if (oldStatement.length == 0) {
@@ -1053,7 +1064,12 @@ export default function ProofExplorer() {
                     </div>
                     <hr />
 
-                    <button onClick={() => setMessages([])} type="button" className="btn btn-primary mt-1">
+                    <button
+                        title="Clear the list of responses from the wallet and the verifier."
+                        onClick={() => setMessages([])}
+                        type="button"
+                        className="btn btn-primary mt-1"
+                    >
                         {'Clear messages.'}
                     </button>
 
