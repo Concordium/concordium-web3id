@@ -20,6 +20,7 @@ import { Buffer } from 'buffer';
 import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 import { VERIFIER_URL, GRPC_WEB_CONFIG, REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA } from './constants';
+import { version } from '../package.json';
 
 function getVerifierURL(): string {
     return VERIFIER_URL;
@@ -884,7 +885,7 @@ export default function ProofExplorer() {
             <nav className="navbar bg-black mb-3">
                 <div className="container-fluid">
                     <a className="navbar-brand text-white" href="#">
-                        {'Proof explorer'}
+                        {`Proof explorer ${version}.`}
                     </a>
                 </div>
             </nav>
