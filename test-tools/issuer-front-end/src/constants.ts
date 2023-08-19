@@ -9,7 +9,13 @@ export const EXAMPLE_ISSUER_METADATA = `https://gist.githubusercontent.com/DOBEN
 
 export const DEFAULT_CREDENTIAL_TYPES = ['VerifiableCredential', 'ConcordiumVerifiableCredential'];
 
-export const BACKEND_API = 'http://localhost:3000';
+export function getBackendApi(): string {
+    if (process.env.BACKEND_API) {
+        return process.env.BACKEND_API;
+    } else {
+        return window.location.origin;
+    }
+}
 
 export const REFRESH_INTERVAL = moment.duration(4, 'seconds');
 
