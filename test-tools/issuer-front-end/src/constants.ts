@@ -12,9 +12,8 @@ export const DEFAULT_CREDENTIAL_TYPES = ['VerifiableCredential', 'ConcordiumVeri
 export function getBackendApi(): string {
     if (process.env.BACKEND_API) {
         return process.env.BACKEND_API;
-    } else {
-        return window.location.origin;
     }
+    return window.location.origin;
 }
 
 export const REFRESH_INTERVAL = moment.duration(4, 'seconds');

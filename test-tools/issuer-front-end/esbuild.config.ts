@@ -36,8 +36,8 @@ const config: BuildOptions = {
     ],
     define: {
         global: 'window',
-        'process.env.BACKEND_API': JSON.stringify(process.env.BACKEND_API)
-    }
+        'process.env.BACKEND_API': JSON.stringify(process.env.BACKEND_API),
+    },
 };
 
 if (watch) {

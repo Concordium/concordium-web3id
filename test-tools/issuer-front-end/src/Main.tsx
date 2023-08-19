@@ -4,7 +4,7 @@ import Switch from 'react-switch';
 import { WalletConnectionProps, useConnection, useConnect, useGrpcClient, TESTNET } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
-import { AccountAddress, ConcordiumGRPCClient, Web3StatementBuilder } from '@concordium/web-sdk';
+import { AccountAddress, ConcordiumGRPCClient } from '@concordium/web-sdk';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
@@ -96,9 +96,6 @@ export default function Main(props: WalletConnectionProps) {
     const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState(0);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
-
-    const [proofError, setProofError] = useState('');
-    const [proof, setProof] = useState<object>({});
 
     const [seed, setSeed] = useState('myRandomSeedString');
     const [issuerKeys, setIssuerKeys] = useState<RequestIssuerKeysResponse>();
@@ -930,81 +927,13 @@ export default function Main(props: WalletConnectionProps) {
                                     Revoke Credential
                                 </button>
                             </TestBox>
-                            <TestBox
-                                header="Step 7: Create Proof"
-                                note="Expected result after pressing the button: The return value or an error message
-                                        should appear in the above test unit. Creating a valid proof only works when pressing all buttons 
-                                        without any user input which will create an example with the provided placeholder values.
-                                        You also have to use e.g. the attributes (`degreeType`: `BachelorDegree`;
-                                        `degreeName`: `Bachelor of Science and Arts`;
-                                        `graduationDate`: `2023-08-07T00:00:00.000Z`) to create a valid proof with this button."
-                            >
-                                <br />
-                                <button
-                                    className="btn btn-primary"
-                                    type="button"
-                                    onClick={async () => {
-                                        setProof({});
-                                        setProofError('');
-
-                                        if (credentialRegistryContratIndex === 0) {
-                                            setTransactionError(`Set Smart Contract Index in Step 3`);
-                                            throw new Error(`Set Smart Contract Index in Step 3`);
-                                        }
-
-                                        const provider = await detectConcordiumProvider();
-
-                                        const statement = new Web3StatementBuilder()
-                                            .addForVerifiableCredentials(
-                                                [{ index: credentialRegistryContratIndex, subindex: 0 }],
-                                                (b) =>
-                                                    b
-                                                        .revealAttribute('graduationDate')
-                                                        .addMembership('degreeName', [
-                                                            'Bachelor of Science and Arts',
-                                                            'Bachelor of Finance',
-                                                        ])
-                                            )
-                                            .getStatements();
-
-                                        // Should be not be hardcoded
-                                        const challenge =
-                                            '94d3e85bbc8ff0091e562ad8ef6c30d57f29b19f17c98ce155df2a30100dAAAA';
-
-                                        provider
-                                            .requestVerifiablePresentation(challenge, statement)
-                                            .then((proofReturned) => {
-                                                setProof(proofReturned);
-                                            })
-                                            .catch((error: Error) => {
-                                                setProofError(error.message);
-                                            });
-                                    }}
-                                >
-                                    Create Proof
-                                </button>
-                                <br />
-                                <br />
-                                {Object.keys(proof).length !== 0 && (
-                                    <div className="actionResultBox">
-                                        <div>Your proof is:</div>
-                                        <br />
-                                        <pre className="largeText">{JSON.stringify(proof, null, '\t')}</pre>
-                                    </div>
-                                )}
-                                {proofError && (
-                                    <div className="alert alert-danger" role="alert">
-                                        Error: {proofError}.
-                                    </div>
-                                )}
-                            </TestBox>
                             <br />
                             <br />
                             <div className="textCenter">Negative Test Scenarios</div>
                             <br />
                             <br />
                             <TestBox
-                                header="Step 8: Register a credential (Issuer registers credential with some delay)"
+                                header="Step 7: Register a credential (Issuer registers credential with some delay)"
                                 note="Expected result after pressing the two buttons: There should be two popups happening in the wallet
                                 (first action when pressing the first button to add the credential, second action when pressing the second button to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 
@@ -1297,7 +1226,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 9: Register a credential (Issuer fails to provide correct randomness/signature)"
+                                header="Step 8: Register a credential (Issuer fails to provide correct randomness/signature)"
                                 note="Expected result after pressing the button: There should be two popups happening in the wallet
                                 (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 
