@@ -34,10 +34,10 @@ const config: BuildOptions = {
         }),
         svgrPlugin(),
     ],
-    // https://github.com/evanw/esbuild/issues/73#issuecomment-1204706295
     define: {
         global: 'window',
-    },
+        'process.env.BACKEND_API': JSON.stringify(process.env.BACKEND_API)
+    }
 };
 
 if (watch) {

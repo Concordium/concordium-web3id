@@ -24,8 +24,8 @@ Negative test cases:
 ## Prerequisites
 
 - Browser wallet extension must be installed and the Concordium testnet needs to be selected.
-- The [test issuer backend](https://github.com/Concordium/concordium-web3id/tree/main/test-tools/test-issuer-backend) has to be set up and running:
-```cargo run -- --node http://node.testnet.concordium.com:20000 --listen-address 0.0.0.0:3000```
+- The [test issuer backend](https://github.com/Concordium/concordium-web3id/tree/main/test-tools/test-issuer-frontend/backend) has to be set up and running:
+```cargo run -- --listen-address 0.0.0.0:3000```
 
 ## Running the front end
 
@@ -48,13 +48,15 @@ These extra install steps are needed because some packages have to be built from
 
 To start the front end locally, do the following:
 
--   Run `yarn build` in this folder.
+-   Set the environment variable `BACKEND_API` to the address where the backend is started, e.g., `http://localhost:3000`
+-   Run `yarn build` in this folder, e.g.,
+    `BACKEND_API=http://localhost:3000 yarn build`
 -   Run `yarn start` in this folder.
 -   Open URL logged in console (typically http://127.0.0.1:8080).
 
 To have hot-reload (useful for development), do the following instead:
 
--   Run `yarn watch` in this folder in a terminal.
+-   Run `BACKEND_API=http://localhost:3000 yarn watch` in this folder in a terminal.
 -   Run `yarn start` in this folder in another terminal.
 -   Open URL logged in console (typically http://127.0.0.1:8080).
 
@@ -76,26 +78,40 @@ Additional information can be found [here](https://techtalkbook.com/env-noder-no
 To build the docker image run the following command **from the root of the repository**:
 
 ```
-docker build -f issuer-front-end/Dockerfile -t issuer-front-end:$PROJECT_VERSION .
+docker build -f test-tools/issuer-front-end/Dockerfile -t issuer-front-end:$PROJECT_VERSION .
 ```
 
 e.g.
 
 ```
-docker build -f issuer-front-end/Dockerfile -t issuer-front-end:3.0.0 .
+docker build -f test-tools/issuer-front-end/Dockerfile -t issuer-front-end:3.0.0 .
 ```
 
 To run the docker image run the following command:
 
 ```
-docker run -it -d -p 8080:80 --name web issuer-front-end:$PROJECT_VERSION
+docker run -it -p 8080:8080 --name web issuer-front-end:$PROJECT_VERSION
 ```
 
 e.g.
 
 ```
-docker run -it -d -p 8080:80 --name web issuer-front-end:3.0.0
+docker run -it -p 8080:8080 --name web issuer-front-end:3.0.0
 ```
 
 Open http://127.0.0.1:8080 in your browser.
 
+
+### Configuration options
+
+The docker container supports the following runtime configuration options
+
+- `CONCORDIUM_TEST_ISSUER_BACKEND_ISSUER_NODE` the address of the node to
+  connect to. Both `http` and `https` schemas are supported.
+- `CONCORDIUM_TEST_ISSUER_BACKEND_LISTEN_ADDRESS` the address where the server
+  will listen. Defaults to `0.0.0.0:8080`
+- `CONCORDIUM_TEST_ISSUER_BACKEND_ISSUER_LOG_LEVEL` the log level, defaults to `info`
+- `CONCORDIUM_TEST_ISSUER_BACKEND_LOG_HEADERS` - whether to log headers in
+  requests and responses. Mainly useful for debugging.
+- `CONCORDIUM_TEST_ISSUER_BACKEND_REQUEST_TIMEOUT` - timeout of requests in
+  milliseconds (defaults to 5s)

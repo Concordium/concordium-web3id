@@ -1,11 +1,11 @@
-import { BACKEND_API } from './constants';
+import { getBackendApi } from './constants';
 
 export async function requestIssuerKeys(seed: string) {
     if (seed === '') {
         throw new Error('Insert a seed in step 1.');
     }
 
-    const response = await fetch(`${BACKEND_API}/v0/key/${seed}`, {
+    const response = await fetch(`${getBackendApi()}/v0/key/${seed}`, {
         method: 'GET',
         headers: new Headers({ 'content-type': 'application/json' }),
     });
@@ -29,7 +29,7 @@ export async function requestSignature(seed: string, credentialCommitments: stri
         throw new Error('Insert the `credentialCommitments`.');
     }
 
-    const response = await fetch(`${BACKEND_API}/v0/commitments/${seed}`, {
+    const response = await fetch(`${getBackendApi()}/v0/commitments/${seed}`, {
         method: 'POST',
         headers: new Headers({ 'content-type': 'application/json' }),
 
