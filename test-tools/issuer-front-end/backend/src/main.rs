@@ -15,9 +15,12 @@ use concordium_rust_sdk::{
 };
 use rand_chacha::rand_core::SeedableRng;
 use sha2::Digest;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
-use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    trace::{DefaultMakeSpan, DefaultOnResponse},
+};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -57,6 +60,12 @@ struct App {
         env = "CONCORDIUM_TEST_ISSUER_BACKEND_REQUEST_TIMEOUT"
     )]
     request_timeout: u64,
+    #[clap(
+        long = "dir",
+        help = "Serve the contents of the directory.",
+        env = "CONCORDIUM_TEST_ISSUER_BACKEND_SERVE_DIR"
+    )]
+    serve_dir:       Option<PathBuf>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -221,9 +230,22 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // build routes
-    let server = Router::new()
+    let mut router = Router::new()
         .route("/v0/key/:seed", get(get_keypair))
-        .route("/v0/commitments/:seed", post(compute_commitments))
+        .route("/v0/commitments/:seed", post(compute_commitments));
+    if let Some(serve_dir) = app.serve_dir {
+        anyhow::ensure!(serve_dir.is_dir(), "The provided path is not a directory.");
+        let mut index_html = serve_dir.clone();
+        index_html.push("index.html");
+        if index_html.is_file() {
+            router = router.fallback_service(
+                ServeDir::new(serve_dir).not_found_service(ServeFile::new(index_html)),
+            );
+        } else {
+            router = router.fallback_service(ServeDir::new(serve_dir));
+        }
+    };
+    let server = router
         .with_state(state)
         .layer(tower_http::trace::TraceLayer::new_for_http().
                make_span_with(DefaultMakeSpan::new().
