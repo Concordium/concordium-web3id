@@ -14,12 +14,11 @@ Positive test cases:
 - 4. step to issue a new credential.
 - 5. step to display the credential entry in the `credential_registry` smart contract.
 - 6. step to revoke credential by the issuer.
-- 7. step to create a zero-knowledge proof about the credential.
 
 Negative test cases:
 
-- 8. step to issue a new credential (Issuer registers credential delayed in the smart contract).
-- 9. step to issue a new credential (Issuer fails to use the correct randomness/signature to register the credential in the wallet).
+- 7. step to issue a new credential (Issuer registers credential delayed in the smart contract).
+- 8. step to issue a new credential (Issuer fails to use the correct randomness/signature to register the credential in the wallet).
 
 ## Prerequisites
 
