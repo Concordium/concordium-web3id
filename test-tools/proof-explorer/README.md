@@ -2,8 +2,15 @@
 
 ### Build
 
-This is a typescript project. You need `yarn` to build it. To build run
+This is a typescript project. You need `yarn` to build it. To build first build
+the `browser-wallet-api-helpers` dependency by running
 
+```
+yarn install && yarn build:api-helpers
+```
+from `../../deps/concordium-browser-wallet/`
+
+After that run
 ```
 yarn install
 yarn build
