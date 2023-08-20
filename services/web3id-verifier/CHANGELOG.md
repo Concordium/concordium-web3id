@@ -1,6 +1,10 @@
+## Unreleased changes
+
+- Support date-time attributes.
+
 ## 0.3.0
 
-Support for revised V2 proofs.
+- Support for revised V2 proofs.
 
 ## 0.2.0
 
