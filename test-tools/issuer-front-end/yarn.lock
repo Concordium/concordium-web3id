@@ -262,10 +262,10 @@ __metadata:
 
 "@concordium/browser-wallet-api-helpers@file:../../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers::locator=issuer-front-end%40workspace%3A.":
   version: 2.5.1
-  resolution: "@concordium/browser-wallet-api-helpers@file:../../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers#../../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers::hash=74a961&locator=issuer-front-end%40workspace%3A."
+  resolution: "@concordium/browser-wallet-api-helpers@file:../../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers#../../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers::hash=bd3a12&locator=issuer-front-end%40workspace%3A."
   dependencies:
     "@concordium/web-sdk": ^6.1.0-alpha.1
-  checksum: 8cb1a64bb80467c5c5810bd2ca10f686ebc16860a8de052e6ace21075798ac223f3687f7bea9201e2754010ee64665aa07469d2d52a3dcca85c1512960caf9f0
+  checksum: 14cf71852b463af3bbf6309cbd2a3df0c04b7cc790b10ac325ab107b549788b858675d3d24898d2c82dcceb2a4f6d55de8c5c19d95ff65fe3339727809a1049a
   languageName: node
   linkType: hard
 
