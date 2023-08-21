@@ -10,7 +10,7 @@
     "discord": {
       "url": "http://127.0.0.1:8081",
       "chain": "testnet",
-      "index": "5923",
+      "index": "5968",
       "subindex": "0"
     }
   }
