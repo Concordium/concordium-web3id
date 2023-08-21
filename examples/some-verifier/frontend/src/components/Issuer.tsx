@@ -15,6 +15,7 @@ function getContractDid(issuer: Issuer): string {
 
 interface DiscordWindowMessage {
   userId: string;
+  username: string;
   state: string | null;
 }
 
@@ -36,7 +37,7 @@ function Issuer() {
     const onDiscordWindowMessage = async (event: MessageEvent) => {
       if (event.origin !== config.issuers.discord.url) return;
 
-      const { userId, state } = event.data as DiscordWindowMessage;
+      const { userId: id, username, state } = event.data as DiscordWindowMessage;
       // Prevents CSRF attacks,
       // see https://auth0.com/docs/secure/attack-protection/state-parameters
       if (state !== oAuth2State)
@@ -45,7 +46,7 @@ function Issuer() {
       await requestCredential(
         {
           platform: Platform.Discord,
-          userId,
+          user: { id, username }
         },
         () => setDiscordPending(true),
       );
@@ -148,9 +149,14 @@ interface TelegramRequest {
   user: TelegramUser;
 }
 
+interface DiscordUser {
+  id: string;
+  username: string;
+}
+
 interface DiscordRequest {
   platform: Platform.Discord;
-  userId: string;
+  user: DiscordUser;
 }
 
 interface RpcError {
@@ -165,8 +171,11 @@ async function requestCredential(
 
   const issuer = config.issuers[req.platform];
 
-  const userId =
-    req.platform === Platform.Telegram ? req.user.id.toString() : req.userId;
+  const { id, username } = req.user;
+
+  if (!username) {
+    throw new Error('Username is required in order to request a credential.'); // TODO: Make sure this error is propagated to the user.
+  }
 
   const credential = {
     $schema: `./JsonSchema2023-${req.platform}.json`,
@@ -177,7 +186,7 @@ async function requestCredential(
     ],
     issuer: getContractDid(issuer),
     issuanceDate: new Date().toISOString(),
-    credentialSubject: { attributes: { userId } },
+    credentialSubject: { attributes: { userId: id.toString(), username } },
     credentialSchema: {
       id: `${issuer.url}/json-schemas/JsonSchema2023-${req.platform}.json`,
       type: 'JsonSchema2023',
