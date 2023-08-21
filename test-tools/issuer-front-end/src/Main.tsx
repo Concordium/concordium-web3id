@@ -5,6 +5,7 @@ import { WalletConnectionProps, useConnection, useConnect, useGrpcClient, TESTNE
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 import { AccountAddress, ConcordiumGRPCClient } from '@concordium/web-sdk';
+import { stringify } from 'json-bigint';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
@@ -81,6 +82,8 @@ async function addRevokationKey(
     }
 }
 
+type AttributeDetails = { tag: string; type: string; value: string | undefined };
+
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
 
@@ -101,7 +104,7 @@ export default function Main(props: WalletConnectionProps) {
     const [issuerKeys, setIssuerKeys] = useState<RequestIssuerKeysResponse>();
     const [parsingError, setParsingError] = useState('');
 
-    const [attributeSchema, setAttributeSchema] = useState<string[][]>([]);
+    const [attributeSchema, setAttributeSchema] = useState<AttributeDetails[]>([]);
 
     const [reason, setReason] = useState('');
 
@@ -194,9 +197,9 @@ export default function Main(props: WalletConnectionProps) {
             .then((json) => {
                 const { properties } = json.properties.credentialSubject.properties.attributes;
 
-                const attributeSchemaValues: string[][] = [];
-                Object.keys(properties).forEach((key) => {
-                    attributeSchemaValues.push([key, properties[key].type, '']);
+                const attributeSchemaValues: AttributeDetails[] = [];
+                Object.entries(properties).forEach(([key, obj]) => {
+                    attributeSchemaValues.push({ tag: key, type: (obj as { type: string }).type, value: undefined });
                 });
 
                 setAttributeSchema(attributeSchemaValues);
@@ -226,14 +229,20 @@ export default function Main(props: WalletConnectionProps) {
 
             const registryMetadataReturnValue = JSON.parse(await registryMetadata(client, Number(target.value)));
 
+            setSchemaCredential(registryMetadataReturnValue.credential_schema);
+
             fetch(registryMetadataReturnValue.credential_schema.schema_ref.url)
                 .then((response) => response.json())
                 .then((json) => {
                     const { properties } = json.properties.credentialSubject.properties.attributes;
 
-                    const attributeSchemaValues: string[][] = [];
-                    Object.keys(properties).forEach((key) => {
-                        attributeSchemaValues.push([key, properties[key].type, '']);
+                    const attributeSchemaValues: AttributeDetails[] = [];
+                    Object.entries(properties).forEach(([key, obj]) => {
+                        attributeSchemaValues.push({
+                            tag: key,
+                            type: (obj as { type: string }).type,
+                            value: undefined,
+                        });
                     });
 
                     setAttributeSchema(attributeSchemaValues);
@@ -243,16 +252,19 @@ export default function Main(props: WalletConnectionProps) {
         []
     );
 
-    const handleAttributeChange = useCallback((i: string, attributeSchemaValue: string[][], event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
+    const handleAttributeChange = useCallback(
+        (i: string, attributeSchemaValue: AttributeDetails[], event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
 
-        Object.keys(attributeSchemaValue).forEach((key) => {
-            if (attributeSchemaValue[Number(key)][0] === i) {
-                // eslint-disable-next-line no-param-reassign
-                attributeSchemaValue[Number(key)][2] = target.value;
-            }
-        });
-    }, []);
+            attributeSchemaValue.forEach((obj) => {
+                if (obj.tag === i) {
+                    // eslint-disable-next-line no-param-reassign
+                    obj.value = target.value;
+                }
+            });
+        },
+        []
+    );
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -323,9 +335,9 @@ export default function Main(props: WalletConnectionProps) {
             .then((json) => {
                 const { properties } = json.properties.credentialSubject.properties.attributes;
 
-                const attributeSchemaValues: string[][] = [];
-                Object.keys(properties).forEach((key) => {
-                    attributeSchemaValues.push([key, properties[key].type, '']);
+                const attributeSchemaValues: AttributeDetails[] = [];
+                Object.entries(properties).forEach(([key, obj]) => {
+                    attributeSchemaValues.push({ tag: key, type: (obj as { type: string }).type, value: undefined });
                 });
 
                 setAttributeSchema(attributeSchemaValues);
@@ -568,16 +580,16 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item[0]}:
+                                        Add {item.tag}:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item[0]}
-                                            name={item[0]}
+                                            id={item.tag}
+                                            name={item.tag}
                                             type="text"
-                                            placeholder={item[1] === 'string' ? 'myString' : '1234'}
+                                            placeholder={item.type === 'string' ? 'myString' : '1234'}
                                             onChange={(event) => {
-                                                handleAttributeChange(item[0], attributeSchema, event);
+                                                handleAttributeChange(item.tag, attributeSchema, event);
                                             }}
                                         />
                                         <br />
@@ -696,42 +708,22 @@ export default function Main(props: WalletConnectionProps) {
 
                                         const attributes: Attribute = {};
 
-                                        Object.keys(attributeSchema).forEach((key) => {
-                                            console.log(key);
-                                            if (attributeSchema[Number(key)][2] === '') {
-                                                setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
+                                        attributeSchema.forEach((obj) => {
+                                            if (obj.value === undefined) {
+                                                setParsingError(`Attribute ${obj.tag} need to be set.`);
+                                                throw new Error(`Attribute ${obj.tag} need to be set.`);
                                             }
 
-                                            if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('string')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] =
-                                                    attributeSchema[Number(key)][2];
-                                            } else if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('number')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] = BigInt(
-                                                    attributeSchema[Number(key)][2]
-                                                );
+                                            if (obj.type === 'string') {
+                                                attributes[obj.tag] = obj.value;
+                                            } else if (obj.type === 'number') {
+                                                attributes[obj.tag] = BigInt(obj.value);
                                             } else {
                                                 setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
+                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
                                                 );
                                                 throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
+                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
                                                 );
                                             }
                                         });
@@ -788,7 +780,7 @@ export default function Main(props: WalletConnectionProps) {
 
                                                     const requestSignatureResponse = (await requestSignature(
                                                         seed,
-                                                        JSON.stringify(commitments)
+                                                        stringify(commitments)
                                                     )) as RequestSignatureResponse;
 
                                                     const proofObject = {
@@ -962,16 +954,16 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item[0]}:
+                                        Add {item.tag}:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item[0]}
-                                            name={item[0]}
+                                            id={item.tag}
+                                            name={item.tag}
                                             type="text"
-                                            placeholder={item[1] === 'string' ? 'myString' : '1234'}
+                                            placeholder={item.type === 'string' ? 'myString' : '1234'}
                                             onChange={(event) => {
-                                                handleAttributeChange(item[0], attributeSchema, event);
+                                                handleAttributeChange(item.tag, attributeSchema, event);
                                             }}
                                         />
                                         <br />
@@ -1072,7 +1064,6 @@ export default function Main(props: WalletConnectionProps) {
                                         setTransactionError('');
                                         setCredentialPublicKey('');
                                         setParsingError('');
-
                                         if (credentialRegistryContratIndex === 0) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
@@ -1086,47 +1077,28 @@ export default function Main(props: WalletConnectionProps) {
 
                                         const attributes: Attribute = {};
 
-                                        Object.keys(attributeSchema).forEach((key) => {
-                                            if (attributeSchema[Number(key)][2] === '') {
-                                                setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
+                                        attributeSchema.forEach((obj) => {
+                                            if (obj.value === undefined) {
+                                                setParsingError(`Attribute ${obj.tag} need to be set.`);
+                                                throw new Error(`Attribute ${obj.tag} need to be set.`);
                                             }
 
-                                            if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('string')
-                                            ) {
+                                            if (obj.type === 'string') {
                                                 // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] =
-                                                    attributeSchema[Number(key)][2];
-                                            } else if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('number')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] = BigInt(
-                                                    attributeSchema[Number(key)][2]
-                                                );
+                                                attributes[obj.tag] = obj.value;
+                                            } else if (obj.type === 'number') {
+                                                attributes[obj.type] = BigInt(obj.value);
                                             } else {
                                                 setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
+                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
                                                 );
                                                 throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
+                                                    `Attribute ${obj.type} has type ${obj.type}. Only the types string/number are supported.`
                                                 );
                                             }
                                         });
 
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
-
                                         provider
                                             .addWeb3IdCredential(
                                                 {
@@ -1162,7 +1134,7 @@ export default function Main(props: WalletConnectionProps) {
 
                                                     const requestSignatureResponse = (await requestSignature(
                                                         seed,
-                                                        JSON.stringify(commitments)
+                                                        stringify(commitments)
                                                     )) as RequestSignatureResponse;
 
                                                     const proofObject = {
@@ -1248,16 +1220,16 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item[0]}:
+                                        Add {item.tag}:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item[0]}
-                                            name={item[0]}
+                                            id={item.tag}
+                                            name={item.tag}
                                             type="text"
-                                            placeholder={item[1] === 'string' ? 'myString' : '1234'}
+                                            placeholder={item.tag === 'string' ? 'myString' : '1234'}
                                             onChange={(event) => {
-                                                handleAttributeChange(item[0], attributeSchema, event);
+                                                handleAttributeChange(item.tag, attributeSchema, event);
                                             }}
                                         />
                                         <br />
@@ -1372,41 +1344,20 @@ export default function Main(props: WalletConnectionProps) {
 
                                         const attributes: Attribute = {};
 
-                                        Object.keys(attributeSchema).forEach((key) => {
-                                            if (attributeSchema[Number(key)][2] === '') {
-                                                setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                            }
-
-                                            if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('string')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] =
-                                                    attributeSchema[Number(key)][2];
-                                            } else if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('number')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] = BigInt(
-                                                    attributeSchema[Number(key)][2]
-                                                );
+                                        attributeSchema.forEach((obj) => {
+                                            if (obj.value === undefined) {
+                                                setParsingError(`Attribute ${obj.tag} need to be set.`);
+                                                throw new Error(`Attribute ${obj.tag} need to be set.`);
+                                            } else if (obj.type === 'string') {
+                                                attributes[obj.tag] = obj.value;
+                                            } else if (obj.type === 'number') {
+                                                attributes[obj.tag] = BigInt(obj.value);
                                             } else {
                                                 setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
+                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
                                                 );
                                                 throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
+                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
                                                 );
                                             }
                                         });
