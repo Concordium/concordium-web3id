@@ -87,10 +87,13 @@ stated defaults suffice.
   requests and responses. Mainly useful for debugging.
 - `CONCORDIUM_TEST_ISSUER_BACKEND_REQUEST_TIMEOUT` - timeout of requests in
   milliseconds (defaults to 5s)
+- `CONCORDIUM_TEST_ISSUER_BACKEND_SERVE_DIR` - if set it must be set to a
+  directory, and the contents of that directory will be served. If the directory
+  contains `index.html` file then that file will be served from the root path.
 
 
-The most common invocation for local development would be
+The most common invocation for local development would be (from the directory of the README file)
 
 ```console
-    cargo run -- --node http://node.testnet.concordium.com:20000 --log-level=debug
+    cargo run -- --node http://node.testnet.concordium.com:20000 --log-level=debug --dir ../dist
 ```

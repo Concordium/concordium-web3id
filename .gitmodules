@@ -4,4 +4,3 @@
 [submodule "deps/concordium-browser-wallet"]
 	path = deps/concordium-browser-wallet
 	url = ../concordium-browser-wallet.git
-	branch = web3Id-all-together
