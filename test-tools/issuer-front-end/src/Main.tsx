@@ -783,9 +783,9 @@ export default function Main(props: WalletConnectionProps) {
                                                     )) as RequestSignatureResponse;
 
                                                     const proofObject = {
-                                                        type: 'Ed25519Signature2020',
+                                                        type: 'Ed25519Signature2020' as 'Ed25519Signature2020',
                                                         verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod',
+                                                        proofPurpose: 'assertionMethod' as 'assertionMethod',
                                                         proofValue:
                                                             requestSignatureResponse.signedCommitments.signature,
                                                     };
@@ -1157,9 +1157,9 @@ export default function Main(props: WalletConnectionProps) {
                                                     )) as RequestSignatureResponse;
 
                                                     const proofObject = {
-                                                        type: 'Ed25519Signature2020',
+                                                        type: 'Ed25519Signature2020' as 'Ed25519Signature2020',
                                                         verificationMethod: id,
-                                                        assertionMethod: 'assertionMethod',
+                                                        proofPurpose: 'assertionMethod' as 'assertionMethod',
                                                         proofValue:
                                                             requestSignatureResponse.signedCommitments.signature,
                                                     };
@@ -1450,9 +1450,9 @@ export default function Main(props: WalletConnectionProps) {
                                                     };
 
                                                     const proofObject = {
-                                                        type: 'Ed25519Signature2020',
+                                                        type: 'Ed25519Signature2020' as 'Ed25519Signature2020',
                                                         verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod',
+                                                        proofPurpose: 'assertionMethod' as 'assertionMethod',
                                                         proofValue:
                                                             'e8c3944d6a9a19e74ad3ef028b04c0637756540306aba8842000f557cbfb7415187f907d26f20474081d4084fc8e5ff14167171f65fac76b06508ae46f55aa05',
                                                     };

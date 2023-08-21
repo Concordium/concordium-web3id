@@ -19,6 +19,9 @@
         "react-dom": "^18.1.0",
         "react-switch": "^7.0.0"
     },
+    "resolutions": {
+        "@concordium/web-sdk": "^6.1.0-alpha.1"
+    },
     "devDependencies": {
         "@craftamap/esbuild-plugin-html": "^0.4.0",
         "@types/node": "^18.7.23",
