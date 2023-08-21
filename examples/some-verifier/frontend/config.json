@@ -4,13 +4,13 @@
     "telegram": {
       "url": "http://127.0.0.1:8080",
       "chain": "testnet",
-      "index": "5625",
+      "index": "5924",
       "subindex": "0"
     },
     "discord": {
       "url": "http://127.0.0.1:8081",
       "chain": "testnet",
-      "index": "5631",
+      "index": "5923",
       "subindex": "0"
     }
   }

@@ -1,4 +1,4 @@
-import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
+import { CredentialProof, detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 import TelegramLoginButton, { TelegramUser } from 'react-telegram-login';
 import '../scss/Issuer.scss';
 import { useEffect, useMemo, useState } from 'react';
@@ -124,7 +124,7 @@ function Issuer() {
 interface IssuerResponse {
   txHash: string;
   credential: {
-    signature: string;
+    proof: CredentialProof,
     randomness: Record<string, string>;
   };
 }
@@ -177,7 +177,7 @@ async function requestCredential(
     ],
     issuer: getContractDid(issuer),
     issuanceDate: new Date().toISOString(),
-    credentialSubject: { userId },
+    credentialSubject: { attributes: { userId } },
     credentialSchema: {
       id: `${issuer.url}/json-schemas/JsonSchema2023-${req.platform}.json`,
       type: 'JsonSchema2023',
@@ -191,9 +191,12 @@ async function requestCredential(
   const provider = await detectConcordiumProvider();
   let txHash: string | undefined;
   await provider.addWeb3IdCredential(credential, metadataUrl, async (id) => {
+    const parts = id.split(':');
+    const holder_id = parts[parts.length - 1];
+
     const body: IssueRequest = {
       credential: {
-        holder_id: id,
+        holder_id,
         holder_revocable: true,
         valid_from: new Date().toISOString(),
         metadata_url: metadataUrl,
@@ -218,8 +221,8 @@ async function requestCredential(
     const { txHash: hash, credential } =
       (await response.json()) as IssuerResponse;
     txHash = hash;
-    const { signature, randomness } = credential;
-    return { signature, randomness };
+    const { proof, randomness } = credential;
+    return { proof, randomness };
   });
 
   console.log('Transaction submitted, hash:', txHash);

@@ -26,8 +26,8 @@ import Issuer from './Issuer';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 import {
   Web3StatementBuilder,
-  AttributesKeys,
   VerifiablePresentation,
+  AttributeKeyString,
 } from '@concordium/web-sdk';
 import { Config, Platform } from '../lib/types';
 import _config from '../../config.json';
@@ -189,19 +189,19 @@ async function requestProof(
     builder = builder.addForVerifiableCredentials(
       [
         {
-          index: parseInt(issuer.index) as unknown as bigint,
-          subindex: parseInt(issuer.subindex) as unknown as bigint,
+          index: BigInt(issuer.index),
+          subindex: BigInt(issuer.subindex)
         },
       ],
-      (b) => b.revealAttribute(0),
+      (b) => b.revealAttribute('userId'),
     );
   }
 
   if (revealName) {
     builder = builder.addForIdentityCredentials([0, 1, 3], (b) =>
       b
-        .revealAttribute(AttributesKeys.firstName)
-        .revealAttribute(AttributesKeys.lastName),
+        .revealAttribute(AttributeKeyString.firstName)
+        .revealAttribute(AttributeKeyString.lastName),
     );
   }
 

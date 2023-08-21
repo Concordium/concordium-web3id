@@ -1,3 +1,4 @@
+use axum::extract::rejection::JsonRejection;
 use axum::extract::State;
 use concordium_rust_sdk::contract_client::CredentialInfo;
 use concordium_rust_sdk::web3id::did::Network;
@@ -178,8 +179,16 @@ struct TelegramIssueRequest {
 
 async fn issue_telegram_credential(
     State(state): State<AppState>,
-    Json(request): Json<TelegramIssueRequest>,
+    Json(request): Json<serde_json::Value>,
 ) -> Result<Json<IssueResponse>, StatusCode> {
+    let request = match serde_json::from_value::<TelegramIssueRequest>(request) {
+        Ok(req) => req,
+        Err(err) => {
+            tracing::warn!("Unable to deserialize request: {err}");
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
+
     if let Err(err) = request.telegram_user.check(&state.telegram_bot_token) {
         tracing::warn!("Invalid Telegram user in request: {err}");
         return Err(StatusCode::BAD_REQUEST);
