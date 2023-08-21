@@ -142,6 +142,7 @@ struct DiscordIssueRequest {
 #[derive(Deserialize, Serialize, Debug)]
 struct User {
     id: String,
+    username: String,
 }
 
 #[derive(Serialize)]
@@ -166,6 +167,7 @@ struct AccessTokenResponse {
 #[derive(Serialize)]
 struct OauthTemplateParams<'a> {
     id: &'a str,
+    username: &'a str,
     dapp_domain: &'a str,
 }
 
@@ -190,6 +192,7 @@ async fn handle_oauth_redirect(
 
         let params = OauthTemplateParams {
             id: &user.id,
+            username: &user.username,
             dapp_domain: &state.dapp_domain,
         };
 
