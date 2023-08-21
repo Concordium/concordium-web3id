@@ -17,14 +17,14 @@
 "@concordium/browser-wallet-api-helpers@../../../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers":
   version "2.5.1"
   dependencies:
-    "@concordium/web-sdk" "^6.1.0-alpha"
+    "@concordium/web-sdk" "^6.1.0-alpha.1"
 
-"@concordium/common-sdk@9.1.0-alpha":
-  version "9.1.0-alpha"
-  resolved "https://registry.yarnpkg.com/@concordium/common-sdk/-/common-sdk-9.1.0-alpha.tgz#5ca689e232c149fc1c9edcaa4156de25abd6e166"
-  integrity sha512-JdxHXZ8GYO5pk6YxldigdN8MgBRmX2q0iRX9A4INnAXgrgAJKZiYHw4g6jJbSQWIMRgEj5SrViRpQTNqc494oA==
+"@concordium/common-sdk@9.1.0-alpha.1":
+  version "9.1.0-alpha.1"
+  resolved "https://registry.yarnpkg.com/@concordium/common-sdk/-/common-sdk-9.1.0-alpha.1.tgz#0d0461ef3fd77cac90dcd94e3a7c488c65f27466"
+  integrity sha512-7rt7tDj1/p2cPdKXPg+M5usOUuSp7MbjuG428pY5RE4LsNevz4bsBUAEmACJexWqDtPQ9fkpKYKUHRWLcQOnlw==
   dependencies:
-    "@concordium/rust-bindings" "1.2.0-alpha"
+    "@concordium/rust-bindings" "1.2.0-alpha.1"
     "@grpc/grpc-js" "^1.3.4"
     "@noble/ed25519" "^1.7.1"
     "@protobuf-ts/runtime-rpc" "^2.8.2"
@@ -37,18 +37,18 @@
     json-bigint "^1.0.0"
     uuid "^8.3.2"
 
-"@concordium/rust-bindings@1.2.0-alpha":
-  version "1.2.0-alpha"
-  resolved "https://registry.yarnpkg.com/@concordium/rust-bindings/-/rust-bindings-1.2.0-alpha.tgz#ed851ed6c7669db9b422f10d04cf4b72f9bd222c"
-  integrity sha512-ly6hdm/DHPtYGe9IETtjNU2RZep+HkiBUyb2Ipf8n92Pzi856VHghHcNkK8iOOeA+tsCFs0ztZgRIhhAUNeVdQ==
+"@concordium/rust-bindings@1.2.0-alpha.1":
+  version "1.2.0-alpha.1"
+  resolved "https://registry.yarnpkg.com/@concordium/rust-bindings/-/rust-bindings-1.2.0-alpha.1.tgz#6c20dc3413d55ee923953a59003056add88d55c4"
+  integrity sha512-SdMGzJ7Etstwq0dOGTKLSVL379tsrIumKGmiN6UD0FOtH1td0KiQjveWcrcOczD7PIR4Pim07P4GZsf914ZgPQ==
 
-"@concordium/web-sdk@6.1.0-alpha", "@concordium/web-sdk@^6.1.0-alpha":
-  version "6.1.0-alpha"
-  resolved "https://registry.yarnpkg.com/@concordium/web-sdk/-/web-sdk-6.1.0-alpha.tgz#d27bdc53824e928b77c0648f828bd7a93aa0d1c8"
-  integrity sha512-jPK6gtSOjlqC4hUxQyBJw4cRLmNv2GZJfwJugbK2nCmyh5OVb0qHv3TA3iO31dBSbH2ek6cxMfxj3DvJ/XIjOQ==
+"@concordium/web-sdk@^6.1.0-alpha.1":
+  version "6.1.0-alpha.1"
+  resolved "https://registry.yarnpkg.com/@concordium/web-sdk/-/web-sdk-6.1.0-alpha.1.tgz#68c36b3cd882fc30533d5342011716e9ebe0b4f1"
+  integrity sha512-6qcT0mp7gApxsjQ4nSsrPf+Hc1xFsSZX2rwbRwjSD62aLIEsuSa54PWd7m6Jq6HNHvPKR8zuM8n6vUHPkWM8vA==
   dependencies:
-    "@concordium/common-sdk" "9.1.0-alpha"
-    "@concordium/rust-bindings" "1.2.0-alpha"
+    "@concordium/common-sdk" "9.1.0-alpha.1"
+    "@concordium/rust-bindings" "1.2.0-alpha.1"
     "@grpc/grpc-js" "^1.3.4"
     "@protobuf-ts/grpcweb-transport" "^2.8.2"
     buffer "^6.0.3"
