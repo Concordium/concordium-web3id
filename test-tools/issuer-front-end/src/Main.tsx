@@ -31,7 +31,7 @@ type RequestSignatureResponse = {
         signature: string;
         commitments: object;
     };
-    randomness: object;
+    randomness: Record<string, string>;
 };
 
 type RequestIssuerKeysResponse = {
@@ -49,7 +49,7 @@ type SchemaRef = {
 };
 
 interface Attribute {
-    [key: string]: string | number;
+    [key: string]: string | bigint;
 }
 
 function TestBox({ header, children, note }: TestBoxProps) {
@@ -710,7 +710,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 JSON.stringify('number')
                                             ) {
                                                 // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] = Number(
+                                                attributes[attributeSchema[Number(key)][0]] = BigInt(
                                                     attributeSchema[Number(key)][2]
                                                 );
                                             } else {
@@ -732,7 +732,8 @@ export default function Main(props: WalletConnectionProps) {
                                         provider
                                             .addWeb3IdCredential(
                                                 {
-                                                    type: types.push(credentialType),
+                                                    $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                                    type: [...types, credentialType],
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
@@ -1024,7 +1025,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURL"
                                     type="text"
-                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json"
+                                    placeholder="https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json"
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1098,7 +1099,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 JSON.stringify('number')
                                             ) {
                                                 // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] = Number(
+                                                attributes[attributeSchema[Number(key)][0]] = BigInt(
                                                     attributeSchema[Number(key)][2]
                                                 );
                                             } else {
@@ -1120,7 +1121,8 @@ export default function Main(props: WalletConnectionProps) {
                                         provider
                                             .addWeb3IdCredential(
                                                 {
-                                                    type: types.push(credentialType),
+                                                    $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                                    type: [...types, credentialType],
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
@@ -1157,7 +1159,7 @@ export default function Main(props: WalletConnectionProps) {
                                                     const proofObject = {
                                                         type: 'Ed25519Signature2020',
                                                         verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod',
+                                                        assertionMethod: 'assertionMethod',
                                                         proofValue:
                                                             requestSignatureResponse.signedCommitments.signature,
                                                     };
@@ -1309,7 +1311,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURL"
                                     type="text"
-                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json"
+                                    placeholder="https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json"
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1383,7 +1385,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 JSON.stringify('number')
                                             ) {
                                                 // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] = Number(
+                                                attributes[attributeSchema[Number(key)][0]] = BigInt(
                                                     attributeSchema[Number(key)][2]
                                                 );
                                             } else {
@@ -1405,7 +1407,8 @@ export default function Main(props: WalletConnectionProps) {
                                         provider
                                             .addWeb3IdCredential(
                                                 {
-                                                    type: types.push(credentialType),
+                                                    $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                                    type: [...types, credentialType],
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
