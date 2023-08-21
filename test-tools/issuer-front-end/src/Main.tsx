@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useRef, useCallback } from 'react';
+import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
 import Switch from 'react-switch';
 import { WalletConnectionProps, useConnection, useConnect, useGrpcClient, TESTNET } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
@@ -142,12 +142,6 @@ export default function Main(props: WalletConnectionProps) {
     const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
     const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
     const [credentialHasExpiryDate, setCredentialHasExpiryDate] = useState(true);
-
-    const schemaMetaDataURLRef = useRef(null);
-    const schemaMetaDataURLRef2 = useRef(null);
-    const schemaMetaDataURLRef3 = useRef(null);
-    const schemaCredentialURLRef = useRef(null);
-    const schemaIssuerURLRef = useRef(null);
 
     const handleValidFromDateChange = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
@@ -312,21 +306,6 @@ export default function Main(props: WalletConnectionProps) {
                     setBrowserPublicKey('');
                 });
         }
-
-        const schemaMetaDataURL = schemaMetaDataURLRef.current as unknown as HTMLFormElement;
-        schemaMetaDataURL?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_METADATA);
-
-        const schemaMetaDataURL2 = schemaMetaDataURLRef2.current as unknown as HTMLFormElement;
-        schemaMetaDataURL2?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_METADATA);
-
-        const schemaMetaDataURL3 = schemaMetaDataURLRef3.current as unknown as HTMLFormElement;
-        schemaMetaDataURL3?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_METADATA);
-
-        const schemaCredentialURL = schemaCredentialURLRef.current as unknown as HTMLFormElement;
-        schemaCredentialURL?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_SCHEMA);
-
-        const schemaIssuerURL = schemaIssuerURLRef.current as unknown as HTMLFormElement;
-        schemaIssuerURL?.setAttribute('placeholder', EXAMPLE_ISSUER_METADATA);
     }, [connection, account]);
 
     useEffect(() => {
@@ -438,7 +417,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="issuerMetaDataURL"
                                     type="text"
-                                    ref={schemaIssuerURLRef}
+                                    placeholder={EXAMPLE_ISSUER_METADATA}
                                     onChange={changeIssuerMetaDataURLHandler}
                                 />
                                 <br />
@@ -459,7 +438,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialSchemaURL"
                                     type="text"
-                                    ref={schemaCredentialURLRef}
+                                    placeholder={EXAMPLE_CREDENTIAL_SCHEMA}
                                     onChange={changeCredentialSchemaURLHandler}
                                 />
                                 {revocationKeys.length !== 0 && (
@@ -652,7 +631,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURL"
                                     type="text"
-                                    ref={schemaMetaDataURLRef}
+                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -710,8 +689,8 @@ export default function Main(props: WalletConnectionProps) {
 
                                         attributeSchema.forEach((obj) => {
                                             if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} need to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} need to be set.`);
+                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
+                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
                                             }
 
                                             if (obj.type === 'string') {
@@ -1026,7 +1005,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURL"
                                     type="text"
-                                    ref={schemaMetaDataURLRef3}
+                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1064,6 +1043,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setTransactionError('');
                                         setCredentialPublicKey('');
                                         setParsingError('');
+
                                         if (credentialRegistryContratIndex === 0) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
@@ -1079,21 +1059,20 @@ export default function Main(props: WalletConnectionProps) {
 
                                         attributeSchema.forEach((obj) => {
                                             if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} need to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} need to be set.`);
+                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
+                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
                                             }
 
                                             if (obj.type === 'string') {
-                                                // eslint-disable-next-line prefer-destructuring
                                                 attributes[obj.tag] = obj.value;
                                             } else if (obj.type === 'number') {
-                                                attributes[obj.type] = BigInt(obj.value);
+                                                attributes[obj.tag] = BigInt(obj.value);
                                             } else {
                                                 setParsingError(
                                                     `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
                                                 );
                                                 throw new Error(
-                                                    `Attribute ${obj.type} has type ${obj.type}. Only the types string/number are supported.`
+                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
                                                 );
                                             }
                                         });
@@ -1227,7 +1206,7 @@ export default function Main(props: WalletConnectionProps) {
                                             id={item.tag}
                                             name={item.tag}
                                             type="text"
-                                            placeholder={item.tag === 'string' ? 'myString' : '1234'}
+                                            placeholder={item.type === 'string' ? 'myString' : '1234'}
                                             onChange={(event) => {
                                                 handleAttributeChange(item.tag, attributeSchema, event);
                                             }}
@@ -1292,7 +1271,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURL"
                                     type="text"
-                                    ref={schemaMetaDataURLRef2}
+                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1346,9 +1325,11 @@ export default function Main(props: WalletConnectionProps) {
 
                                         attributeSchema.forEach((obj) => {
                                             if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} need to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} need to be set.`);
-                                            } else if (obj.type === 'string') {
+                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
+                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
+                                            }
+
+                                            if (obj.type === 'string') {
                                                 attributes[obj.tag] = obj.value;
                                             } else if (obj.type === 'number') {
                                                 attributes[obj.tag] = BigInt(obj.value);
