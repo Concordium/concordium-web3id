@@ -141,6 +141,8 @@ export default function Main(props: WalletConnectionProps) {
     const [credentialHasExpiryDate, setCredentialHasExpiryDate] = useState(true);
 
     const schemaMetaDataURLRef = useRef(null);
+    const schemaMetaDataURLRef2 = useRef(null);
+    const schemaMetaDataURLRef3 = useRef(null);
     const schemaCredentialURLRef = useRef(null);
     const schemaIssuerURLRef = useRef(null);
 
@@ -301,6 +303,12 @@ export default function Main(props: WalletConnectionProps) {
 
         const schemaMetaDataURL = schemaMetaDataURLRef.current as unknown as HTMLFormElement;
         schemaMetaDataURL?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_METADATA);
+
+        const schemaMetaDataURL2 = schemaMetaDataURLRef2.current as unknown as HTMLFormElement;
+        schemaMetaDataURL2?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_METADATA);
+
+        const schemaMetaDataURL3 = schemaMetaDataURLRef3.current as unknown as HTMLFormElement;
+        schemaMetaDataURL3?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_METADATA);
 
         const schemaCredentialURL = schemaCredentialURLRef.current as unknown as HTMLFormElement;
         schemaCredentialURL?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_SCHEMA);
@@ -689,6 +697,7 @@ export default function Main(props: WalletConnectionProps) {
                                         const attributes: Attribute = {};
 
                                         Object.keys(attributeSchema).forEach((key) => {
+                                            console.log(key);
                                             if (attributeSchema[Number(key)][2] === '') {
                                                 setParsingError(
                                                     `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
@@ -783,9 +792,9 @@ export default function Main(props: WalletConnectionProps) {
                                                     )) as RequestSignatureResponse;
 
                                                     const proofObject = {
-                                                        type: 'Ed25519Signature2020' as 'Ed25519Signature2020',
+                                                        type: 'Ed25519Signature2020' as const,
                                                         verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod' as 'assertionMethod',
+                                                        proofPurpose: 'assertionMethod' as const,
                                                         proofValue:
                                                             requestSignatureResponse.signedCommitments.signature,
                                                     };
@@ -1025,7 +1034,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURL"
                                     type="text"
-                                    placeholder="https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json"
+                                    ref={schemaMetaDataURLRef3}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1157,9 +1166,9 @@ export default function Main(props: WalletConnectionProps) {
                                                     )) as RequestSignatureResponse;
 
                                                     const proofObject = {
-                                                        type: 'Ed25519Signature2020' as 'Ed25519Signature2020',
+                                                        type: 'Ed25519Signature2020' as const,
                                                         verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod' as 'assertionMethod',
+                                                        proofPurpose: 'assertionMethod' as const,
                                                         proofValue:
                                                             requestSignatureResponse.signedCommitments.signature,
                                                     };
@@ -1311,7 +1320,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURL"
                                     type="text"
-                                    placeholder="https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json"
+                                    ref={schemaMetaDataURLRef2}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1450,9 +1459,9 @@ export default function Main(props: WalletConnectionProps) {
                                                     };
 
                                                     const proofObject = {
-                                                        type: 'Ed25519Signature2020' as 'Ed25519Signature2020',
+                                                        type: 'Ed25519Signature2020' as const,
                                                         verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod' as 'assertionMethod',
+                                                        proofPurpose: 'assertionMethod' as const,
                                                         proofValue:
                                                             'e8c3944d6a9a19e74ad3ef028b04c0637756540306aba8842000f557cbfb7415187f907d26f20474081d4084fc8e5ff14167171f65fac76b06508ae46f55aa05',
                                                     };
