@@ -43,6 +43,7 @@ pub async fn issue_credential(
     issuer: IssuerState,
     credential: CredentialInfo,
     user_id: String,
+    username: String,
 ) -> Result<Json<IssueResponse>, StatusCode> {
     tracing::info!("Request to issue a credential.");
 
@@ -51,7 +52,7 @@ pub async fn issue_credential(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    match register_credential(issuer, credential, user_id).await {
+    match register_credential(issuer, credential, user_id, username).await {
         Ok(res) => {
             tracing::info!("Successfully issued credential.");
             Ok(Json(res))
@@ -92,6 +93,7 @@ async fn register_credential(
     mut issuer: IssuerState,
     credential: CredentialInfo,
     user_id: String,
+    username: String,
 ) -> anyhow::Result<IssueResponse> {
     let mut nonce_guard = issuer.nonce_counter.lock().await;
     // Compute expiry after acquiring the lock to make sure we don't wait
@@ -112,10 +114,16 @@ async fn register_credential(
         .await?;
     nonce_guard.next_mut();
     drop(nonce_guard);
-    let values: BTreeMap<_, _> = BTreeMap::from([(
-        String::from("userId"),
-        Web3IdAttribute::String(AttributeKind(user_id)),
-    )]);
+    let values: BTreeMap<_, _> = BTreeMap::from([
+        (
+            String::from("userId"),
+            Web3IdAttribute::String(AttributeKind(user_id)),
+        ),
+        (
+            String::from("username"),
+            Web3IdAttribute::String(AttributeKind(username)),
+        ),
+    ]);
     let credential = make_secrets(&issuer, values, &credential)?;
 
     Ok(IssueResponse {

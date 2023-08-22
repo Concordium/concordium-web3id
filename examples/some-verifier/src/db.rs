@@ -13,6 +13,7 @@ const PRESENTATION_COLUMN: &'static str = "presentation";
 const FIRST_NAME_COLUMN: &'static str = "first_name";
 const LAST_NAME_COLUMN: &'static str = "last_name";
 const ID_COLUMN: &'static str = "id";
+const USERNAME_COLUMN: &'static str = "username";
 const REVOKED_COLUMN: &'static str = "revoked";
 
 /// A trait that is implemented for the Platform enum to give some utility functons.
@@ -128,6 +129,7 @@ impl VerificationsEntry {
 
 pub struct PlatformEntry {
     pub id: String,
+    pub username: String,
     pub revoked: bool,
 }
 
@@ -135,6 +137,7 @@ impl PlatformEntry {
     fn columns(&self) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
         [
             (ID_COLUMN, &self.id as &(dyn ToSql + Sync)),
+            (USERNAME_COLUMN, &self.username as &(dyn ToSql + Sync)),
             (REVOKED_COLUMN, &self.revoked),
         ]
         .into_iter()

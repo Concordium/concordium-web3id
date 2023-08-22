@@ -431,19 +431,28 @@ fn proof_to_verifications_entry(
                 return Err(Error::InvalidIssuer);
             }
 
-            let (_, atomic_proof) = (proofs.len() == 1)
-                .then(|| &proofs[0])
-                .ok_or(Error::InvalidStatement)?;
-            let user_id = match atomic_proof {
-                AtomicProof::RevealAttribute {
-                    attribute: Web3IdAttribute::String(AttributeKind(id)),
-                    ..
-                } => id.clone(),
-                _ => return Err(Error::InvalidStatement),
+            let (id, username) = match &proofs[..] {
+                [(
+                    _,
+                    AtomicProof::RevealAttribute {
+                        attribute: Web3IdAttribute::String(AttributeKind(id)),
+                        ..
+                    },
+                ), (
+                    _,
+                    AtomicProof::RevealAttribute {
+                        attribute: Web3IdAttribute::String(AttributeKind(username)),
+                        ..
+                    },
+                )] => (id.clone(), username.clone()),
+                _ => {
+                    return Err(Error::InvalidStatement);
+                }
             };
 
             let platform_entry = PlatformEntry {
-                id: user_id,
+                id,
+                username,
                 revoked: false,
             };
             match contract {

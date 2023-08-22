@@ -187,9 +187,6 @@ async fn handle_oauth_redirect(
         let user = get_user(&state, code)
             .await
             .context("Error getting Discord user.")?;
-        session
-            .insert("discord_id", &user.id)
-            .expect("user ids can be serialized");
 
         // Discord added the option to get unique usernames. If the discriminator is "0", it
         // indicates that the user has a unique username.
@@ -198,6 +195,13 @@ async fn handle_oauth_redirect(
         } else {
             format!("{}#{}", user.username, user.discriminator)
         };
+
+        session
+            .insert("discord_id", &user.id)
+            .expect("user ids can be serialized");
+        session
+            .insert("discord_username", &username)
+            .expect("username can be serialized");
 
         let params = OauthTemplateParams {
             id: &user.id,
@@ -235,7 +239,15 @@ async fn issue_discord_credential(
         }
     };
 
-    issue_credential(state.issuer, request.credential, user_id).await
+    let username = match session.get("discord_username") {
+        Some(username) => username,
+        None => {
+            tracing::warn!("Missing session username for Discord request.");
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
+
+    issue_credential(state.issuer, request.credential, user_id, username).await
 }
 
 /// Exchanges an OAuth2 `code` for a User.

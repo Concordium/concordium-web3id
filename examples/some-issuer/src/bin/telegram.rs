@@ -193,12 +193,26 @@ async fn issue_telegram_credential(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    issue_credential(
-        state.issuer,
-        request.credential,
-        request.telegram_user.id.to_string(),
-    )
-    .await
+    if let None = request.telegram_user.username {
+        tracing::warn!("Missing username in telegram user");
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    match request.telegram_user.username {
+        None => {
+            tracing::warn!("Missing username in telegram user");
+            Err(StatusCode::BAD_REQUEST)
+        }
+        Some(username) => {
+            issue_credential(
+                state.issuer,
+                request.credential,
+                request.telegram_user.id.to_string(),
+                username,
+            )
+            .await
+        }
+    }
 }
 
 #[tokio::main]

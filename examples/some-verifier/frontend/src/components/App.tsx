@@ -57,6 +57,7 @@ function App() {
       const timestamp = new Date().toISOString();
       const challenge = await hash(timestamp);
       const proof = await requestProof(issuers, revealName, challenge);
+      debugger;
       const body = { proof, timestamp };
 
       const response = await fetch('/verifications', {
@@ -193,7 +194,7 @@ async function requestProof(
           subindex: BigInt(issuer.subindex)
         },
       ],
-      (b) => b.revealAttribute('userId'),
+      (b) => b.revealAttribute('userId').revealAttribute('username'),
     );
   }
 
