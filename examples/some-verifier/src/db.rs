@@ -158,12 +158,17 @@ impl Database {
         })
     }
 
-    pub async fn get_verification(&self, id: &str, platform: Platform) -> DbResult<DbVerification> {
+    /// Returns the verification for a given social media account if it exists.
+    pub async fn get_verification(
+        &self,
+        id: &str,
+        platform: Platform,
+    ) -> DbResult<Option<DbVerification>> {
         let verification = self
             .client
             .read()
             .await
-            .query_one(
+            .query_opt(
                 &format!(
                     "SELECT * FROM {VERIFICATIONS_TABLE} WHERE {} = $1",
                     platform.column_name()
@@ -171,11 +176,13 @@ impl Database {
                 &[&id],
             )
             .await
-            .map(verification_from_row)?;
+            .map(|opt| opt.map(verification_from_row))?;
 
         Ok(verification)
     }
 
+    /// Gets the revocation status for a given social media account.
+    /// Returns an error if the account is not in the DB.
     pub async fn get_revocation_status(&self, account: &DbAccount) -> DbResult<bool> {
         let status = self
             .client

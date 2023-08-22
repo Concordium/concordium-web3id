@@ -255,6 +255,8 @@ enum Error {
     InvalidStatement,
     #[error("A statement was from the wrong issuer.")]
     InvalidIssuer,
+    #[error("The database returned an error.")]
+    DatabaseError(#[from] tokio_postgres::Error),
 }
 
 impl axum::response::IntoResponse for Error {
@@ -321,6 +323,13 @@ impl axum::response::IntoResponse for Error {
                 (
                     StatusCode::BAD_REQUEST,
                     Json("A statement was from the wrong issuer.".into()),
+                )
+            }
+            Error::DatabaseError(e) => {
+                tracing::warn!("The database returned an error: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(format!("The database returned an error: {e}")),
                 )
             }
         };
@@ -396,6 +405,7 @@ async fn add_verification(
         // TODO: duplicate/overlapping entries
         Err(err) => {
             tracing::warn!("Error inserting entries: {err}");
+            return Err(Error::DatabaseError(err));
         }
     }
 
@@ -492,10 +502,10 @@ fn proof_to_verifications_entry(
 async fn get_verification(
     State(state): State<AppState>,
     Path((platform, id)): Path<(Platform, String)>,
-) -> Json<Verification> {
+) -> Result<Json<Verification>, StatusCode> {
     let verification = state.database.get_verification(&id, platform).await;
     match verification {
-        Ok(verification) => {
+        Ok(Some(verification)) => {
             // Futures that simultaneously look up username and revocation status of user
             // The futures are then mapped to Accounts
             let futures = verification.accounts.iter().map(|acc| {
@@ -528,9 +538,13 @@ async fn get_verification(
                 full_name: verification.full_name,
             };
 
-            Json(result)
+            Ok(Json(result))
         }
-        Err(_) => Json(Verification::default()),
+        Ok(None) => Ok(Json(Verification::default())),
+        Err(err) => {
+            tracing::error!("Database error when looking up verification: {err}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
 }
 
