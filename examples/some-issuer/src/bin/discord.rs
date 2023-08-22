@@ -143,6 +143,7 @@ struct DiscordIssueRequest {
 struct User {
     id: String,
     username: String,
+    discriminator: String,
 }
 
 #[derive(Serialize)]
@@ -190,9 +191,17 @@ async fn handle_oauth_redirect(
             .insert("discord_id", &user.id)
             .expect("user ids can be serialized");
 
+        // Discord added the option to get unique usernames. If the discriminator is "0", it
+        // indicates that the user has a unique username.
+        let username = if user.discriminator == "0" {
+            user.username
+        } else {
+            format!("{}#{}", user.username, user.discriminator)
+        };
+
         let params = OauthTemplateParams {
             id: &user.id,
-            username: &user.username,
+            username: &username,
             dapp_domain: &state.dapp_domain,
         };
 
@@ -271,6 +280,7 @@ async fn get_user(state: &AppState, code: &str) -> anyhow::Result<User> {
         .bearer_auth(response.access_token)
         .send()
         .await?;
+
     Ok(serde_json::from_slice(&response.bytes().await?)?)
 }
 
