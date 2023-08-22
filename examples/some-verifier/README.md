@@ -1,13 +1,13 @@
 # SoMe Web3 ID Verifier dApp and API
 
-Checks social media credentials issued by the SoMe Web3 ID Issuer.\
+Checks social media credentials issued by the SoMe Web3 ID Issuer.
 Also serves an API to the social media bots, where they can query they verification status of users.
 
-Currently the two supported platforms are Telegram and Discord
+Currently the two supported platforms are Telegram and Discord.
 
 ## Dependencies
 
-We use [TDLib](https://core.telegram.org/tdlib/) to look up Telegram usernames, so it needs to be installed.\
+We use [TDLib](https://core.telegram.org/tdlib/) to look up Telegram usernames, so it needs to be installed.
 See [the build instructions](https://tdlib.github.io/td/build.html?language=Rust) for a guide on how to install.
 
 **Important:** Right now, `rust_tdlib` only works with TDLib version 1.8.0 ([issue](https://github.com/antonio-antuan/rust-tdlib/issues/29)), so replace
@@ -26,7 +26,7 @@ git clone --depth 1 --branch v1.8.0 https://github.com/tdlib/td.git
 
 ### GET `/verifications/{platform}/{userId}`
 
-Repsonds with a list of `Accounts`s and an optional `FullName` in JSON.
+Responds with a list of `Accounts`s and an optional `FullName` in JSON.
 
 Example response:
 
