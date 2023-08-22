@@ -1,3 +1,2 @@
 # Ignore keys
-account-*.json
-issuer-*.json
+keys

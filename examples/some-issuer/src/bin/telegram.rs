@@ -1,4 +1,3 @@
-use axum::extract::rejection::JsonRejection;
 use axum::extract::State;
 use concordium_rust_sdk::contract_client::CredentialInfo;
 use concordium_rust_sdk::web3id::did::Network;

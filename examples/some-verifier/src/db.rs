@@ -1,17 +1,19 @@
+use concordium_rust_sdk::id::constants::ArCurve;
+use concordium_rust_sdk::web3id::{Presentation, Web3IdAttribute};
 use itertools::Itertools;
 use some_verifier_lib::{FullName, Platform};
+use tokio::sync::RwLock;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Row};
 
 const VERIFICATIONS_TABLE: &'static str = "verifications";
+const TELEGRAM_ID_COLUMN: &'static str = "telegram_id";
+const DISCORD_ID_COLUMN: &'static str = "discord_id";
+const PRESENTATION_COLUMN: &'static str = "presentation";
 const FIRST_NAME_COLUMN: &'static str = "first_name";
 const LAST_NAME_COLUMN: &'static str = "last_name";
-
-/// A social media platform that can be stored in the database.
-pub trait DbPlatform {
-    /// The `Platform` enum value of the platform.
-    const PLATFORM: Platform;
-}
+const ID_COLUMN: &'static str = "id";
+const REVOKED_COLUMN: &'static str = "revoked";
 
 /// A trait that is implemented for the Platform enum to give some utility functons.
 trait DbName {
@@ -21,121 +23,125 @@ trait DbName {
     fn column_name(&self) -> &'static str;
 }
 
-macro_rules! db_platforms {
-    {$($name:ident { db_name = $db_name:literal $(,)? })* } => {
-        $(
-            pub struct $name;
-            impl DbPlatform for $name {
-                const PLATFORM: Platform = Platform::$name;
-            }
-        )*
-
-        impl DbName for Platform {
-            fn table_name(&self) -> &'static str {
-                match self {$(
-                    Platform::$name => $db_name,
-                )*}
-            }
-
-            fn column_name(&self) -> &'static str {
-                match self {$(
-                    Platform::$name => concat!($db_name, "_id"),
-                )*}
-            }
+impl DbName for Platform {
+    fn table_name(&self) -> &'static str {
+        match self {
+            Platform::Telegram => "telegram",
+            Platform::Discord => "discord",
         }
-
-        fn verification_from_row(row: Row) -> DbVerification {
-            let full_name = row.try_get(FIRST_NAME_COLUMN)
-                .and_then(|first_name| {
-                    let last_name = row.try_get(LAST_NAME_COLUMN)?;
-                    let full_name = FullName { first_name, last_name };
-                    Ok(full_name)
-                })
-                .ok();
-            DbVerification {
-                accounts: vec![ $( DbAccount::from_row::<$name>(&row)),* ],
-                full_name,
-            }
-        }
-    };
-}
-
-// Produces:
-// * Types each implementing DbPlatform
-// * Implements the DbName trait for the Platform enum
-// * Function accounts_from_row(row: Row) -> Verification
-db_platforms! {
-    Telegram {
-        db_name = "telegram",
     }
-    Discord {
-        db_name = "discord",
+
+    fn column_name(&self) -> &'static str {
+        match self {
+            Platform::Telegram => "telegram_id",
+            Platform::Discord => "discord_id",
+        }
     }
 }
 
-/// A platform and an user ID for that platform.
-///
-/// Note: In the future `id` may change to a different type.
+fn verification_from_row(row: Row) -> DbVerification {
+    let full_name = row
+        .try_get(FIRST_NAME_COLUMN)
+        .and_then(|first_name| {
+            let last_name = row.try_get(LAST_NAME_COLUMN)?;
+            let full_name = FullName {
+                first_name,
+                last_name,
+            };
+            Ok(full_name)
+        })
+        .ok();
+
+    let accounts = [Platform::Discord, Platform::Telegram]
+        .into_iter()
+        .map(|platform| DbAccount {
+            platform,
+            id: row.get(platform.column_name()),
+        })
+        .collect();
+
+    DbVerification {
+        accounts,
+        full_name,
+    }
+}
+
+/// A platform and an user id for that platform.
 pub struct DbAccount {
     pub platform: Platform,
-    pub id: i64,
+    pub id: String,
 }
 
-impl DbAccount {
-    fn from_row<P: DbPlatform>(row: &Row) -> DbAccount {
-        Self {
-            platform: P::PLATFORM,
-            id: row.get(P::PLATFORM.column_name()),
-        }
-    }
-}
-
+/// The output from querying a line in the verifications table.
 pub struct DbVerification {
     pub accounts: Vec<DbAccount>,
     pub full_name: Option<FullName>,
 }
 
+/// Initializer for verification entries, including the entries of the platform tables.
+pub struct VerificationsEntry {
+    pub telegram: Option<PlatformEntry>,
+    pub discord: Option<PlatformEntry>,
+    pub presentation: serde_json::Value,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+}
+
 pub struct Database {
-    client: tokio_postgres::Client,
+    client: RwLock<tokio_postgres::Client>,
 }
-
-#[derive(Debug, thiserror::Error)]
-pub enum DbError {
-    #[error("The database returned an error: {0}")]
-    Postgres(#[from] tokio_postgres::Error),
-    #[error("Column entries were malformed.")]
-    InvalidEntries,
-}
-pub type DbResult<T> = Result<T, DbError>;
-
-/// Am entry into a column in the main DB table
-#[derive(Debug)]
-pub enum ColumnEntry {
-    PlatformId { platform: Platform, user_id: i64 },
-    Presentation(serde_json::Value),
-    FirstName(String),
-    LastName(String),
-}
-
-impl ColumnEntry {
-    fn column_name(&self) -> &'static str {
-        match self {
-            ColumnEntry::PlatformId { platform, .. } => platform.column_name(),
-            ColumnEntry::Presentation(_) => "presentation",
-            ColumnEntry::FirstName(_) => FIRST_NAME_COLUMN,
-            ColumnEntry::LastName(_) => LAST_NAME_COLUMN,
+impl VerificationsEntry {
+    pub fn from_presentation(proof: &Presentation<ArCurve, Web3IdAttribute>) -> Self {
+        Self {
+            telegram: None,
+            discord: None,
+            presentation: serde_json::to_value(proof).expect("Presentations can be serialized"),
+            first_name: None,
+            last_name: None,
         }
     }
 
-    fn sql_val(&self) -> &(dyn ToSql + Sync) {
-        match self {
-            ColumnEntry::PlatformId { user_id, .. } => user_id,
-            ColumnEntry::Presentation(presentation) => presentation,
-            ColumnEntry::FirstName(first_name) => first_name,
-            ColumnEntry::LastName(last_name) => last_name,
-        }
+    fn columns(&self) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
+        [
+            (
+                TELEGRAM_ID_COLUMN,
+                self.telegram.as_ref().map(|p| &p.id as &(dyn ToSql + Sync)),
+            ),
+            (
+                DISCORD_ID_COLUMN,
+                self.discord.as_ref().map(|p| &p.id as &(dyn ToSql + Sync)),
+            ),
+            (PRESENTATION_COLUMN, Some(&self.presentation)),
+            (
+                FIRST_NAME_COLUMN,
+                self.first_name.as_ref().map(|n| n as &(dyn ToSql + Sync)),
+            ),
+            (
+                LAST_NAME_COLUMN,
+                self.last_name.as_ref().map(|n| n as &(dyn ToSql + Sync)),
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(name, val)| val.map(|v| (name, v)))
     }
 }
+
+pub struct PlatformEntry {
+    pub id: String,
+    pub revoked: bool,
+}
+
+impl PlatformEntry {
+    fn columns(&self) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
+        [
+            (ID_COLUMN, &self.id as &(dyn ToSql + Sync)),
+            (REVOKED_COLUMN, &self.revoked),
+        ]
+        .into_iter()
+    }
+}
+
+pub type DbResult<T> = Result<T, tokio_postgres::Error>;
 
 impl Database {
     pub async fn connect(db_config: tokio_postgres::Config) -> DbResult<Self> {
@@ -147,16 +153,20 @@ impl Database {
             }
         });
 
-        Ok(Self { client })
+        Ok(Self {
+            client: RwLock::new(client),
+        })
     }
 
-    pub async fn get_verification<P: DbPlatform>(&self, id: i64) -> DbResult<DbVerification> {
+    pub async fn get_verification(&self, id: &str, platform: Platform) -> DbResult<DbVerification> {
         let verification = self
             .client
+            .read()
+            .await
             .query_one(
                 &format!(
                     "SELECT * FROM {VERIFICATIONS_TABLE} WHERE {} = $1",
-                    P::PLATFORM.column_name()
+                    platform.column_name()
                 ),
                 &[&id],
             )
@@ -169,31 +179,30 @@ impl Database {
     pub async fn get_revocation_status(&self, account: &DbAccount) -> DbResult<bool> {
         let status = self
             .client
+            .read()
+            .await
             .query_one(
                 &format!(
-                    "SELECT id, revoked FROM {} WHERE id = $1",
+                    "SELECT {ID_COLUMN}, {REVOKED_COLUMN} FROM {} WHERE id = $1",
                     account.platform.table_name()
                 ),
                 &[&account.id],
             )
             .await
-            .map(|row| row.get("revoked"))?;
+            .map(|row| row.get(REVOKED_COLUMN))?;
         Ok(status)
     }
 
-    pub async fn insert_row(&self, entries: &[ColumnEntry]) -> DbResult<()> {
-        if entries.len() == 0 {
-            return Err(DbError::InvalidEntries);
-        }
+    pub async fn add_verification(&self, entry: VerificationsEntry) -> DbResult<()> {
+        let (columns, values): (Vec<_>, Vec<_>) = entry.columns().unzip();
 
-        let mut columns = vec![];
-        let mut values = vec![];
-        for entry in entries {
-            if columns.contains(&entry.column_name()) {
-                return Err(DbError::InvalidEntries);
-            }
-            columns.push(entry.column_name());
-            values.push(entry.sql_val());
+        let mut client = self.client.write().await;
+        let transaction = client.transaction().await?;
+        if let Some(telegram) = &entry.telegram {
+            add_platform_entry(&transaction, Platform::Telegram, telegram).await?;
+        }
+        if let Some(discord) = &entry.discord {
+            add_platform_entry(&transaction, Platform::Discord, discord).await?;
         }
 
         let statement = format!(
@@ -202,8 +211,25 @@ impl Database {
             (1..=columns.len()).format_with(", ", |i, f| f(&format_args!("${i}")))
         );
 
-        self.client.execute(&statement, &values).await?;
-
-        Ok(())
+        transaction.execute(&statement, &values).await?;
+        transaction.commit().await
     }
+}
+
+async fn add_platform_entry(
+    transaction: &tokio_postgres::Transaction<'_>,
+    platform: Platform,
+    entry: &PlatformEntry,
+) -> DbResult<()> {
+    let (columns, values): (Vec<_>, Vec<_>) = entry.columns().unzip();
+
+    let statement = format!(
+        "INSERT INTO {} ({}) VALUES ({})",
+        platform.table_name(),
+        columns.join(", "),
+        (1..=columns.len()).format_with(", ", |i, f| f(&format_args!("${i}")))
+    );
+
+    transaction.execute(&statement, &values).await?;
+    Ok(())
 }
