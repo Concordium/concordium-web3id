@@ -13,6 +13,11 @@ function getContractDid(issuer: Issuer): string {
   return `$did:ccd:${issuer.chain}:sci:${issuer.index}:${issuer.subindex}/issuer`;
 }
 
+declare type NotOptional<T> = {
+  [P in keyof T]-?: T[P];
+};
+type MakeRequired<T, K extends keyof T> = NotOptional<Pick<T, K>> & Omit<T, K>;
+
 interface DiscordWindowMessage {
   userId: string;
   username: string;
@@ -65,18 +70,21 @@ function Issuer() {
     return () => removeEventListener('message', eventHandler);
   }, []);
 
-  const onTelegramAuth = async (user: TelegramUser) => {
+  const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
     try {
+      if (!username) {
+        throw new Error('A telegram username must be available to create a credential.');
+      }
+
       await requestCredential(
         {
           platform: Platform.Telegram,
-          user,
+          user: { username, ...user },
         },
         () => setTelegramPending(true),
       );
     } catch (error) {
-      alert('An error occured');
-      console.error(error);
+      alert(`An error occured: ${(error as Error).message ?? error}`);
       return;
     }
 
@@ -146,7 +154,7 @@ interface CredentialInfo {
 
 interface TelegramRequest {
   platform: Platform.Telegram;
-  user: TelegramUser;
+  user: MakeRequired<TelegramUser, 'username'>;
 }
 
 interface DiscordUser {
@@ -167,15 +175,8 @@ async function requestCredential(
   req: TelegramRequest | DiscordRequest,
   setPending: () => void,
 ) {
-  console.log('Requesting credential...');
-
   const issuer = config.issuers[req.platform];
-
   const { id, username } = req.user;
-
-  if (!username) {
-    throw new Error('Username is required in order to request a credential.'); // TODO: Make sure this error is propagated to the user.
-  }
 
   const credential = {
     $schema: `./JsonSchema2023-${req.platform}.json`,
