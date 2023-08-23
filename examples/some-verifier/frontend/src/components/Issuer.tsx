@@ -1,4 +1,7 @@
-import { CredentialProof, detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
+import {
+  CredentialProof,
+  detectConcordiumProvider,
+} from '@concordium/browser-wallet-api-helpers';
 import TelegramLoginButton, { TelegramUser } from 'react-telegram-login';
 import '../scss/Issuer.scss';
 import { useEffect, useMemo, useState } from 'react';
@@ -37,12 +40,16 @@ function Issuer() {
   const [discordPending, setDiscordPending] = useState(false);
 
   // When Discord authentication happens, a window is opened
-  // that sends a 'message' event back with the user id
+  // that sends a 'message' event back with the user id and username
   useEffect(() => {
     const onDiscordWindowMessage = async (event: MessageEvent) => {
       if (event.origin !== config.issuers.discord.url) return;
 
-      const { userId: id, username, state } = event.data as DiscordWindowMessage;
+      const {
+        userId: id,
+        username,
+        state,
+      } = event.data as DiscordWindowMessage;
       // Prevents CSRF attacks,
       // see https://auth0.com/docs/secure/attack-protection/state-parameters
       if (state !== oAuth2State)
@@ -51,7 +58,7 @@ function Issuer() {
       await requestCredential(
         {
           platform: Platform.Discord,
-          user: { id, username }
+          user: { id, username },
         },
         () => setDiscordPending(true),
       );
@@ -63,7 +70,9 @@ function Issuer() {
     };
 
     const eventHandler = (event: MessageEvent) => {
-      onDiscordWindowMessage(event).catch(console.error);
+      onDiscordWindowMessage(event).catch((error) => {
+        alert(`An error occured: ${(error as Error).message ?? error}`);
+      });
     };
 
     addEventListener('message', eventHandler);
@@ -73,7 +82,9 @@ function Issuer() {
   const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
     try {
       if (!username) {
-        throw new Error('A telegram username must be available to create a credential.');
+        throw new Error(
+          'A telegram username must be available to create a credential.',
+        );
       }
 
       await requestCredential(
@@ -133,7 +144,7 @@ function Issuer() {
 interface IssuerResponse {
   txHash: string;
   credential: {
-    proof: CredentialProof,
+    proof: CredentialProof;
     randomness: Record<string, string>;
   };
 }

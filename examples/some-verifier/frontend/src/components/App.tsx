@@ -36,6 +36,7 @@ const config = _config as Config;
 function App() {
   const [open, setOpen] = useState('0');
   const [isAllowlisted, setIsAllowlisted] = useState(false);
+  const [proofError, setProofError] = useState('');
 
   const connectToWallet = () => {
     (async () => {
@@ -48,6 +49,10 @@ function App() {
   const prove = (event: FormEvent) => {
     event.preventDefault();
     const data = new FormData(event.target as HTMLFormElement);
+    if (Array.from(data).length < 2) {
+      setProofError('Please select at least 2 options.');
+      return;
+    }
     const issuers = [];
     for (const platform of [Platform.Telegram, Platform.Discord])
       if (data.get(platform) === 'on') issuers.push(config.issuers[platform]);
@@ -68,14 +73,15 @@ function App() {
       });
 
       if (!response.ok) {
-        alert('The proof was rejected');
+        setProofError('The proof was rejected.');
         console.error('Proof rejected:', await response.text());
         return;
       }
 
+      setProofError('');
       setOpen('2');
     })().catch((error) => {
-      alert('Proof creation failed.');
+      setProofError('Proof creation failed.');
       console.error(error);
     });
   };
@@ -109,7 +115,7 @@ function App() {
           >
             <Form onSubmit={prove}>
               <Row className="gy-3">
-                <Col md={12}>
+                <Col xs={12}>
                   <ListGroup className="platform-options">
                     <PlatformOption id={Platform.Telegram}>
                       <SVG className="me-1" src={telegramColor} />
@@ -122,7 +128,12 @@ function App() {
                     <PlatformOption id="name">Reveal full name?</PlatformOption>
                   </ListGroup>
                 </Col>
-                <Col md={12}>
+                {proofError && (
+                  <Col xs={12}>
+                    <span className="text-danger">{proofError}</span>
+                  </Col>
+                )}
+                <Col xs={12}>
                   <Button color="primary" type="submit">
                     Prove
                   </Button>
@@ -190,7 +201,7 @@ async function requestProof(
       [
         {
           index: BigInt(issuer.index),
-          subindex: BigInt(issuer.subindex)
+          subindex: BigInt(issuer.subindex),
         },
       ],
       (b) => b.revealAttribute('userId').revealAttribute('username'),
