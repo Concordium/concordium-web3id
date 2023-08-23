@@ -1,5 +1,6 @@
-## 0.3.0
+## Unreleased changes
 
+- Support date-time attributes.
 - Added graceful shutdown
 
 ## 0.2.0
