@@ -144,10 +144,10 @@ interface IssueRequest {
 }
 
 interface CredentialInfo {
-  holder_id: string;
-  holder_revocable: boolean;
-  valid_from: string;
-  metadata_url: {
+  holderId: string;
+  holderRevocable: boolean;
+  validFrom: string;
+  metadataUrl: {
     url: string;
   };
 }
@@ -202,14 +202,14 @@ async function requestCredential(
   let txHash: string | undefined;
   await provider.addWeb3IdCredential(credential, metadataUrl, async (id) => {
     const parts = id.split(':');
-    const holder_id = parts[parts.length - 1];
+    const holderId = parts[parts.length - 1];
 
     const body: IssueRequest = {
       credential: {
-        holder_id,
-        holder_revocable: true,
-        valid_from: new Date().toISOString(),
-        metadata_url: metadataUrl,
+        holderId,
+        holderRevocable: true,
+        validFrom: new Date().toISOString(),
+        metadataUrl,
       },
     };
     if (req.platform === Platform.Telegram) body.telegramUser = req.user;
