@@ -1,5 +1,4 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::num::ParseIntError;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
@@ -22,7 +21,7 @@ use concordium_rust_sdk::web3id::{
     self, CredentialLookupError, CredentialProof, Presentation, PresentationVerificationError,
     Web3IdAttribute,
 };
-use db::ColumnEntry;
+use db::{PlatformEntry, VerificationsEntry};
 use futures::{future, TryFutureExt};
 use reqwest::StatusCode;
 use rust_tdlib::client::tdlib_client::TdJson;
@@ -37,7 +36,7 @@ use some_verifier_lib::{Account, Platform, Verification};
 use tonic::transport::ClientTlsConfig;
 use tower_http::services::ServeDir;
 
-use crate::db::{Database, DbAccount, DbError, DbPlatform, Discord, Telegram};
+use crate::db::{Database, DbAccount};
 
 mod db;
 
@@ -225,14 +224,7 @@ async fn main() -> anyhow::Result<()> {
     let router = Router::new()
         .nest_service("/", serve_dir_service)
         .route("/verifications", post(add_verification))
-        .route(
-            "/verifications/telegram/:id",
-            get(get_verification::<Telegram>),
-        )
-        .route(
-            "/verifications/discord/:id",
-            get(get_verification::<Discord>),
-        )
+        .route("/verifications/:platform/:id", get(get_verification))
         .with_state(state);
 
     let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), app.port);
@@ -263,8 +255,8 @@ enum Error {
     InvalidStatement,
     #[error("A statement was from the wrong issuer.")]
     InvalidIssuer,
-    #[error("Unable to parse user ID: {0}")]
-    ParseError(ParseIntError),
+    #[error("The database returned an error.")]
+    DatabaseError(#[from] tokio_postgres::Error),
 }
 
 impl axum::response::IntoResponse for Error {
@@ -333,11 +325,11 @@ impl axum::response::IntoResponse for Error {
                     Json("A statement was from the wrong issuer.".into()),
                 )
             }
-            Error::ParseError(err) => {
-                tracing::error!("Unable to parse user ID: {err}");
+            Error::DatabaseError(e) => {
+                tracing::warn!("The database returned an error: {e}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(format!("Unable to parse user ID: {err}")),
+                    Json(format!("The database returned an error: {e}")),
                 )
             }
         };
@@ -403,21 +395,18 @@ async fn add_verification(
         return Err(Error::NotEnoughStatements(num_statements));
     }
 
-    let mut entries = vec![];
+    let mut entry = VerificationsEntry::from_presentation(&proof);
     for proof in &proof.verifiable_credential {
-        proof_to_column_entry(state.clone(), proof, &mut entries)?;
+        proof_to_verifications_entry(state.clone(), proof, &mut entry)?;
     }
-    entries.push(ColumnEntry::Presentation(
-        serde_json::to_value(proof).expect("Presentations can be serialized"),
-    ));
 
-    match state.database.insert_row(&entries).await {
+    match state.database.add_verification(entry).await {
         Ok(()) => {}
-        // TODO
-        Err(DbError::Postgres(err)) => {
+        // TODO: duplicate/overlapping entries
+        Err(err) => {
             tracing::warn!("Error inserting entries: {err}");
+            return Err(Error::DatabaseError(err));
         }
-        Err(DbError::InvalidEntries) => return Err(Error::InvalidStatement),
     }
 
     tracing::info!("Successfully verified.");
@@ -425,10 +414,10 @@ async fn add_verification(
     Ok(StatusCode::CREATED)
 }
 
-fn proof_to_column_entry(
+fn proof_to_verifications_entry(
     state: AppState,
     proof: &CredentialProof<ArCurve, Web3IdAttribute>,
-    entries: &mut Vec<ColumnEntry>,
+    entry: &mut VerificationsEntry,
 ) -> Result<(), Error> {
     match proof {
         // Platform verification (Telegram, Discord, etc.)
@@ -442,12 +431,6 @@ fn proof_to_column_entry(
                 return Err(Error::InvalidIssuer);
             }
 
-            let platform = match contract {
-                addr if addr == &state.telegram_registry => Platform::Telegram,
-                addr if addr == &state.discord_registry => Platform::Discord,
-                _ => return Err(Error::InvalidIssuer),
-            };
-
             let (_, atomic_proof) = (proofs.len() == 1)
                 .then(|| &proofs[0])
                 .ok_or(Error::InvalidStatement)?;
@@ -455,11 +438,20 @@ fn proof_to_column_entry(
                 AtomicProof::RevealAttribute {
                     attribute: Web3IdAttribute::String(AttributeKind(id)),
                     ..
-                } => id.parse::<u64>().map_err(Error::ParseError)? as i64,
+                } => id.clone(),
                 _ => return Err(Error::InvalidStatement),
             };
 
-            entries.push(ColumnEntry::PlatformId { platform, user_id });
+            let platform_entry = PlatformEntry {
+                id: user_id,
+                revoked: false,
+            };
+            match contract {
+                addr if addr == &state.telegram_registry => entry.telegram = Some(platform_entry),
+                addr if addr == &state.discord_registry => entry.discord = Some(platform_entry),
+                _ => return Err(Error::InvalidIssuer),
+            }
+
             Ok(())
         }
         // Full name
@@ -491,9 +483,9 @@ fn proof_to_column_entry(
                         statement: RevealAttributeStatement { attribute_tag },
                     } => {
                         if attribute_tag.0 == attributes::FIRST_NAME.0 {
-                            entries.push(ColumnEntry::FirstName(name.clone()));
+                            entry.first_name = Some(name.clone());
                         } else if attribute_tag.0 == attributes::LAST_NAME.0 {
-                            entries.push(ColumnEntry::LastName(name.clone()));
+                            entry.last_name = Some(name.clone());
                         } else {
                             return Err(Error::InvalidStatement);
                         }
@@ -507,13 +499,13 @@ fn proof_to_column_entry(
     }
 }
 
-async fn get_verification<P: DbPlatform>(
+async fn get_verification(
     State(state): State<AppState>,
-    Path(id): Path<i64>,
-) -> Json<Verification> {
-    let verification = state.database.get_verification::<P>(id).await;
+    Path((platform, id)): Path<(Platform, String)>,
+) -> Result<Json<Verification>, StatusCode> {
+    let verification = state.database.get_verification(&id, platform).await;
     match verification {
-        Ok(verification) => {
+        Ok(Some(verification)) => {
             // Futures that simultaneously look up username and revocation status of user
             // The futures are then mapped to Accounts
             let futures = verification.accounts.iter().map(|acc| {
@@ -546,27 +538,33 @@ async fn get_verification<P: DbPlatform>(
                 full_name: verification.full_name,
             };
 
-            Json(result)
+            Ok(Json(result))
         }
-        Err(_) => Json(Verification::default()),
+        Ok(None) => Ok(Json(Verification::default())),
+        Err(err) => {
+            tracing::error!("Database error when looking up verification: {err}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
     }
+}
+
+const DISCORD_API_ENDPOINT: &'static str = "https://discord.com/api/v10";
+
+#[derive(Deserialize)]
+struct DiscordUser {
+    username: String,
+    discriminator: String,
 }
 
 /// Looks up the username of the given account.
 async fn get_username(state: &AppState, account: &DbAccount) -> anyhow::Result<String> {
-    #[derive(Deserialize)]
-    struct DiscordUser {
-        username: String,
-        discriminator: String,
-    }
-
-    let id = account.id as u64;
     match account.platform {
         // TODO: This is unreliable if the user deletes their chat with the bot
         Platform::Telegram => {
+            let user_id = account.id.parse()?;
             let user = state
                 .tdlib_client
-                .get_user(GetUser::builder().user_id(account.id).build())
+                .get_user(GetUser::builder().user_id(user_id).build())
                 .await?;
             let name = if user.username().is_empty() {
                 if user.last_name().is_empty() {
@@ -580,10 +578,9 @@ async fn get_username(state: &AppState, account: &DbAccount) -> anyhow::Result<S
             Ok(name)
         }
         Platform::Discord => {
-            const API_ENDPOINT: &'static str = "https://discord.com/api/v10";
             let user = state
                 .http_client
-                .get(format!("{API_ENDPOINT}/users/{}", id))
+                .get(format!("{DISCORD_API_ENDPOINT}/users/{}", account.id))
                 .header("Authorization", format!("Bot {}", state.discord_bot_token))
                 .send()
                 .await?

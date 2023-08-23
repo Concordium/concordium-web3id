@@ -1,9 +1,9 @@
-use std::fmt::{self, Display, Formatter};
-
 use serde::{Deserialize, Serialize};
+use std::fmt::{self, Display, Formatter};
 
 /// Represents a social media platform.
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[serde(rename_all = "camelCase")]
 pub enum Platform {
     Telegram,
     Discord,
