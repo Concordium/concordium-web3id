@@ -6,7 +6,7 @@ use clap::Parser;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use poise::FrameworkError;
 use reqwest::Url;
-use some_verifier_lib::{Platform, Verification};
+use some_verifier_lib::{FullName, Platform, Verification};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -67,7 +67,7 @@ async fn help(
 }
 
 // Ephemeral: only the recipient can see the message
-/// Verify with Concordium
+/// Verify with Concordia
 #[poise::command(slash_command, prefix_command, ephemeral)]
 async fn verify(ctx: Context<'_>) -> anyhow::Result<()> {
     ctx.send(|reply| {
@@ -90,9 +90,13 @@ async fn check(
     let accounts = verification.accounts;
     let mention = user.mention();
     let message = if accounts.is_empty() {
-        format!("{mention} is not verified with Concordium.")
+        format!("{mention} is not verified with Concordia.")
     } else {
-        let mut message = format!("{mention} is verified with Concordium.");
+        let mut message = format!("{mention} is verified with Concordia.");
+        if let Some(full_name) = verification.full_name {
+            message.push_str("\n- Real name: ");
+            message.push_str(&format!("{} {}", full_name.first_name, full_name.last_name));
+        }
         for account in accounts
             .into_iter()
             .filter(|a| a.platform != Platform::Discord && !a.revoked)
