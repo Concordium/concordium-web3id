@@ -1,7 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
@@ -24,12 +24,6 @@ use concordium_rust_sdk::web3id::{
 use db::{PlatformEntry, VerificationsEntry};
 use futures::{future, TryFutureExt};
 use reqwest::StatusCode;
-use rust_tdlib::client::tdlib_client::TdJson;
-use rust_tdlib::client::{
-    AuthStateHandlerProxy, ClientIdentifier, ConsoleClientStateHandlerIdentified,
-};
-use rust_tdlib::tdjson;
-use rust_tdlib::types::{GetUser, TdlibParameters};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use some_verifier_lib::{Account, Platform, Verification};
@@ -129,7 +123,6 @@ struct AppState {
     node_client: v2::Client,
     telegram_registry: ContractAddress,
     discord_registry: ContractAddress,
-    tdlib_client: Arc<rust_tdlib::client::Client<TdJson>>,
     discord_bot_token: Arc<String>,
     database: Arc<Database>,
     network: Network,
@@ -149,36 +142,9 @@ async fn main() -> anyhow::Result<()> {
             .with(log_filter)
             .init();
     }
-    tdjson::set_log_verbosity_level(1);
 
     tracing::info!("Connecting to database...");
     let database = Database::connect(app.db_config).await?;
-
-    tracing::info!("Starting Telegram client...");
-    let tdlib_params = TdlibParameters::builder()
-        .database_directory("tddb")
-        .use_test_dc(false)
-        .api_id(app.telegram_api_id)
-        .api_hash(app.telegram_api_hash)
-        .system_language_code("en")
-        .device_model("Desktop")
-        .system_version("Unknown")
-        .application_version(env!("CARGO_PKG_VERSION"))
-        .enable_storage_optimizer(true)
-        .build();
-
-    let tdlib_client = rust_tdlib::client::Client::builder()
-        .with_tdlib_parameters(tdlib_params)
-        .with_client_auth_state_handler(ConsoleClientStateHandlerIdentified::new(
-            ClientIdentifier::BotToken(app.telegram_bot_token),
-        ))
-        .build()?;
-
-    let mut worker = rust_tdlib::client::Worker::builder()
-        .with_auth_state_handler(AuthStateHandlerProxy::new_with_encryption_key("".into()))
-        .build()?;
-    worker.start();
-    let tdlib_client = worker.bind_client(tdlib_client).await?;
 
     let endpoint = if app
         .endpoint
@@ -212,7 +178,6 @@ async fn main() -> anyhow::Result<()> {
         node_client,
         telegram_registry: app.telegram_registry,
         discord_registry: app.discord_registry,
-        tdlib_client: Arc::new(tdlib_client),
         discord_bot_token: Arc::new(app.discord_bot_token),
         database: Arc::new(database),
         network: app.network,
@@ -450,11 +415,7 @@ fn proof_to_verifications_entry(
                 }
             };
 
-            let platform_entry = PlatformEntry {
-                id,
-                username,
-                revoked: false,
-            };
+            let platform_entry = PlatformEntry { id, username };
             match contract {
                 addr if addr == &state.telegram_registry => entry.telegram = Some(platform_entry),
                 addr if addr == &state.discord_registry => entry.discord = Some(platform_entry),
@@ -465,10 +426,7 @@ fn proof_to_verifications_entry(
         }
         // Full name
         CredentialProof::Account {
-            network,
-            // issuer, TODO: should we care about this?
-            proofs,
-            ..
+            network, proofs, ..
         } => {
             if network != &state.network {
                 return Err(Error::InvalidIssuer);
@@ -521,10 +479,7 @@ async fn get_verification(
                 future::try_join3(
                     async { Ok(acc.platform) },
                     get_username(&state, acc),
-                    state
-                        .database
-                        .get_revocation_status(acc)
-                        .map_err(|e| anyhow!(e)),
+                    get_revocation_status(acc),
                 )
                 .map_ok(|(platform, username, revoked)| Account {
                     platform,
@@ -569,23 +524,7 @@ struct DiscordUser {
 async fn get_username(state: &AppState, account: &DbAccount) -> anyhow::Result<String> {
     match account.platform {
         // TODO: This is unreliable if the user deletes their chat with the bot
-        Platform::Telegram => {
-            let user_id = account.id.parse()?;
-            let user = state
-                .tdlib_client
-                .get_user(GetUser::builder().user_id(user_id).build())
-                .await?;
-            let name = if user.username().is_empty() {
-                if user.last_name().is_empty() {
-                    format!("{}", user.first_name())
-                } else {
-                    format!("{} {}", user.first_name(), user.last_name())
-                }
-            } else {
-                user.username().clone()
-            };
-            Ok(name)
-        }
+        Platform::Telegram => Ok(account.username.clone()),
         Platform::Discord => {
             let user = state
                 .http_client
@@ -595,7 +534,20 @@ async fn get_username(state: &AppState, account: &DbAccount) -> anyhow::Result<S
                 .await?
                 .json::<DiscordUser>()
                 .await?;
-            Ok(format!("{}#{}", user.username, user.discriminator))
+
+            // Discord has two types of usernames, with discriminator (e.g. abcd#1234),
+            // and without (e.g. abcdef). In the latter case, the discriminator is "0"
+            let username = if user.discriminator == "0" {
+                user.username
+            } else {
+                format!("{}#{}", user.username, user.discriminator)
+            };
+            Ok(username)
         }
     }
+}
+
+async fn get_revocation_status(_account: &DbAccount) -> anyhow::Result<bool> {
+    // TODO: Look up on chain
+    Ok(false)
 }
