@@ -9,6 +9,10 @@ pub enum Platform {
     Discord,
 }
 
+impl Platform {
+    pub const SUPPORTED_PLATFORMS: [Self; 2] = [Self::Telegram, Self::Discord];
+}
+
 impl Display for Platform {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {

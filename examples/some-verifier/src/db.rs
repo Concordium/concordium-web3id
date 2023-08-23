@@ -22,6 +22,8 @@ trait DbName {
     fn table_name(&self) -> &'static str;
     /// The name of the corresponding column.
     fn column_name(&self) -> &'static str;
+    /// The username alias used when joined with other platforms
+    fn username_alias(&self) -> String;
 }
 
 impl DbName for Platform {
@@ -38,6 +40,10 @@ impl DbName for Platform {
             Platform::Discord => "discord_id",
         }
     }
+
+    fn username_alias(&self) -> String {
+        format!("{}_{USERNAME_COLUMN}", self.table_name())
+    }
 }
 
 fn verification_from_row(row: Row) -> DbVerification {
@@ -53,11 +59,17 @@ fn verification_from_row(row: Row) -> DbVerification {
         })
         .ok();
 
-    let accounts = [Platform::Discord, Platform::Telegram]
+    let accounts = Platform::SUPPORTED_PLATFORMS
         .into_iter()
-        .map(|platform| DbAccount {
-            platform,
-            id: row.get(platform.column_name()),
+        .map(|platform| {
+            let id = row.get(platform.column_name());
+            let username = row.get(platform.username_alias().as_str());
+
+            DbAccount {
+                platform,
+                id,
+                username,
+            }
         })
         .collect();
 
@@ -68,9 +80,11 @@ fn verification_from_row(row: Row) -> DbVerification {
 }
 
 /// A platform and an user id for that platform.
+#[derive(Debug)]
 pub struct DbAccount {
     pub platform: Platform,
     pub id: String,
+    pub username: String,
 }
 
 /// The output from querying a line in the verifications table.
@@ -167,17 +181,44 @@ impl Database {
         id: &str,
         platform: Platform,
     ) -> DbResult<Option<DbVerification>> {
+        // The base statement
+        let mut statement = format!("SELECT {DISCORD_ID_COLUMN}, {TELEGRAM_ID_COLUMN}, {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN}");
+
+        // Additional columns to select and joins to perform built from the supported platforms.
+        let (columns, joins) = Platform::SUPPORTED_PLATFORMS
+            .into_iter()
+            .map(|platform| {
+                let column = format!(
+                    "{}.{USERNAME_COLUMN} as {}",
+                    platform.table_name(),
+                    platform.username_alias()
+                );
+                let join = format!(
+                    "JOIN {0} ON {0}.{ID_COLUMN}={VERIFICATIONS_TABLE}.{1}",
+                    platform.table_name(),
+                    platform.column_name()
+                );
+                (column, join)
+            })
+            .fold(
+                (String::new(), String::new()),
+                |(mut columns, mut joins), (column, join)| {
+                    columns.push_str(&format!(", {}", column));
+                    joins.push_str(&format!(" {}", join));
+                    (columns, joins)
+                },
+            );
+
+        statement.push_str(&columns);
+        statement.push_str(&format!(" FROM {VERIFICATIONS_TABLE}"));
+        statement.push_str(&joins);
+        statement.push_str(&format!(" WHERE {} = $1", platform.column_name()));
+
         let verification = self
             .client
             .read()
             .await
-            .query_opt(
-                &format!(
-                    "SELECT * FROM {VERIFICATIONS_TABLE} WHERE {} = $1",
-                    platform.column_name()
-                ),
-                &[&id],
-            )
+            .query_opt(&statement, &[&id])
             .await
             .map(|opt| opt.map(verification_from_row))?;
 
