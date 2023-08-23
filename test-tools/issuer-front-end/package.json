@@ -1,7 +1,7 @@
 {
     "name": "issuer-front-end",
     "packageManager": "yarn@3.2.0",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "license": "Apache-2.0",
     "engines": {
         "node": ">=16.x"
@@ -13,11 +13,15 @@
         "@concordium/web-sdk": "^6.1.0-alpha.1",
         "@walletconnect/types": "^2.1.4",
         "eslint": "^8.37.0",
+        "json-bigint": "^1.0.0",
         "moment": "^2.29.4",
         "react": "^18.1.0",
         "react-bootstrap": "^2.7.4",
         "react-dom": "^18.1.0",
         "react-switch": "^7.0.0"
+    },
+    "resolutions": {
+        "@concordium/web-sdk": "^6.1.0-alpha.1"
     },
     "devDependencies": {
         "@craftamap/esbuild-plugin-html": "^0.4.0",

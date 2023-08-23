@@ -278,26 +278,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@concordium/common-sdk@npm:6.5.0":
-  version: 6.5.0
-  resolution: "@concordium/common-sdk@npm:6.5.0"
-  dependencies:
-    "@concordium/rust-bindings": 0.11.1
-    "@grpc/grpc-js": ^1.3.4
-    "@noble/ed25519": ^1.7.1
-    "@protobuf-ts/runtime-rpc": ^2.8.2
-    "@scure/bip39": ^1.1.0
-    bs58check: ^2.1.2
-    buffer: ^6.0.3
-    cross-fetch: 3.1.5
-    hash.js: ^1.1.7
-    iso-3166-1: ^2.1.1
-    json-bigint: ^1.0.0
-    uuid: ^8.3.2
-  checksum: daf7e586b5fd89a4f2e84c602b9ffdbe5215a176b6673aa42abf7c54d722f5380f716672100f6a68c321ba97b87c381476bce768ff1e5299b5d07c6ded96e716
-  languageName: node
-  linkType: hard
-
 "@concordium/common-sdk@npm:9.1.0-alpha.1":
   version: 9.1.0-alpha.1
   resolution: "@concordium/common-sdk@npm:9.1.0-alpha.1"
@@ -329,13 +309,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@concordium/rust-bindings@npm:0.11.1":
-  version: 0.11.1
-  resolution: "@concordium/rust-bindings@npm:0.11.1"
-  checksum: fe1bbcd0a98a7e148cfe9fa5ec69a693b19608b64b01723aedd9a7616958d5069cef006f8dfa610f7fad3cd3e8d356c99c76ff2606ea44d90138a43897118277
-  languageName: node
-  linkType: hard
-
 "@concordium/rust-bindings@npm:1.2.0-alpha.1":
   version: 1.2.0-alpha.1
   resolution: "@concordium/rust-bindings@npm:1.2.0-alpha.1"
@@ -351,20 +324,6 @@ __metadata:
     "@walletconnect/qrcode-modal": ^1.8.0
     "@walletconnect/sign-client": ^2.1.4
   checksum: 7ef4287d05977fe741d47d53ea9424f603c8acfe0a0c0af1bfea2c5752b0bc5750be942badaa414a6694e7be4032e8d1a91f8ab69327cdcff016f28da0cf6a23
-  languageName: node
-  linkType: hard
-
-"@concordium/web-sdk@npm:^3.4.2":
-  version: 3.5.0
-  resolution: "@concordium/web-sdk@npm:3.5.0"
-  dependencies:
-    "@concordium/common-sdk": 6.5.0
-    "@concordium/rust-bindings": 0.11.1
-    "@grpc/grpc-js": ^1.3.4
-    "@protobuf-ts/grpcweb-transport": ^2.8.2
-    buffer: ^6.0.3
-    process: ^0.11.10
-  checksum: 681cfdb2533bba93ac62f44b0fcf5596a0fd89a5895085e3e6a416fa162bc1d22ac3bc1a6f8b89a196c46e89e9fd6401c25c493079f406bf8dfa9c6a7eb0aaa7
   languageName: node
   linkType: hard
 
@@ -5299,6 +5258,7 @@ cors@latest:
     eslint-plugin-react: ^7.29.4
     eslint-plugin-react-hooks: ^4.4.0
     fs: ^0.0.1-security
+    json-bigint: ^1.0.0
     live-server: =1.2.1
     moment: ^2.29.4
     prettier: ^2.6.2

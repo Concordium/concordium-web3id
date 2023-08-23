@@ -3,7 +3,7 @@ import moment from 'moment';
 
 export const EXAMPLE_CREDENTIAL_SCHEMA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/ac803895b1ffaa50888cfc6667331f6ebb0b889e/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`;
 
-export const EXAMPLE_CREDENTIAL_METADATA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/21bc43872c5d972f6c1b48af7956ec74f2e3e6ef/examples/json-schemas/metadata/credential-metadata.json`;
+export const EXAMPLE_CREDENTIAL_METADATA = `https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json`;
 
 export const EXAMPLE_ISSUER_METADATA = `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`;
 
