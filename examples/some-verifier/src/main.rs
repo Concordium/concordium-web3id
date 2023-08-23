@@ -523,7 +523,6 @@ struct DiscordUser {
 /// Looks up the username of the given account.
 async fn get_username(state: &AppState, account: &DbAccount) -> anyhow::Result<String> {
     match account.platform {
-        // TODO: This is unreliable if the user deletes their chat with the bot
         Platform::Telegram => Ok(account.username.clone()),
         Platform::Discord => {
             let user = state
