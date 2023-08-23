@@ -193,7 +193,7 @@ async function requestProof(
           subindex: BigInt(issuer.subindex)
         },
       ],
-      (b) => b.revealAttribute('userId'),
+      (b) => b.revealAttribute('userId').revealAttribute('username'),
     );
   }
 

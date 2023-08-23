@@ -142,6 +142,8 @@ struct DiscordIssueRequest {
 #[derive(Deserialize, Serialize, Debug)]
 struct User {
     id: String,
+    username: String,
+    discriminator: String,
 }
 
 #[derive(Serialize)]
@@ -166,6 +168,7 @@ struct AccessTokenResponse {
 #[derive(Serialize)]
 struct OauthTemplateParams<'a> {
     id: &'a str,
+    username: &'a str,
     dapp_domain: &'a str,
 }
 
@@ -184,12 +187,25 @@ async fn handle_oauth_redirect(
         let user = get_user(&state, code)
             .await
             .context("Error getting Discord user.")?;
+
+        // Discord added the option to get unique usernames. If the discriminator is "0", it
+        // indicates that the user has a unique username.
+        let username = if user.discriminator == "0" {
+            user.username
+        } else {
+            format!("{}#{}", user.username, user.discriminator)
+        };
+
         session
             .insert("discord_id", &user.id)
             .expect("user ids can be serialized");
+        session
+            .insert("discord_username", &username)
+            .expect("username can be serialized");
 
         let params = OauthTemplateParams {
             id: &user.id,
+            username: &username,
             dapp_domain: &state.dapp_domain,
         };
 
@@ -223,7 +239,15 @@ async fn issue_discord_credential(
         }
     };
 
-    issue_credential(state.issuer, request.credential, user_id).await
+    let username = match session.get("discord_username") {
+        Some(username) => username,
+        None => {
+            tracing::warn!("Missing session username for Discord request.");
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
+
+    issue_credential(state.issuer, request.credential, user_id, username).await
 }
 
 /// Exchanges an OAuth2 `code` for a User.
@@ -268,6 +292,7 @@ async fn get_user(state: &AppState, code: &str) -> anyhow::Result<User> {
         .bearer_auth(response.access_token)
         .send()
         .await?;
+
     Ok(serde_json::from_slice(&response.bytes().await?)?)
 }
 

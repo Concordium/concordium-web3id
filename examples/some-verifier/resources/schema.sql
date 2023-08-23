@@ -1,17 +1,19 @@
 CREATE TABLE IF NOT EXISTS discord (
 	id VARCHAR PRIMARY KEY,
-	revoked BOOL NOT NULL DEFAULT false,
+	username VARCHAR NOT NULL,
+	revoked BOOL NOT NULL DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS telegram (
 	id VARCHAR PRIMARY KEY,
+	username VARCHAR NOT NULL,
 	revoked BOOL NOT NULL DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS verifications (
 	telegram_id VARCHAR NULL UNIQUE,
 	discord_id VARCHAR NULL UNIQUE,
-	presentation JSONB NOT NULL
+	presentation JSONB NOT NULL,
 	first_name VARCHAR NULL,
 	last_name VARCHAR NULL,
 	CONSTRAINT verifications_first_name_iff_last_name CHECK ((((first_name IS NULL) AND (last_name IS NULL)) OR ((first_name IS NOT NULL) AND (last_name IS NOT NULL)))),

@@ -13,8 +13,14 @@ function getContractDid(issuer: Issuer): string {
   return `$did:ccd:${issuer.chain}:sci:${issuer.index}:${issuer.subindex}/issuer`;
 }
 
+declare type NotOptional<T> = {
+  [P in keyof T]-?: T[P];
+};
+type MakeRequired<T, K extends keyof T> = NotOptional<Pick<T, K>> & Omit<T, K>;
+
 interface DiscordWindowMessage {
   userId: string;
+  username: string;
   state: string | null;
 }
 
@@ -36,7 +42,7 @@ function Issuer() {
     const onDiscordWindowMessage = async (event: MessageEvent) => {
       if (event.origin !== config.issuers.discord.url) return;
 
-      const { userId, state } = event.data as DiscordWindowMessage;
+      const { userId: id, username, state } = event.data as DiscordWindowMessage;
       // Prevents CSRF attacks,
       // see https://auth0.com/docs/secure/attack-protection/state-parameters
       if (state !== oAuth2State)
@@ -45,7 +51,7 @@ function Issuer() {
       await requestCredential(
         {
           platform: Platform.Discord,
-          userId,
+          user: { id, username }
         },
         () => setDiscordPending(true),
       );
@@ -64,18 +70,21 @@ function Issuer() {
     return () => removeEventListener('message', eventHandler);
   }, []);
 
-  const onTelegramAuth = async (user: TelegramUser) => {
+  const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
     try {
+      if (!username) {
+        throw new Error('A telegram username must be available to create a credential.');
+      }
+
       await requestCredential(
         {
           platform: Platform.Telegram,
-          user,
+          user: { username, ...user },
         },
         () => setTelegramPending(true),
       );
     } catch (error) {
-      alert('An error occured');
-      console.error(error);
+      alert(`An error occured: ${(error as Error).message ?? error}`);
       return;
     }
 
@@ -145,12 +154,17 @@ interface CredentialInfo {
 
 interface TelegramRequest {
   platform: Platform.Telegram;
-  user: TelegramUser;
+  user: MakeRequired<TelegramUser, 'username'>;
+}
+
+interface DiscordUser {
+  id: string;
+  username: string;
 }
 
 interface DiscordRequest {
   platform: Platform.Discord;
-  userId: string;
+  user: DiscordUser;
 }
 
 interface RpcError {
@@ -161,12 +175,8 @@ async function requestCredential(
   req: TelegramRequest | DiscordRequest,
   setPending: () => void,
 ) {
-  console.log('Requesting credential...');
-
   const issuer = config.issuers[req.platform];
-
-  const userId =
-    req.platform === Platform.Telegram ? req.user.id.toString() : req.userId;
+  const { id, username } = req.user;
 
   const credential = {
     $schema: `./JsonSchema2023-${req.platform}.json`,
@@ -177,7 +187,7 @@ async function requestCredential(
     ],
     issuer: getContractDid(issuer),
     issuanceDate: new Date().toISOString(),
-    credentialSubject: { attributes: { userId } },
+    credentialSubject: { attributes: { userId: id.toString(), username } },
     credentialSchema: {
       id: `${issuer.url}/json-schemas/JsonSchema2023-${req.platform}.json`,
       type: 'JsonSchema2023',

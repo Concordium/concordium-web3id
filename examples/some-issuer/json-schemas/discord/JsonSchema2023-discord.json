@@ -20,13 +20,26 @@
               "title": "User id",
               "type": "string",
               "description": "Discord user id"
+            },
+            "username": {
+              "title": "Username",
+              "type": "string",
+              "description": "Discord username"
             }
           },
-          "required": ["userId"]
+          "required": [
+            "userId",
+            "username"
+          ]
         }
       },
-      "required": ["id", "attributes"]
+      "required": [
+        "id",
+        "attributes"
+      ]
     }
   },
-  "required": ["credentialSubject"]
+  "required": [
+    "credentialSubject"
+  ]
 }
