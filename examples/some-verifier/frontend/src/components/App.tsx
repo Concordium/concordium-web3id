@@ -88,9 +88,9 @@ function App() {
         // @ts-ignore workaround since toggle is not present on Accordion for some reason
         <Accordion open={open} toggle={setOpen}>
           <Step
-            step={0}
+            step={VerificationStep.Issue}
             text="Start by getting Web3 ID credentials for your social media accounts.
-                  If you already have them, you can proceed to Step 2."
+                  If you already have them, you can proceed to verification."
           >
             <Row className="gy-3">
               <Col md={12}>
@@ -104,7 +104,7 @@ function App() {
             </Row>
           </Step>
           <Step
-            step={1}
+            step={VerificationStep.Verify}
             text="Select the credentials that you want to be verified with. Please select at least two options."
           >
             <Form onSubmit={prove}>
@@ -131,7 +131,7 @@ function App() {
             </Form>
           </Step>
           <Step
-            step={2}
+            step={VerificationStep.Check}
             text="Check your verification status with one of our social media bots."
           >
             <Row className="gx-2">
@@ -221,18 +221,30 @@ async function hash(message: string): Promise<string> {
   return hashHex;
 }
 
+enum VerificationStep {
+  Issue,
+  Verify,
+  Check,
+}
+
+const stepTitleMap: { [p in VerificationStep]: string } = {
+  [VerificationStep.Issue]: 'Issue credentials',
+  [VerificationStep.Verify]: 'Verify with Concordia',
+  [VerificationStep.Check]: 'Check verification',
+}
+
 function Step({
   children,
   step,
   text,
 }: {
-  step: number;
+  step: VerificationStep;
   text: string;
 } & React.PropsWithChildren) {
   return (
     <AccordionItem>
       <AccordionHeader targetId={step.toString()}>
-        Step {step + 1}
+        {stepTitleMap[step]}
       </AccordionHeader>
       <AccordionBody accordionId={step.toString()}>
         <Row className="gy-3">
