@@ -193,11 +193,6 @@ async fn issue_telegram_credential(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    if let None = request.telegram_user.username {
-        tracing::warn!("Missing username in telegram user");
-        return Err(StatusCode::BAD_REQUEST);
-    }
-
     match request.telegram_user.username {
         None => {
             tracing::warn!("Missing username in telegram user");

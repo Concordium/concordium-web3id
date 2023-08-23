@@ -24,7 +24,7 @@
             "username": {
               "title": "Username",
               "type": "string",
-              "description": "Telegram username"
+              "description": "Discord username"
             }
           },
           "required": [

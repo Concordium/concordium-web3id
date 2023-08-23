@@ -57,7 +57,6 @@ function App() {
       const timestamp = new Date().toISOString();
       const challenge = await hash(timestamp);
       const proof = await requestProof(issuers, revealName, challenge);
-      debugger;
       const body = { proof, timestamp };
 
       const response = await fetch('/verifications', {
