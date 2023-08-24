@@ -30,17 +30,19 @@ interface DiscordWindowMessage {
 // This is set when Discord verification is started and read upon a message back
 let oAuth2State: string | undefined = undefined;
 
+interface IssuerProps {
+  telegramIssued: boolean;
+  setTelegramIssued: () => void;
+  discordIssued: boolean;
+  setDiscordIssued: () => void;
+}
+
 function Issuer({
   telegramIssued,
   setTelegramIssued,
   discordIssued,
   setDiscordIssued,
-}: {
-  telegramIssued: boolean;
-  setTelegramIssued: () => void;
-  discordIssued: boolean;
-  setDiscordIssued: () => void;
-}) {
+}: IssuerProps) {
   const [telegramPending, setTelegramPending] = useState(false);
   const [discordPending, setDiscordPending] = useState(false);
 
@@ -68,9 +70,6 @@ function Issuer({
         () => setDiscordPending(true),
       );
 
-      const url = new URL(window.location.href);
-      url.searchParams.set(Platform.Discord, 'true');
-      window.history.replaceState(null, '', url);
       setDiscordIssued();
     };
 
@@ -105,9 +104,6 @@ function Issuer({
     }
 
     setTelegramIssued();
-    const url = new URL(window.location.href);
-    url.searchParams.set(Platform.Telegram, 'true');
-    window.history.replaceState(null, '', url);
   };
 
   return (

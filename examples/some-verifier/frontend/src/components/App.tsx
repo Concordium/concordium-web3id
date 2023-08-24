@@ -58,10 +58,16 @@ function App() {
   const issueTelegram = () => {
     setTelegramChecked(true);
     setTelegramIssued(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set(Platform.Telegram, 'true');
+    window.history.replaceState(null, '', url);
   };
   const issueDiscord = () => {
     setDiscordChecked(true);
     setDiscordIssued(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set(Platform.Discord, 'true');
+    window.history.replaceState(null, '', url);
   };
 
   const connectToWallet = () => {
