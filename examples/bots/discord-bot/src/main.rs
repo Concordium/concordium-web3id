@@ -67,7 +67,7 @@ async fn help(
 }
 
 // Ephemeral: only the recipient can see the message
-/// Verify with Concordium
+/// Verify with Concordia
 #[poise::command(slash_command, prefix_command, ephemeral)]
 async fn verify(ctx: Context<'_>) -> anyhow::Result<()> {
     ctx.send(|reply| {
@@ -90,9 +90,12 @@ async fn check(
     let accounts = verification.accounts;
     let mention = user.mention();
     let message = if accounts.is_empty() {
-        format!("{mention} is not verified with Concordium.")
+        format!("{mention} is not verified with Concordia.")
     } else {
-        let mut message = format!("{mention} is verified with Concordium.");
+        let mut message = format!("{mention} is verified with Concordia.");
+        if let Some(full_name) = verification.full_name {
+            message.push_str(&format!("\n- Real name: {full_name}"));
+        }
         for account in accounts
             .into_iter()
             .filter(|a| a.platform != Platform::Discord && !a.revoked)

@@ -53,7 +53,7 @@ enum Command {
     Start,
     #[command(description = "show available commands.")]
     Help,
-    #[command(description = "verify your Telegram account.")]
+    #[command(description = "verify with Concordia.")]
     Verify,
     #[command(description = "use in reply to a message, checks if account is verified.")]
     Check,
@@ -159,14 +159,17 @@ async fn check_user(
     msg: &Message,
     target_user: &User,
 ) -> ResponseResult<()> {
-    match get_verifications(cfg, target_user.id).await {
-        Ok(verifications) => {
+    match get_verification(cfg, target_user.id).await {
+        Ok(verification) => {
             let name = target_user.mention().unwrap_or(target_user.full_name());
-            let accounts = verifications.accounts;
+            let accounts = verification.accounts;
             let reply = if accounts.is_empty() {
-                format!("{name} is not verified with Concordium.")
+                format!("{name} is not verified with Concordia.")
             } else {
-                let mut reply = format!("{name} is verified with Concordium.");
+                let mut reply = format!("{name} is verified with Concordia.");
+                if let Some(full_name) = verification.full_name {
+                    reply.push_str(&format!("\n- Real name: {full_name}"));
+                }
                 for account in accounts
                     .into_iter()
                     .filter(|a| a.platform != Platform::Telegram && !a.revoked)
@@ -200,7 +203,7 @@ async fn other(bot: Bot, msg: Message) -> ResponseResult<()> {
     Ok(())
 }
 
-async fn get_verifications(cfg: BotConfig, id: UserId) -> anyhow::Result<Verification> {
+async fn get_verification(cfg: BotConfig, id: UserId) -> anyhow::Result<Verification> {
     let url = cfg
         .verifier_url
         .join("verifications/telegram/")

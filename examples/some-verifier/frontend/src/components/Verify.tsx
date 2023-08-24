@@ -22,7 +22,7 @@ import telegramColor from '../assets/telegram-logo-color.svg';
 import discordColor from '../assets/discord-logo-color.svg';
 import { Config, Platform } from '../lib/types';
 import Issuer from './Issuer';
-import { FormEvent, useState } from 'react';
+import { FormEvent, PropsWithChildren, useMemo, useState } from 'react';
 import _config from '../../config.json';
 import RemoveVerification from './RemoveVerification';
 import { hash, requestProof } from './util';
@@ -40,14 +40,16 @@ const stepTitleMap: { [p in VerificationStep]: string } = {
   [VerificationStep.Check]: 'Check verification',
 }
 
+type StepProps = PropsWithChildren<{
+  step: VerificationStep;
+  text: string;
+}>;
+
 function Step({
   children,
   step,
   text,
-}: {
-  step: VerificationStep;
-  text: string;
-} & React.PropsWithChildren) {
+}: StepProps) {
   return (
     <AccordionItem>
       <AccordionHeader targetId={step.toString()}>
@@ -67,17 +69,31 @@ function Step({
   );
 }
 
+type PlatformOptionProps = {
+  children: React.ReactNode;
+  id: string;
+  checked: boolean;
+  setChecked: (value: boolean) => void;
+};
+
 function PlatformOption({
   children,
   id,
-}: {
-  children: React.ReactNode;
-  id: string;
-}) {
+  checked,
+  setChecked,
+}: PlatformOptionProps) {
   return (
     <ListGroupItem>
       <FormGroup switch>
-        <Input className="me-2" type="switch" role="switch" id={id} name={id} />
+        <Input
+          className="me-2"
+          type="switch"
+          role="switch"
+          id={id}
+          name={id}
+          checked={checked}
+          onChange={() => setChecked(!checked)}
+        />
         <Label check for={id} className="d-flex align-items-center">
           {children}
         </Label>
@@ -87,20 +103,57 @@ function PlatformOption({
 }
 
 export default function Verify() {
+  const query = useMemo(() => new URLSearchParams(window.location.search), []);
+  const [telegramIssued, setTelegramIssued] = useState(
+    query.get(Platform.Telegram) === 'true',
+  );
+  const [discordIssued, setDiscordIssued] = useState(
+    query.get(Platform.Discord) === 'true',
+  );
+
   const [open, setOpen] = useState('0');
+  const [proofError, setProofError] = useState('');
+
+  const [telegramChecked, setTelegramChecked] = useState(telegramIssued);
+  const [discordChecked, setDiscordChecked] = useState(discordIssued);
+  const [fullNameChecked, setFullNameChecked] = useState(false);
+
+  const checkedCount = useMemo(() => {
+    const count = +telegramChecked + +discordChecked + +fullNameChecked;
+    if (count >= 2) setProofError('');
+    return count;
+  }, [telegramChecked, discordChecked, fullNameChecked]);
+
+  const issueTelegram = () => {
+    setTelegramChecked(true);
+    setTelegramIssued(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set(Platform.Telegram, 'true');
+    window.history.replaceState(null, '', url);
+
+  };
+  const issueDiscord = () => {
+    setDiscordChecked(true);
+    setDiscordIssued(true);
+    const url = new URL(window.location.href);
+    url.searchParams.set(Platform.Discord, 'true');
+    window.history.replaceState(null, '', url);
+  };
 
   const prove = (event: FormEvent) => {
     event.preventDefault();
-    const data = new FormData(event.target as HTMLFormElement);
+    if (checkedCount < 2) {
+      setProofError('Please select at least two options.');
+      return;
+    }
     const issuers = [];
-    for (const platform of [Platform.Telegram, Platform.Discord])
-      if (data.get(platform) === 'on') issuers.push(config.issuers[platform]);
-    const revealName = data.get('name') === 'on';
+    if (telegramChecked) issuers.push(config.issuers[Platform.Telegram]);
+    if (discordChecked) issuers.push(config.issuers[Platform.Discord]);
 
     (async () => {
       const timestamp = new Date().toISOString();
       const challenge = await hash(timestamp);
-      const proof = await requestProof(issuers, revealName, challenge);
+      const proof = await requestProof(issuers, fullNameChecked, challenge);
       const body = { proof, timestamp };
 
       const response = await fetch('/verifications', {
@@ -112,17 +165,19 @@ export default function Verify() {
       });
 
       if (!response.ok) {
-        alert('The proof was rejected');
+        setProofError('The proof was rejected.');
         console.error('Proof rejected:', await response.text());
         return;
       }
 
+      setProofError('');
       setOpen('2');
     })().catch((error) => {
-      alert('Proof creation failed.');
+      setProofError('Proof creation failed.');
       console.error(error);
     });
   };
+
   return (
     <>
       {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
@@ -135,7 +190,12 @@ export default function Verify() {
         >
           <Row className="gy-3">
             <Col md={12}>
-              <Issuer />
+              <Issuer
+                telegramIssued={telegramIssued}
+                setTelegramIssued={issueTelegram}
+                discordIssued={discordIssued}
+                setDiscordIssued={issueDiscord}
+              />
             </Col>
             <Col md={12}>
               <Button color="primary" onClick={() => setOpen('1')}>
@@ -150,20 +210,39 @@ export default function Verify() {
         >
           <Form onSubmit={prove}>
             <Row className="gy-3">
-              <Col md={12}>
+              <Col xs={12}>
                 <ListGroup className="platform-options">
-                  <PlatformOption id={Platform.Telegram}>
+                  <PlatformOption
+                    id={Platform.Telegram}
+                    checked={telegramChecked}
+                    setChecked={setTelegramChecked}
+                  >
                     <SVG className="me-1" src={telegramColor} />
                     Telegram
                   </PlatformOption>
-                  <PlatformOption id={Platform.Discord}>
+                  <PlatformOption
+                    id={Platform.Discord}
+                    checked={discordChecked}
+                    setChecked={setDiscordChecked}
+                  >
                     <SVG className="me-1" src={discordColor} />
                     Discord
                   </PlatformOption>
-                  <PlatformOption id="name">Reveal full name?</PlatformOption>
+                  <PlatformOption
+                    id="name"
+                    checked={fullNameChecked}
+                    setChecked={setFullNameChecked}
+                  >
+                    Reveal full name?
+                  </PlatformOption>
                 </ListGroup>
               </Col>
-              <Col md={12}>
+              {proofError && (
+                <Col xs={12}>
+                  <span className="text-danger">{proofError}</span>
+                </Col>
+              )}
+              <Col xs={12}>
                 <Button color="primary" type="submit">
                   Prove
                 </Button>
