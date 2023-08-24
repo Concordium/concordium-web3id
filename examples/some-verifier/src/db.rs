@@ -14,7 +14,6 @@ const FIRST_NAME_COLUMN: &'static str = "first_name";
 const LAST_NAME_COLUMN: &'static str = "last_name";
 const ID_COLUMN: &'static str = "id";
 const USERNAME_COLUMN: &'static str = "username";
-const REVOKED_COLUMN: &'static str = "revoked";
 
 /// A trait that is implemented for the Platform enum to give some utility functons.
 trait DbName {
@@ -105,6 +104,7 @@ pub struct VerificationsEntry {
 pub struct Database {
     client: RwLock<tokio_postgres::Client>,
 }
+
 impl VerificationsEntry {
     pub fn from_presentation(proof: &Presentation<ArCurve, Web3IdAttribute>) -> Self {
         Self {
@@ -144,15 +144,13 @@ impl VerificationsEntry {
 pub struct PlatformEntry {
     pub id: String,
     pub username: String,
-    pub revoked: bool,
 }
 
 impl PlatformEntry {
     fn columns(&self) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
         [
             (ID_COLUMN, &self.id as &(dyn ToSql + Sync)),
-            (USERNAME_COLUMN, &self.username as &(dyn ToSql + Sync)),
-            (REVOKED_COLUMN, &self.revoked),
+            (USERNAME_COLUMN, &self.username),
         ]
         .into_iter()
     }
@@ -223,25 +221,6 @@ impl Database {
             .map(|opt| opt.map(verification_from_row))?;
 
         Ok(verification)
-    }
-
-    /// Gets the revocation status for a given social media account.
-    /// Returns an error if the account is not in the DB.
-    pub async fn get_revocation_status(&self, account: &DbAccount) -> DbResult<bool> {
-        let status = self
-            .client
-            .read()
-            .await
-            .query_one(
-                &format!(
-                    "SELECT {ID_COLUMN}, {REVOKED_COLUMN} FROM {} WHERE id = $1",
-                    account.platform.table_name()
-                ),
-                &[&account.id],
-            )
-            .await
-            .map(|row| row.get(REVOKED_COLUMN))?;
-        Ok(status)
     }
 
     pub async fn add_verification(&self, entry: VerificationsEntry) -> DbResult<()> {

@@ -1,7 +1,10 @@
-import { CredentialProof, detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
+import {
+  CredentialProof,
+  detectConcordiumProvider,
+} from '@concordium/browser-wallet-api-helpers';
 import TelegramLoginButton, { TelegramUser } from 'react-telegram-login';
 import '../scss/Issuer.scss';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import { ListGroup, ListGroupItem, ListGroupItemHeading } from 'reactstrap';
 import { nanoid } from 'nanoid';
@@ -27,22 +30,33 @@ interface DiscordWindowMessage {
 // This is set when Discord verification is started and read upon a message back
 let oAuth2State: string | undefined = undefined;
 
-function Issuer() {
-  const query = useMemo(() => new URLSearchParams(window.location.search), []);
-  const telegram = query.get(Platform.Telegram);
-  const discord = query.get(Platform.Discord);
-  const [telegramDone, setTelegramDone] = useState(telegram === 'true');
-  const [discordDone, setDiscordDone] = useState(discord === 'true');
+interface IssuerProps {
+  telegramIssued: boolean;
+  setTelegramIssued: () => void;
+  discordIssued: boolean;
+  setDiscordIssued: () => void;
+}
+
+function Issuer({
+  telegramIssued,
+  setTelegramIssued,
+  discordIssued,
+  setDiscordIssued,
+}: IssuerProps) {
   const [telegramPending, setTelegramPending] = useState(false);
   const [discordPending, setDiscordPending] = useState(false);
 
   // When Discord authentication happens, a window is opened
-  // that sends a 'message' event back with the user id
+  // that sends a 'message' event back with the user id and username
   useEffect(() => {
     const onDiscordWindowMessage = async (event: MessageEvent) => {
       if (event.origin !== config.issuers.discord.url) return;
 
-      const { userId: id, username, state } = event.data as DiscordWindowMessage;
+      const {
+        userId: id,
+        username,
+        state,
+      } = event.data as DiscordWindowMessage;
       // Prevents CSRF attacks,
       // see https://auth0.com/docs/secure/attack-protection/state-parameters
       if (state !== oAuth2State)
@@ -51,29 +65,30 @@ function Issuer() {
       await requestCredential(
         {
           platform: Platform.Discord,
-          user: { id, username }
+          user: { id, username },
         },
         () => setDiscordPending(true),
       );
 
-      const url = new URL(window.location.href);
-      url.searchParams.set(Platform.Discord, 'true');
-      window.history.replaceState(null, '', url);
-      setDiscordDone(true);
+      setDiscordIssued();
     };
 
     const eventHandler = (event: MessageEvent) => {
-      onDiscordWindowMessage(event).catch(console.error);
+      onDiscordWindowMessage(event).catch((error) => {
+        alert(`An error occured: ${(error as Error).message ?? error}`);
+      });
     };
 
     addEventListener('message', eventHandler);
     return () => removeEventListener('message', eventHandler);
-  }, []);
+  }, [setDiscordIssued]);
 
   const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
     try {
       if (!username) {
-        throw new Error('A telegram username must be available to create a credential.');
+        throw new Error(
+          'A telegram username must be available to create a credential.',
+        );
       }
 
       await requestCredential(
@@ -88,17 +103,14 @@ function Issuer() {
       return;
     }
 
-    setTelegramDone(true);
-    const url = new URL(window.location.href);
-    url.searchParams.set(Platform.Telegram, 'true');
-    window.history.replaceState(null, '', url);
+    setTelegramIssued();
   };
 
   return (
     <ListGroup>
       <ListGroupItem>
         <ListGroupItemHeading>Telegram</ListGroupItemHeading>
-        {telegramDone ? (
+        {telegramIssued ? (
           <span className="text-success">Credential issued.</span>
         ) : telegramPending ? (
           <span className="text-info">Transaction sent, please wait...</span>
@@ -112,7 +124,7 @@ function Issuer() {
       </ListGroupItem>
       <ListGroupItem>
         <ListGroupItemHeading>Discord</ListGroupItemHeading>
-        {discordDone ? (
+        {discordIssued ? (
           <span className="text-success">Credential issued.</span>
         ) : discordPending ? (
           <span className="text-info">Transaction sent, please wait...</span>
@@ -133,7 +145,7 @@ function Issuer() {
 interface IssuerResponse {
   txHash: string;
   credential: {
-    proof: CredentialProof,
+    proof: CredentialProof;
     randomness: Record<string, string>;
   };
 }
