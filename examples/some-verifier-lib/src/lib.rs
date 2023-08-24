@@ -38,6 +38,12 @@ pub struct FullName {
     pub last_name: String,
 }
 
+impl Display for FullName {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{} {}", self.first_name, self.last_name)
+    }
+}
+
 /// A "verification" of a user. This type includes all confirmed
 /// accounts of a user and, optinally, their full name.
 #[derive(Serialize, Deserialize, Debug, Default)]

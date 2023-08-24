@@ -4,7 +4,7 @@ import {
 } from '@concordium/browser-wallet-api-helpers';
 import TelegramLoginButton, { TelegramUser } from 'react-telegram-login';
 import '../scss/Issuer.scss';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import { ListGroup, ListGroupItem, ListGroupItemHeading } from 'reactstrap';
 import { nanoid } from 'nanoid';
@@ -30,12 +30,17 @@ interface DiscordWindowMessage {
 // This is set when Discord verification is started and read upon a message back
 let oAuth2State: string | undefined = undefined;
 
-function Issuer() {
-  const query = useMemo(() => new URLSearchParams(window.location.search), []);
-  const telegram = query.get(Platform.Telegram);
-  const discord = query.get(Platform.Discord);
-  const [telegramDone, setTelegramDone] = useState(telegram === 'true');
-  const [discordDone, setDiscordDone] = useState(discord === 'true');
+function Issuer({
+  telegramIssued,
+  setTelegramIssued,
+  discordIssued,
+  setDiscordIssued,
+}: {
+  telegramIssued: boolean;
+  setTelegramIssued: () => void;
+  discordIssued: boolean;
+  setDiscordIssued: () => void;
+}) {
   const [telegramPending, setTelegramPending] = useState(false);
   const [discordPending, setDiscordPending] = useState(false);
 
@@ -66,7 +71,7 @@ function Issuer() {
       const url = new URL(window.location.href);
       url.searchParams.set(Platform.Discord, 'true');
       window.history.replaceState(null, '', url);
-      setDiscordDone(true);
+      setDiscordIssued();
     };
 
     const eventHandler = (event: MessageEvent) => {
@@ -77,7 +82,7 @@ function Issuer() {
 
     addEventListener('message', eventHandler);
     return () => removeEventListener('message', eventHandler);
-  }, []);
+  }, [setDiscordIssued]);
 
   const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
     try {
@@ -99,7 +104,7 @@ function Issuer() {
       return;
     }
 
-    setTelegramDone(true);
+    setTelegramIssued();
     const url = new URL(window.location.href);
     url.searchParams.set(Platform.Telegram, 'true');
     window.history.replaceState(null, '', url);
@@ -109,7 +114,7 @@ function Issuer() {
     <ListGroup>
       <ListGroupItem>
         <ListGroupItemHeading>Telegram</ListGroupItemHeading>
-        {telegramDone ? (
+        {telegramIssued ? (
           <span className="text-success">Credential issued.</span>
         ) : telegramPending ? (
           <span className="text-info">Transaction sent, please wait...</span>
@@ -123,7 +128,7 @@ function Issuer() {
       </ListGroupItem>
       <ListGroupItem>
         <ListGroupItemHeading>Discord</ListGroupItemHeading>
-        {discordDone ? (
+        {discordIssued ? (
           <span className="text-success">Credential issued.</span>
         ) : discordPending ? (
           <span className="text-info">Transaction sent, please wait...</span>

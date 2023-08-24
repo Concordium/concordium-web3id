@@ -168,8 +168,7 @@ async fn check_user(
             } else {
                 let mut reply = format!("{name} is verified with Concordia.");
                 if let Some(full_name) = verification.full_name {
-                    reply.push_str("\n- Real name: ");
-                    reply.push_str(&format!("{} {}", full_name.first_name, full_name.last_name));
+                    reply.push_str(&format!("\n- Real name: {full_name}"));
                 }
                 for account in accounts
                     .into_iter()

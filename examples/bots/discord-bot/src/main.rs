@@ -6,7 +6,7 @@ use clap::Parser;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use poise::FrameworkError;
 use reqwest::Url;
-use some_verifier_lib::{FullName, Platform, Verification};
+use some_verifier_lib::{Platform, Verification};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -94,8 +94,7 @@ async fn check(
     } else {
         let mut message = format!("{mention} is verified with Concordia.");
         if let Some(full_name) = verification.full_name {
-            message.push_str("\n- Real name: ");
-            message.push_str(&format!("{} {}", full_name.first_name, full_name.last_name));
+            message.push_str(&format!("\n- Real name: {full_name}"));
         }
         for account in accounts
             .into_iter()
