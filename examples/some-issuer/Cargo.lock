@@ -613,7 +613,7 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "concordium-contracts-common"
-version = "7.1.0"
+version = "8.0.0"
 dependencies = [
  "base64 0.21.2",
  "bs58",
@@ -633,7 +633,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-contracts-common-derive"
-version = "3.0.0"
+version = "4.0.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -671,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-smart-contract-engine"
-version = "2.0.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -694,7 +694,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-wasm"
-version = "2.0.0"
+version = "3.0.0"
 dependencies = [
  "anyhow",
  "concordium-contracts-common",
@@ -705,7 +705,7 @@ dependencies = [
 
 [[package]]
 name = "concordium_base"
-version = "2.0.0"
+version = "3.0.0"
 dependencies = [
  "aes",
  "anyhow",
