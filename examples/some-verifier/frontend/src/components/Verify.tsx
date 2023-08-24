@@ -69,12 +69,12 @@ function Step({
   );
 }
 
-type PlatformOptionProps = {
+interface PlatformOptionProps {
   children: React.ReactNode;
   id: string;
   checked: boolean;
   setChecked: (value: boolean) => void;
-};
+}
 
 function PlatformOption({
   children,

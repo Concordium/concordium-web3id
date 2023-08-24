@@ -8,7 +8,6 @@ import {
   Row,
 } from 'reactstrap';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
-import _config from '../../config.json';
 import Verify from './Verify';
 
 function App() {

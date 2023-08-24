@@ -64,7 +64,7 @@ export default function RemoveVerification() {
               To remove your concordia verification, you must first prove ownership of an account included in the verification.
             </CardBody>
           </Card>
-          <Form onSubmit={submit} onChange={() => setError(undefined)} className="pt-3">
+          <Form onSubmit={(e) => { void submit(e); }} onChange={() => setError(undefined)} className="pt-3">
             <Row>
               <Col md={12}>
                 <FormGroup>
