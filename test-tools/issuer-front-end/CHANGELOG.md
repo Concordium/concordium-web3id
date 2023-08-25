@@ -1,5 +1,11 @@
 ## Unreleased changes
 
+## 1.0.3
+
+- Add test case to update `issuerMetadata`
+- Add test case to update `credentialMetadata`
+- Add test case to update `credentialSchema`
+
 ## 1.0.2
 
 - Use `EXAMPLE_CREDENTIAL_SCHEMA` when associated input field is left empty in step 1.
