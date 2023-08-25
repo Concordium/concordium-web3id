@@ -165,9 +165,10 @@ async fn check_user(
         Ok(verification) => {
             // The message will be formatted with MarkdownV2 (https://core.telegram.org/bots/api#markdownv2-style)
             // Therefore, we need to escape all reserved characters and arbitrary strings
-            let name = target_user
-                .mention()
-                .unwrap_or(markdown::escape(&target_user.full_name()));
+            let mut name = markdown::user_mention_or_link(target_user);
+            if name.starts_with('@') {
+                name = markdown::escape(&name);
+            }
             let accounts = verification.accounts;
 
             let telegram_status = accounts
