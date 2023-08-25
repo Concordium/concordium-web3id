@@ -103,7 +103,7 @@ export default function Main(props: WalletConnectionProps) {
 
     const [auxiliaryData, setAuxiliaryData] = useState<number[]>([]);
 
-    const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState(0);
+    const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState<number | undefined>(undefined);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
 
@@ -298,9 +298,8 @@ export default function Main(props: WalletConnectionProps) {
     useEffect(() => {
         if (connection && credentialRegistryContratIndex) {
             const interval = setInterval(async () => {
-                console.log('refreshing2');
-                if (credentialRegistryContratIndex !== 0) {
-                    registryMetadata(grpcClient, Number(credentialRegistryContratIndex))
+                if (credentialRegistryContratIndex !== undefined) {
+                    registryMetadata(grpcClient, credentialRegistryContratIndex)
                         .then((value) => {
                             setSmartContractState(JSON.parse(value));
                             setViewError('');
@@ -320,7 +319,6 @@ export default function Main(props: WalletConnectionProps) {
     useEffect(() => {
         if (connection && account) {
             const interval = setInterval(() => {
-                console.log('refreshing');
                 grpcClient
                     ?.getAccountInfo(new AccountAddress(account))
                     .then((value) => {
@@ -610,7 +608,7 @@ export default function Main(props: WalletConnectionProps) {
                                         changeCredentialRegistryContratIndexHandler(grpcClient, event);
                                     }}
                                 />
-                                {credentialRegistryContratIndex !== 0 && (
+                                {credentialRegistryContratIndex !== undefined && (
                                     <div className="actionResultBox">
                                         <div> You will be using this registry contract index: </div>
                                         <br />
@@ -745,7 +743,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
                                         setParsingError('');
 
-                                        if (credentialRegistryContratIndex === 0) {
+                                        if (credentialRegistryContratIndex === undefined) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -1235,7 +1233,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
                                         setParsingError('');
 
-                                        if (credentialRegistryContratIndex === 0) {
+                                        if (credentialRegistryContratIndex === undefined) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -1340,7 +1338,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setTxHash('');
                                         setTransactionError('');
 
-                                        if (credentialRegistryContratIndex === 0) {
+                                        if (credentialRegistryContratIndex === undefined) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -1501,7 +1499,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
                                         setParsingError('');
 
-                                        if (credentialRegistryContratIndex === 0) {
+                                        if (credentialRegistryContratIndex === undefined) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }

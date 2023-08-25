@@ -10,8 +10,12 @@ import {
 
 export async function registryMetadata(
     grpcClient: ConcordiumGRPCClient | undefined,
-    credentialRegistryContratIndex: number
+    credentialRegistryContratIndex: number | undefined
 ) {
+    if (credentialRegistryContratIndex === undefined) {
+        throw new Error(`Set Smart Contract Index in Step 3`);
+    }
+
     const res = await grpcClient?.invokeContract({
         method: `${CONTRACT_REGISTRY_NAME}.registryMetadata`,
         contract: { index: BigInt(credentialRegistryContratIndex), subindex: CONTRACT_SUB_INDEX },
@@ -44,14 +48,14 @@ export async function registryMetadata(
 export async function getCredentialEntry(
     grpcClient: ConcordiumGRPCClient | undefined,
     publicKey: string,
-    credentialRegistryContratIndex: number
+    credentialRegistryContratIndex: number | undefined
 ) {
     if (publicKey.length !== 64) {
         throw new Error(`PublicKey needs a length of 64`);
     }
 
-    if (credentialRegistryContratIndex === 0) {
-        throw new Error(`Set credentialRegistryContratIndex`);
+    if (credentialRegistryContratIndex === undefined) {
+        throw new Error(`Set Smart Contract Index in Step 3`);
     }
 
     let serializedPublicKey;

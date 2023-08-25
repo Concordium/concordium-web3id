@@ -171,7 +171,7 @@ function Statement({ inner, new_statement }: { inner: TopLevelStatements; new_st
         return (
             <>
                 {' '}
-                {statements} <div className="alert alert-warning"> New outer statement started </div>{' '}
+                {statements} <div className="alert alert-warning"> New credential statement started </div>{' '}
             </>
         );
     } else {
@@ -1039,14 +1039,14 @@ export default function ProofExplorer() {
                                 type="button"
                                 className="btn btn-primary me-1 mt-1"
                             >
-                                {'Start a new outer statement'}
+                                {'Start a new credential statement'}
                             </button>{' '}
                         </div>
 
                         <div className="col-sm">
                             {' '}
                             <button
-                                title="Delete the last outer statement."
+                                title="Delete the last credential statement."
                                 onClick={() =>
                                     setStatement((oldStatement) => {
                                         if (oldStatement.length == 0) {
@@ -1059,7 +1059,7 @@ export default function ProofExplorer() {
                                 type="button"
                                 className="btn btn-primary mt-1"
                             >
-                                {'Clear last outer statement'}
+                                {'Clear last credential statement'}
                             </button>{' '}
                         </div>
                     </div>

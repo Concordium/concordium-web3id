@@ -77,9 +77,13 @@ export async function createNewIssuer(
 export async function updateCredentialSchema(
     connection: WalletConnection,
     account: string,
-    credentialRegistryContratIndex: number,
+    credentialRegistryContratIndex: number | undefined,
     credentialSchema: string
 ) {
+    if (credentialRegistryContratIndex === undefined) {
+        throw new Error(`Set credentialRegistryContratIndex`);
+    }
+
     if (credentialSchema === '') {
         throw new Error(`Set credentialSchema`);
     }
@@ -115,10 +119,14 @@ export async function updateCredentialSchema(
 export async function updateCredentialMetadata(
     connection: WalletConnection,
     account: string,
-    credentialRegistryContratIndex: number,
+    credentialRegistryContratIndex: number | undefined,
     credentialMetadata: string,
     credentialPublicKey: string
 ) {
+    if (credentialRegistryContratIndex === undefined) {
+        throw new Error(`Set credentialRegistryContratIndex`);
+    }
+
     if (credentialPublicKey === '') {
         throw new Error(`Set credentialPublicKey`);
     }
@@ -165,9 +173,13 @@ export async function updateCredentialMetadata(
 export async function updateIssuerMetadata(
     connection: WalletConnection,
     account: string,
-    credentialRegistryContratIndex: number,
+    credentialRegistryContratIndex: number | undefined,
     issuerMetaData: string
 ) {
+    if (credentialRegistryContratIndex === undefined) {
+        throw new Error(`Set credentialRegistryContratIndex`);
+    }
+
     if (issuerMetaData === '') {
         throw new Error(`Set issuerMetaData`);
     }
@@ -202,7 +214,7 @@ export async function revokeCredential(
     connection: WalletConnection,
     account: string,
     credentialPublicKey: string,
-    credentialRegistryContratIndex: number,
+    credentialRegistryContratIndex: number | undefined,
     auxiliaryData: number[],
     reason: string
 ) {
@@ -214,7 +226,7 @@ export async function revokeCredential(
         throw new Error(`credentialPublicKey needs a length of 64`);
     }
 
-    if (credentialRegistryContratIndex === 0) {
+    if (credentialRegistryContratIndex === undefined) {
         throw new Error(`Set credentialRegistryContratIndex`);
     }
 
@@ -256,7 +268,7 @@ export async function issueCredential(
     validUntilDate: string,
     credentialMetaDataURL: string,
     isHolderRevocable: boolean,
-    credentialRegistryContratIndex: number,
+    credentialRegistryContratIndex: number | undefined,
     auxiliaryData: number[]
 ) {
     if (credentialPublicKey === '') {
@@ -286,7 +298,7 @@ export async function issueCredential(
         throw new Error(`Set credentialMetaDataURL`);
     }
 
-    if (credentialRegistryContratIndex === 0) {
+    if (credentialRegistryContratIndex === undefined) {
         throw new Error(`Set credentialRegistryContratIndex`);
     }
 
