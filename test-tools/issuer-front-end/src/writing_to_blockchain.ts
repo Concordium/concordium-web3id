@@ -21,7 +21,7 @@ export async function createNewIssuer(
     account: string,
     issuerMetaData: string,
     issuerKey: string,
-    schemaCredential: object,
+    credentialSchema: object,
     revocationKeys: string,
     credentialType: string
 ) {
@@ -48,7 +48,7 @@ export async function createNewIssuer(
             credential_type: credentialType,
         },
         issuer_key: issuerKey,
-        schema: schemaCredential,
+        schema: credentialSchema,
         issuer_account: {
             Some: [account],
         },
@@ -70,6 +70,80 @@ export async function createNewIssuer(
             param: toBuffer(''),
             maxContractExecutionEnergy: 30000n,
         } as InitContractPayload,
+        schema
+    );
+}
+
+export async function updateCredentialSchema(
+    connection: WalletConnection,
+    account: string,
+    credentialRegistryContratIndex: number,
+    credentialSchema: string
+) {
+    if (credentialSchema === '') {
+        throw new Error(`Set credentialSchema`);
+    }
+
+    const schema = {
+        parameters: {
+            schema_ref: {
+                hash: {
+                    None: [],
+                },
+                url: credentialSchema,
+            },
+        },
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(0)),
+            address: {
+                index: BigInt(credentialRegistryContratIndex),
+                subindex: CONTRACT_SUB_INDEX,
+            },
+            receiveName: 'credential_registry.updateCredentialSchema',
+            maxContractExecutionEnergy: 30000n,
+        } as UpdateContractPayload,
+        schema
+    );
+}
+
+export async function updateIssuerMetadata(
+    connection: WalletConnection,
+    account: string,
+    credentialRegistryContratIndex: number,
+    issuerMetaData: string
+) {
+    if (issuerMetaData === '') {
+        throw new Error(`Set issuerMetaData`);
+    }
+
+    const schema = {
+        parameters: {
+            hash: {
+                None: [],
+            },
+            url: issuerMetaData,
+        },
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(0)),
+            address: {
+                index: BigInt(credentialRegistryContratIndex),
+                subindex: CONTRACT_SUB_INDEX,
+            },
+            receiveName: 'credential_registry.updateIssuerMetadata',
+            maxContractExecutionEnergy: 30000n,
+        } as UpdateContractPayload,
         schema
     );
 }

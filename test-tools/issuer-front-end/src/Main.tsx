@@ -10,7 +10,13 @@ import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { getCredentialEntry, registryMetadata } from './reading_from_blockchain';
-import { issueCredential, createNewIssuer, revokeCredential } from './writing_to_blockchain';
+import {
+    issueCredential,
+    createNewIssuer,
+    revokeCredential,
+    updateIssuerMetadata,
+    updateCredentialSchema,
+} from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
 import {
@@ -121,6 +127,10 @@ export default function Main(props: WalletConnectionProps) {
     const [browserPublicKey, setBrowserPublicKey] = useState('');
 
     const [issuerMetaData, setIssuerMetaData] = useState(EXAMPLE_ISSUER_METADATA);
+    const [updatedIssuerMetaData, setUpdatedIssuerMetaData] = useState('');
+    const [updatedCredentialSchema, setUpdatedCredentialSchema] = useState('');
+
+    const [smartContractState, setSmartContractState] = useState('');
 
     const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(EXAMPLE_CREDENTIAL_METADATA);
     const [credentialType, setCredentialType] = useState('myCredentialType');
@@ -161,6 +171,16 @@ export default function Main(props: WalletConnectionProps) {
     const changeIssuerMetaDataURLHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setIssuerMetaData(target.value);
+    }, []);
+
+    const changeUpdatedIssuerMetaDataURLHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setUpdatedIssuerMetaData(target.value);
+    }, []);
+
+    const changeUpdatedCredentialSchemaURLHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setUpdatedCredentialSchema(target.value);
     }, []);
 
     const changeAuxiliaryDataHandler = useCallback((event: ChangeEvent) => {
@@ -227,6 +247,8 @@ export default function Main(props: WalletConnectionProps) {
 
             setSchemaCredential(registryMetadataReturnValue.credential_schema);
 
+            setSmartContractState(registryMetadataReturnValue);
+
             const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
 
             fetch(schemaURL)
@@ -263,6 +285,28 @@ export default function Main(props: WalletConnectionProps) {
         },
         []
     );
+
+    // Refresh smartContractState periodically.
+    // eslint-disable-next-line consistent-return
+    useEffect(() => {
+        if (connection && credentialRegistryContratIndex) {
+            const interval = setInterval(async () => {
+                console.log('refreshing2');
+                if (credentialRegistryContratIndex !== 0) {
+                    registryMetadata(grpcClient, Number(credentialRegistryContratIndex))
+                        .then((value) => {
+                            setSmartContractState(JSON.parse(value));
+                            setViewError('');
+                        })
+                        .catch((e) => {
+                            setSmartContractState('');
+                            setViewError((e as Error).message);
+                        });
+                }
+            }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
+        }
+    }, [connection, credentialRegistryContratIndex]);
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -436,7 +480,7 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changeCredentialTypeHandler}
                                 />
                                 <br />
-                                Add `Schema`:
+                                Add `CredentialSchema`:
                                 <br />
                                 <input
                                     className="inputFieldStyle"
@@ -870,6 +914,143 @@ export default function Main(props: WalletConnectionProps) {
                                     </div>
                                 )}
                             </TestBox>
+                            <TestBox
+                                header="Step 6: Revoke credential by the issuer"
+                                note="Expected result after pressing the button: The
+                                transaction hash or an error message should appear in the right column."
+                            >
+                                Credential Public Key:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="publicKey"
+                                    type="text"
+                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    onChange={changePublicKeyHandler}
+                                />
+                                <br />
+                                Reason:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="reason"
+                                    type="text"
+                                    placeholder="ThisShouldBeRevoked"
+                                    onChange={changeReasonRevokeHandler}
+                                />
+                                <br />
+                                Add `AuxiliaryData`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="auxiliaryData"
+                                    type="text"
+                                    placeholder="[23,2,1,5,3,2]"
+                                    onChange={changeAuxiliaryDataHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        const tx = revokeCredential(
+                                            connection,
+                                            account,
+                                            publicKey,
+                                            credentialRegistryContratIndex,
+                                            auxiliaryData,
+                                            reason
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Revoke Credential
+                                </button>
+                            </TestBox>
+                            <br />
+                            <br />
+                            <TestBox
+                                header="Step 7: Update Issuer Metadata"
+                                note="Expected result after pressing the button: The
+                                transaction hash or an error message should appear in the right column."
+                            >
+                                Add `IssuerMetadata`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="issuerMetaDataURL"
+                                    type="text"
+                                    placeholder={EXAMPLE_ISSUER_METADATA}
+                                    onChange={changeUpdatedIssuerMetaDataURLHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        const tx = updateIssuerMetadata(
+                                            connection,
+                                            account,
+                                            credentialRegistryContratIndex,
+                                            updatedIssuerMetaData
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Update Issuer Metadata
+                                </button>
+                            </TestBox>
+                            <br />
+                            <br />
+                            <TestBox
+                                header="Step 8: Update Credential Schema"
+                                note="Expected result after pressing the button: The
+                                transaction hash or an error message should appear in the right column."
+                            >
+                                {' '}
+                                Add `CredentialSchema`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialSchemaURL"
+                                    type="text"
+                                    placeholder={EXAMPLE_CREDENTIAL_SCHEMA}
+                                    onChange={changeUpdatedCredentialSchemaURLHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        const tx = updateCredentialSchema(
+                                            connection,
+                                            account,
+                                            credentialRegistryContratIndex,
+                                            updatedCredentialSchema
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Update Credential Schema
+                                </button>
+                            </TestBox>
+                            <br />
+                            <br />
                             <TestBox
                                 header="Step 6: Revoke credential by the issuer"
                                 note="Expected result after pressing the button: The
@@ -1502,6 +1683,12 @@ export default function Main(props: WalletConnectionProps) {
                                     {txHash}
                                 </a>
                             )}
+                            <br />
+                            <br />
+                            <br />
+                            <div className="label">Smart contract state:</div>
+                            <br />
+                            <pre className="largeText">{JSON.stringify(smartContractState, null, '\t')}</pre>
                         </div>
                     </div>
                 </div>
