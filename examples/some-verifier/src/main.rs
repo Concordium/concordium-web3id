@@ -189,6 +189,7 @@ async fn main() -> anyhow::Result<()> {
     let router = Router::new()
         .nest_service("/", serve_dir_service)
         .route("/verifications", post(add_verification))
+        .route("/verifications/remove", post(remove_verification))
         .route("/verifications/:platform/:id", get(get_verification))
         .with_state(state);
 
@@ -216,87 +217,27 @@ enum Error {
     InvalidChallenge,
     #[error("Expected at least 2 statements, got {0}.")]
     NotEnoughStatements(usize),
+    #[error("Expected exactly 1 statement, got {0}.")]
+    NotSingleStatement(usize),
     #[error("A statement was invalid.")]
     InvalidStatement,
     #[error("A statement was from the wrong issuer.")]
     InvalidIssuer,
-    #[error("The database returned an error.")]
+    #[error("The database returned an error: {0}")]
     DatabaseError(#[from] tokio_postgres::Error),
 }
 
 impl axum::response::IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
+        tracing::warn!("{}", self);
+
         let r = match self {
-            Error::InvalidRequest(e) => {
-                tracing::warn!("Invalid request. Failed to parse presentation or timestamp: {e}");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json(format!("Invalid presentation or timestamp format: {e}")),
-                )
-            }
-            Error::InvalidTimestamp => {
-                tracing::warn!("Timestamp did not match the current time");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json("Timestamp did not match the current time".into()),
-                )
-            }
-            Error::CredentialLookup(e) => {
-                tracing::warn!("One or more credentials were not present: {e}");
-                (
-                    StatusCode::NOT_FOUND,
-                    Json(format!("One or more credentials were not found: {e}")),
-                )
-            }
-            Error::InactiveCredentials => {
-                tracing::warn!("One or more credentials are not active at present.");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json("One or more credentials are not active at present.".into()),
-                )
-            }
-            Error::InvalidProof(e) => {
-                tracing::warn!("Invalid cryptographic proofs: {e}");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json(format!("Invalid cryptographic proofs: {e}.")),
-                )
-            }
-            Error::InvalidChallenge => {
-                tracing::warn!("Challenge did not match timestamp.");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json("Challenge did not match timestamp.".into()),
-                )
-            }
-            Error::NotEnoughStatements(num) => {
-                tracing::warn!("Expected at least 2 statements, got {num}.");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json(format!("Expected at least 2 statements, got {num}.")),
-                )
-            }
-            Error::InvalidStatement => {
-                tracing::warn!("A statement was invalid.");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json("A statement was invalid.".into()),
-                )
-            }
-            Error::InvalidIssuer => {
-                tracing::warn!("A statement was from the wrong issuer.");
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json("A statement was from the wrong issuer.".into()),
-                )
-            }
-            Error::DatabaseError(e) => {
-                tracing::warn!("The database returned an error: {e}");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(format!("The database returned an error: {e}")),
-                )
-            }
+            Error::CredentialLookup(e) => (
+                StatusCode::NOT_FOUND,
+                Json(format!("One or more credentials were not found: {e}")),
+            ),
+            Error::DatabaseError(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(format!("{e}"))),
+            error => (StatusCode::BAD_REQUEST, Json(format!("{}", error))),
         };
         r.into_response()
     }
@@ -315,9 +256,103 @@ async fn add_verification(
 ) -> Result<StatusCode, Error> {
     tracing::info!("Request to verify.");
 
-    let Json(Request { proof, timestamp }) = request?;
+    let request = request?;
+    verify_request(&mut state, &request).await?;
 
-    let delta = Utc::now().signed_duration_since(timestamp);
+    let Json(Request { proof, .. }) = request;
+
+    // Check the statements and add them to the database
+    let num_statements = proof.verifiable_credential.len();
+    if num_statements < 2 {
+        return Err(Error::NotEnoughStatements(num_statements));
+    }
+
+    let mut entry = VerificationsEntry::from_presentation(&proof);
+    for proof in &proof.verifiable_credential {
+        proof_to_verifications_entry(state.clone(), proof, &mut entry)?;
+    }
+
+    match state.database.add_verification(entry).await {
+        Ok(()) => {}
+        // TODO: duplicate/overlapping entries
+        Err(err) => {
+            tracing::warn!("Error inserting entries: {err}");
+            return Err(Error::DatabaseError(err));
+        }
+    }
+
+    tracing::info!("Successfully verified.");
+
+    Ok(StatusCode::CREATED)
+}
+
+#[tracing::instrument(level = "info", skip_all)]
+async fn remove_verification(
+    State(mut state): State<AppState>,
+    request: Result<Json<Request>, JsonRejection>,
+) -> Result<StatusCode, Error> {
+    tracing::info!("Request to remove verification.");
+
+    let request = request?;
+    verify_request(&mut state, &request).await?;
+
+    let Json(Request { proof, .. }) = request;
+
+    // Check the statements and add them to the database
+    let num_creds = proof.verifiable_credential.len();
+    if num_creds != 1 {
+        return Err(Error::NotSingleStatement(num_creds));
+    }
+
+    let credential = proof.verifiable_credential.get(0).unwrap(); // We know we have exactly 1 credential
+    let (id, platform) = match credential {
+        CredentialProof::Web3Id {
+            network,
+            contract,
+            proofs,
+            ..
+        } => {
+            if network != &state.network {
+                return Err(Error::InvalidIssuer);
+            }
+            let platform = match contract {
+                addr if addr == &state.telegram_registry => Platform::Telegram,
+                addr if addr == &state.discord_registry => Platform::Discord,
+                _ => return Err(Error::InvalidIssuer),
+            };
+
+            let id = match &proofs[..] {
+                [(
+                    _,
+                    AtomicProof::RevealAttribute {
+                        attribute: Web3IdAttribute::String(AttributeKind(id)),
+                        ..
+                    },
+                )] => id.clone(),
+                _ => {
+                    return Err(Error::InvalidStatement);
+                }
+            };
+
+            (id, platform)
+        }
+        _ => return Err(Error::InvalidStatement),
+    };
+
+    if let Err(err) = state.database.remove_verirication(&id, platform).await {
+        tracing::warn!("Error inserting entries: {err}");
+        return Err(Error::DatabaseError(err));
+    }
+
+    tracing::info!("Successfully removed verification.");
+
+    Ok(StatusCode::OK)
+}
+
+async fn verify_request(state: &mut AppState, request: &Json<Request>) -> Result<(), Error> {
+    let Json(Request { proof, timestamp }) = request;
+
+    let delta = Utc::now().signed_duration_since(*timestamp);
     if delta.num_hours() > 24 {
         return Err(Error::InvalidTimestamp);
     }
@@ -354,29 +389,7 @@ async fn add_verification(
         return Err(Error::InvalidChallenge);
     }
 
-    // Finally, check the statements and add them to the database
-    let num_statements = request.credential_statements.len();
-    if num_statements < 2 {
-        return Err(Error::NotEnoughStatements(num_statements));
-    }
-
-    let mut entry = VerificationsEntry::from_presentation(&proof);
-    for proof in &proof.verifiable_credential {
-        proof_to_verifications_entry(state.clone(), proof, &mut entry)?;
-    }
-
-    match state.database.add_verification(entry).await {
-        Ok(()) => {}
-        // TODO: duplicate/overlapping entries
-        Err(err) => {
-            tracing::warn!("Error inserting entries: {err}");
-            return Err(Error::DatabaseError(err));
-        }
-    }
-
-    tracing::info!("Successfully verified.");
-
-    Ok(StatusCode::CREATED)
+    Ok(())
 }
 
 fn proof_to_verifications_entry(

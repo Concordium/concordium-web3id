@@ -244,6 +244,40 @@ impl Database {
         transaction.execute(&statement, &values).await?;
         transaction.commit().await
     }
+
+    pub async fn remove_verirication(&self, id: &str, platform: Platform) -> DbResult<()> {
+        let mut client = self.client.write().await;
+        let transaction = client.transaction().await?;
+
+        // First, delete any platform which is not the platform the provided ID is for.
+        for p in Platform::SUPPORTED_PLATFORMS.into_iter() {
+            if p != platform {
+                let statement = format!(
+                    "DELETE FROM {} WHERE {ID_COLUMN} IN (SELECT {} FROM {VERIFICATIONS_TABLE} WHERE {} = $1)",
+                    p.table_name(),
+                    p.column_name(),
+                    platform.column_name()
+                );
+                transaction.execute(&statement, &[&id]).await?;
+            }
+        }
+
+        // Then delete the verification row.
+        let statement = format!(
+            "DELETE FROM {VERIFICATIONS_TABLE} WHERE {} = $1",
+            platform.column_name()
+        );
+        transaction.execute(&statement, &[&id]).await?; // TODO: verify that this works...
+
+        // Finally, delete the row for the selected platform.
+        let statement = format!(
+            "DELETE FROM {} WHERE {ID_COLUMN} = $1",
+            platform.table_name()
+        );
+        transaction.execute(&statement, &[&id]).await?;
+
+        transaction.commit().await
+    }
 }
 
 async fn add_platform_entry(
