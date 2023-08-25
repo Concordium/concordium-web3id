@@ -21,7 +21,7 @@ export async function createNewIssuer(
     account: string,
     issuerMetaData: string,
     issuerKey: string,
-    schemaCredential: object,
+    credentialSchema: object,
     revocationKeys: string,
     credentialType: string
 ) {
@@ -48,7 +48,7 @@ export async function createNewIssuer(
             credential_type: credentialType,
         },
         issuer_key: issuerKey,
-        schema: schemaCredential,
+        schema: credentialSchema,
         issuer_account: {
             Some: [account],
         },
@@ -74,11 +74,147 @@ export async function createNewIssuer(
     );
 }
 
+export async function updateCredentialSchema(
+    connection: WalletConnection,
+    account: string,
+    credentialRegistryContratIndex: number | undefined,
+    credentialSchema: string
+) {
+    if (credentialRegistryContratIndex === undefined) {
+        throw new Error(`Set credentialRegistryContratIndex`);
+    }
+
+    if (credentialSchema === '') {
+        throw new Error(`Set credentialSchema`);
+    }
+
+    const schema = {
+        parameters: {
+            schema_ref: {
+                hash: {
+                    None: [],
+                },
+                url: credentialSchema,
+            },
+        },
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(0)),
+            address: {
+                index: BigInt(credentialRegistryContratIndex),
+                subindex: CONTRACT_SUB_INDEX,
+            },
+            receiveName: 'credential_registry.updateCredentialSchema',
+            maxContractExecutionEnergy: 30000n,
+        } as UpdateContractPayload,
+        schema
+    );
+}
+
+export async function updateCredentialMetadata(
+    connection: WalletConnection,
+    account: string,
+    credentialRegistryContratIndex: number | undefined,
+    credentialMetadata: string,
+    credentialPublicKey: string
+) {
+    if (credentialRegistryContratIndex === undefined) {
+        throw new Error(`Set credentialRegistryContratIndex`);
+    }
+
+    if (credentialPublicKey === '') {
+        throw new Error(`Set credentialPublicKey`);
+    }
+
+    if (credentialPublicKey.length !== 64) {
+        throw new Error(`credentialPublicKey needs a length of 64`);
+    }
+
+    if (credentialMetadata === '') {
+        throw new Error(`Set credentialMetadata`);
+    }
+
+    const schema = {
+        parameters: Array.from([
+            {
+                credential_id: credentialPublicKey,
+                metadata_url: {
+                    hash: {
+                        None: [],
+                    },
+                    url: credentialMetadata,
+                },
+            },
+        ]),
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(0)),
+            address: {
+                index: BigInt(credentialRegistryContratIndex),
+                subindex: CONTRACT_SUB_INDEX,
+            },
+            receiveName: 'credential_registry.updateCredentialMetadata',
+            maxContractExecutionEnergy: 30000n,
+        } as UpdateContractPayload,
+        schema
+    );
+}
+
+export async function updateIssuerMetadata(
+    connection: WalletConnection,
+    account: string,
+    credentialRegistryContratIndex: number | undefined,
+    issuerMetaData: string
+) {
+    if (credentialRegistryContratIndex === undefined) {
+        throw new Error(`Set credentialRegistryContratIndex`);
+    }
+
+    if (issuerMetaData === '') {
+        throw new Error(`Set issuerMetaData`);
+    }
+
+    const schema = {
+        parameters: {
+            hash: {
+                None: [],
+            },
+            url: issuerMetaData,
+        },
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(0)),
+            address: {
+                index: BigInt(credentialRegistryContratIndex),
+                subindex: CONTRACT_SUB_INDEX,
+            },
+            receiveName: 'credential_registry.updateIssuerMetadata',
+            maxContractExecutionEnergy: 30000n,
+        } as UpdateContractPayload,
+        schema
+    );
+}
+
 export async function revokeCredential(
     connection: WalletConnection,
     account: string,
     credentialPublicKey: string,
-    credentialRegistryContratIndex: number,
+    credentialRegistryContratIndex: number | undefined,
     auxiliaryData: number[],
     reason: string
 ) {
@@ -90,7 +226,7 @@ export async function revokeCredential(
         throw new Error(`credentialPublicKey needs a length of 64`);
     }
 
-    if (credentialRegistryContratIndex === 0) {
+    if (credentialRegistryContratIndex === undefined) {
         throw new Error(`Set credentialRegistryContratIndex`);
     }
 
@@ -132,7 +268,7 @@ export async function issueCredential(
     validUntilDate: string,
     credentialMetaDataURL: string,
     isHolderRevocable: boolean,
-    credentialRegistryContratIndex: number,
+    credentialRegistryContratIndex: number | undefined,
     auxiliaryData: number[]
 ) {
     if (credentialPublicKey === '') {
@@ -162,7 +298,7 @@ export async function issueCredential(
         throw new Error(`Set credentialMetaDataURL`);
     }
 
-    if (credentialRegistryContratIndex === 0) {
+    if (credentialRegistryContratIndex === undefined) {
         throw new Error(`Set credentialRegistryContratIndex`);
     }
 
