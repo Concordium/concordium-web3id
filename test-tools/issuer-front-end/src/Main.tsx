@@ -186,7 +186,9 @@ export default function Main(props: WalletConnectionProps) {
             },
         });
 
-        fetch(target.value)
+        const schemaURL = target.value;
+
+        fetch(schemaURL)
             .then((response) => response.json())
             .then((json) => {
                 const { properties } = json.properties.credentialSubject.properties.attributes;
@@ -225,7 +227,9 @@ export default function Main(props: WalletConnectionProps) {
 
             setSchemaCredential(registryMetadataReturnValue.credential_schema);
 
-            fetch(registryMetadataReturnValue.credential_schema.schema_ref.url)
+            const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
+
+            fetch(schemaURL)
                 .then((response) => response.json())
                 .then((json) => {
                     const { properties } = json.properties.credentialSubject.properties.attributes;
@@ -504,12 +508,28 @@ export default function Main(props: WalletConnectionProps) {
                                     onClick={() => {
                                         setTxHash('');
                                         setTransactionError('');
+
+                                        const schemaCredentialURL = document.getElementById(
+                                            'credentialSchemaURL'
+                                        ) as unknown as HTMLFormElement;
+
+                                        const exampleCredentialSchema = {
+                                            schema_ref: {
+                                                hash: {
+                                                    None: [],
+                                                },
+                                                url: EXAMPLE_CREDENTIAL_SCHEMA,
+                                            },
+                                        };
+
                                         const tx = createNewIssuer(
                                             connection,
                                             account,
                                             issuerMetaData,
                                             issuerKeys?.verifyKey || '',
-                                            JSON.stringify(schemaCredential),
+                                            schemaCredentialURL.value === ''
+                                                ? exampleCredentialSchema
+                                                : schemaCredential,
                                             JSON.stringify(revocationKeys),
                                             credentialType
                                         );

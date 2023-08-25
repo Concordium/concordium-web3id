@@ -21,7 +21,7 @@ export async function createNewIssuer(
     account: string,
     issuerMetaData: string,
     issuerKey: string,
-    schemaCredential: string,
+    schemaCredential: object,
     revocationKeys: string,
     credentialType: string
 ) {
@@ -37,10 +37,6 @@ export async function createNewIssuer(
         throw new Error(`Set credentialType`);
     }
 
-    if (schemaCredential === '') {
-        throw new Error(`Set credentialSchemaURL`);
-    }
-
     const parameter = {
         issuer_metadata: {
             hash: {
@@ -52,7 +48,7 @@ export async function createNewIssuer(
             credential_type: credentialType,
         },
         issuer_key: issuerKey,
-        schema: JSON.parse(schemaCredential),
+        schema: schemaCredential,
         issuer_account: {
             Some: [account],
         },
