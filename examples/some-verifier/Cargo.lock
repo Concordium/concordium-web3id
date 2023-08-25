@@ -2629,6 +2629,7 @@ dependencies = [
 name = "some-verifier-lib"
 version = "0.1.0"
 dependencies = [
+ "concordium-rust-sdk",
  "serde",
 ]
 

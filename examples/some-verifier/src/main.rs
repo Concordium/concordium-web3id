@@ -498,10 +498,10 @@ async fn get_verification(
                     get_username(&state, acc),
                     get_credential_status(&state, acc, &verification.presentation),
                 )
-                .map_ok(|(platform, username, status)| Account {
+                .map_ok(|(platform, username, cred_status)| Account {
                     platform,
                     username,
-                    revoked: status == CredentialStatus::Revoked,
+                    cred_status,
                 })
             });
 
