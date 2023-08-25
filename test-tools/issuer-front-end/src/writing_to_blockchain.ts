@@ -112,6 +112,56 @@ export async function updateCredentialSchema(
     );
 }
 
+export async function updateCredentialMetadata(
+    connection: WalletConnection,
+    account: string,
+    credentialRegistryContratIndex: number,
+    credentialMetadata: string,
+    credentialPublicKey: string
+) {
+    if (credentialPublicKey === '') {
+        throw new Error(`Set credentialPublicKey`);
+    }
+
+    if (credentialPublicKey.length !== 64) {
+        throw new Error(`credentialPublicKey needs a length of 64`);
+    }
+
+    if (credentialMetadata === '') {
+        throw new Error(`Set credentialMetadata`);
+    }
+
+    const schema = {
+        parameters: Array.from([
+            {
+                credential_id: credentialPublicKey,
+                metadata_url: {
+                    hash: {
+                        None: [],
+                    },
+                    url: credentialMetadata,
+                },
+            },
+        ]),
+        schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
+    };
+
+    return connection.signAndSendTransaction(
+        account,
+        AccountTransactionType.Update,
+        {
+            amount: new CcdAmount(BigInt(0)),
+            address: {
+                index: BigInt(credentialRegistryContratIndex),
+                subindex: CONTRACT_SUB_INDEX,
+            },
+            receiveName: 'credential_registry.updateCredentialMetadata',
+            maxContractExecutionEnergy: 30000n,
+        } as UpdateContractPayload,
+        schema
+    );
+}
+
 export async function updateIssuerMetadata(
     connection: WalletConnection,
     account: string,

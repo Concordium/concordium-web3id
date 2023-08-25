@@ -16,6 +16,7 @@ import {
     revokeCredential,
     updateIssuerMetadata,
     updateCredentialSchema,
+    updateCredentialMetadata,
 } from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
@@ -133,6 +134,7 @@ export default function Main(props: WalletConnectionProps) {
     const [smartContractState, setSmartContractState] = useState('');
 
     const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(EXAMPLE_CREDENTIAL_METADATA);
+    const [updatedCredentialMetaDataURL, setUpdatedCredentialMetaDataURL] = useState('');
     const [credentialType, setCredentialType] = useState('myCredentialType');
     const [schemaCredential, setSchemaCredential] = useState<SchemaRef>({
         schema_ref: {
@@ -181,6 +183,11 @@ export default function Main(props: WalletConnectionProps) {
     const changeUpdatedCredentialSchemaURLHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setUpdatedCredentialSchema(target.value);
+    }, []);
+
+    const changeUpdatedCredentialMetaDataURLHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setUpdatedCredentialMetaDataURL(target.value);
     }, []);
 
     const changeAuxiliaryDataHandler = useCallback((event: ChangeEvent) => {
@@ -915,7 +922,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 6: Revoke credential by the issuer"
+                                header="Step 6: Revoke Credential By The Issuer"
                                 note="Expected result after pressing the button: The
                                 transaction hash or an error message should appear in the right column."
                             >
@@ -972,8 +979,6 @@ export default function Main(props: WalletConnectionProps) {
                                     Revoke Credential
                                 </button>
                             </TestBox>
-                            <br />
-                            <br />
                             <TestBox
                                 header="Step 7: Update Issuer Metadata"
                                 note="Expected result after pressing the button: The
@@ -1010,8 +1015,6 @@ export default function Main(props: WalletConnectionProps) {
                                     Update Issuer Metadata
                                 </button>
                             </TestBox>
-                            <br />
-                            <br />
                             <TestBox
                                 header="Step 8: Update Credential Schema"
                                 note="Expected result after pressing the button: The
@@ -1049,13 +1052,21 @@ export default function Main(props: WalletConnectionProps) {
                                     Update Credential Schema
                                 </button>
                             </TestBox>
-                            <br />
-                            <br />
                             <TestBox
-                                header="Step 6: Revoke credential by the issuer"
+                                header="Step 9: Update Credential Metadata"
                                 note="Expected result after pressing the button: The
                                 transaction hash or an error message should appear in the right column."
                             >
+                                Add `CredentialMetadata`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialMetaDataURL"
+                                    type="text"
+                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
+                                    onChange={changeUpdatedCredentialMetaDataURLHandler}
+                                />
+                                <br />
                                 Credential Public Key:
                                 <br />
                                 <input
@@ -1066,39 +1077,18 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changePublicKeyHandler}
                                 />
                                 <br />
-                                Reason:
-                                <br />
-                                <input
-                                    className="inputFieldStyle"
-                                    id="reason"
-                                    type="text"
-                                    placeholder="ThisShouldBeRevoked"
-                                    onChange={changeReasonRevokeHandler}
-                                />
-                                <br />
-                                Add `AuxiliaryData`:
-                                <br />
-                                <input
-                                    className="inputFieldStyle"
-                                    id="auxiliaryData"
-                                    type="text"
-                                    placeholder="[23,2,1,5,3,2]"
-                                    onChange={changeAuxiliaryDataHandler}
-                                />
-                                <br />
                                 <button
                                     className="btn btn-primary"
                                     type="button"
                                     onClick={() => {
                                         setTxHash('');
                                         setTransactionError('');
-                                        const tx = revokeCredential(
+                                        const tx = updateCredentialMetadata(
                                             connection,
                                             account,
-                                            publicKey,
                                             credentialRegistryContratIndex,
-                                            auxiliaryData,
-                                            reason
+                                            updatedCredentialMetaDataURL,
+                                            publicKey
                                         );
 
                                         tx.then(setTxHash).catch((err: Error) =>
@@ -1106,7 +1096,7 @@ export default function Main(props: WalletConnectionProps) {
                                         );
                                     }}
                                 >
-                                    Revoke Credential
+                                    Update Credential Metadata
                                 </button>
                             </TestBox>
                             <br />
@@ -1115,7 +1105,7 @@ export default function Main(props: WalletConnectionProps) {
                             <br />
                             <br />
                             <TestBox
-                                header="Step 7: Register a credential (Issuer registers credential with some delay)"
+                                header="Step 10: Register a credential (Issuer registers credential with some delay)"
                                 note="Expected result after pressing the two buttons: There should be two popups happening in the wallet
                                 (first action when pressing the first button to add the credential, second action when pressing the second button to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 
@@ -1389,7 +1379,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 8: Register a credential (Issuer fails to provide correct randomness/signature)"
+                                header="Step 11: Register a credential (Issuer fails to provide correct randomness/signature)"
                                 note="Expected result after pressing the button: There should be two popups happening in the wallet
                                 (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 
