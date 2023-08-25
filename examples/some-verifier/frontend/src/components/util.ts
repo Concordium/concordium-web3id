@@ -12,10 +12,20 @@ export async function hash(message: string): Promise<string> {
   return hashHex;
 }
 
+type ProofOptions = {
+  /** Whether request user to reveal name of selected identity. Defaults to false */
+  revealName?: boolean;
+  /** Whether request user to reveal its username for each platform. Defaults to false */
+  revealUsername?: boolean;
+};
+
 export async function requestProof(
   issuers: Issuer[],
-  revealName: boolean,
   challenge: string,
+  {
+    revealName = false,
+    revealUsername = false,
+  }: ProofOptions = {},
 ): Promise<VerifiablePresentation> {
   let builder = new Web3StatementBuilder();
 
@@ -27,7 +37,15 @@ export async function requestProof(
           subindex: BigInt(issuer.subindex)
         },
       ],
-      (b) => b.revealAttribute('userId').revealAttribute('username'),
+      (b) => {
+        b.revealAttribute('userId');
+
+        if (!revealUsername) {
+          return b;
+        }
+
+        return b.revealAttribute('username');
+      },
     );
   }
 

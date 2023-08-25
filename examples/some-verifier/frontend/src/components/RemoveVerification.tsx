@@ -29,7 +29,7 @@ export default function RemoveVerification() {
     try {
       const timestamp = new Date().toISOString();
       const challenge = await hash(timestamp);
-      const proof = await requestProof([config.issuers[platform as Platform]], false, challenge);
+      const proof = await requestProof([config.issuers[platform as Platform]], challenge);
 
       const body = { proof, timestamp };
       const response = await fetch('/verifications/remove', {

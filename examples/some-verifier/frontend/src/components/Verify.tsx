@@ -153,7 +153,7 @@ export default function Verify() {
     (async () => {
       const timestamp = new Date().toISOString();
       const challenge = await hash(timestamp);
-      const proof = await requestProof(issuers, fullNameChecked, challenge);
+      const proof = await requestProof(issuers, challenge, { revealName: fullNameChecked, revealUsername: true });
       const body = { proof, timestamp };
 
       const response = await fetch('/verifications', {
