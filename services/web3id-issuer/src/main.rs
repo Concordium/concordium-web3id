@@ -23,6 +23,7 @@ use concordium_rust_sdk::{
         did::Network, CredentialHolderId, SignedCommitments, Web3IdAttribute, Web3IdCredential,
     },
 };
+use futures::{Future, FutureExt};
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
@@ -462,6 +463,7 @@ async fn main() -> anyhow::Result<()> {
         Some(tokio::spawn(async move {
             axum::Server::bind(&prometheus_address)
                 .serve(prometheus_api.into_make_service())
+                .with_graceful_shutdown(set_shutdown()?)
                 .await
                 .context("Unable to start Prometheus server.")?;
             Ok::<(), anyhow::Error>(())
@@ -487,9 +489,11 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::cors::CorsLayer::permissive().allow_methods([http::Method::POST]))
         .layer(prometheus_layer);
 
+    let server_shutdown = set_shutdown()?;
     let server_handle = tokio::spawn(async move {
         axum::Server::bind(&app.listen_address)
             .serve(server.into_make_service())
+            .with_graceful_shutdown(server_shutdown)
             .await
     });
 
@@ -509,4 +513,42 @@ async fn main() -> anyhow::Result<()> {
             .context("Server crashed.")?;
     }
     Ok(())
+}
+
+/// Construct a future for shutdown signals (for unix: SIGINT and SIGTERM) (for
+/// windows: ctrl c and ctrl break). The signal handler is set when the future
+/// is polled and until then the default signal handler.
+fn set_shutdown() -> anyhow::Result<impl Future<Output = ()>> {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix as unix_signal;
+
+        let mut terminate_stream = unix_signal::signal(unix_signal::SignalKind::terminate())?;
+        let mut interrupt_stream = unix_signal::signal(unix_signal::SignalKind::interrupt())?;
+
+        Ok(async move {
+            futures::future::select(
+                Box::pin(terminate_stream.recv()),
+                Box::pin(interrupt_stream.recv()),
+            )
+            .map(|_| ())
+            .await
+        })
+    }
+    #[cfg(windows)]
+    {
+        use tokio::signal::windows as windows_signal;
+
+        let mut ctrl_break_stream = windows_signal::ctrl_break()?;
+        let mut ctrl_c_stream = windows_signal::ctrl_c()?;
+
+        Ok(async move {
+            futures::future::select(
+                Box::pin(ctrl_break_stream.recv()),
+                Box::pin(ctrl_c_stream.recv()),
+            )
+            .map(|_| ())
+            .await
+        })
+    }
 }
