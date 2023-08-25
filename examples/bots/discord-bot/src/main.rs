@@ -89,7 +89,11 @@ async fn check(
     let verification = get_verification(ctx.data(), user.id).await?;
     let accounts = verification.accounts;
     let mention = user.mention();
-    let message = if accounts.is_empty() {
+
+    let discord_revoked = accounts
+        .iter()
+        .any(|acc| acc.platform == Platform::Discord && acc.revoked);
+    let message = if accounts.is_empty() || discord_revoked {
         format!("{mention} is not verified with Concordia.")
     } else {
         let mut message = format!("{mention} is verified with Concordia.");
@@ -98,7 +102,7 @@ async fn check(
         }
         for account in accounts
             .into_iter()
-            .filter(|a| a.platform != Platform::Discord && !a.revoked)
+            .filter(|acc| acc.platform != Platform::Discord && !acc.revoked)
         {
             message.push_str(&format!("\n- {}: {}", account.platform, account.username));
         }

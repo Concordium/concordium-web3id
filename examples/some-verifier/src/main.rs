@@ -8,6 +8,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, SecondsFormat, Utc};
 use clap::Parser;
+use concordium_rust_sdk::cis4::Cis4Contract;
 use concordium_rust_sdk::contract_client::CredentialStatus;
 use concordium_rust_sdk::id::constants::{ArCurve, AttributeKind};
 use concordium_rust_sdk::id::id_proof_types::{
@@ -26,7 +27,7 @@ use futures::{future, TryFutureExt};
 use reqwest::StatusCode;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use some_verifier_lib::{Account, Platform, Verification};
+use some_verifier_lib::{Account, FullName, Platform, Verification};
 use tonic::transport::ClientTlsConfig;
 use tower_http::services::ServeDir;
 
@@ -123,6 +124,8 @@ struct AppState {
     node_client: v2::Client,
     telegram_registry: ContractAddress,
     discord_registry: ContractAddress,
+    telegram_contract: Cis4Contract,
+    discord_contract: Cis4Contract,
     discord_bot_token: Arc<String>,
     database: Arc<Database>,
     network: Network,
@@ -171,6 +174,10 @@ async fn main() -> anyhow::Result<()> {
         .context("Unable to get cryptographic parameters.")?
         .response;
 
+    let telegram_contract =
+        Cis4Contract::create(node_client.clone(), app.telegram_registry).await?;
+    let discord_contract = Cis4Contract::create(node_client.clone(), app.discord_registry).await?;
+
     let http_client = reqwest::Client::new();
 
     let state = AppState {
@@ -178,6 +185,8 @@ async fn main() -> anyhow::Result<()> {
         node_client,
         telegram_registry: app.telegram_registry,
         discord_registry: app.discord_registry,
+        telegram_contract,
+        discord_contract,
         discord_bot_token: Arc::new(app.discord_bot_token),
         database: Arc::new(database),
         network: app.network,
@@ -437,6 +446,8 @@ fn proof_to_verifications_entry(
                 return Err(Error::InvalidStatement);
             }
 
+            let mut first_name = None;
+            let mut last_name = None;
             for (statement, proof) in proofs {
                 let name = match proof {
                     AtomicProof::RevealAttribute {
@@ -450,9 +461,9 @@ fn proof_to_verifications_entry(
                         statement: RevealAttributeStatement { attribute_tag },
                     } => {
                         if attribute_tag.0 == attributes::FIRST_NAME.0 {
-                            entry.first_name = Some(name.clone());
+                            first_name = Some(name.clone());
                         } else if attribute_tag.0 == attributes::LAST_NAME.0 {
-                            entry.last_name = Some(name.clone());
+                            last_name = Some(name.clone());
                         } else {
                             return Err(Error::InvalidStatement);
                         }
@@ -460,6 +471,12 @@ fn proof_to_verifications_entry(
                     _ => return Err(Error::InvalidStatement),
                 }
             }
+            entry.full_name = first_name.and_then(|first_name| {
+                last_name.map(|last_name| FullName {
+                    first_name,
+                    last_name,
+                })
+            });
 
             Ok(())
         }
@@ -479,12 +496,12 @@ async fn get_verification(
                 future::try_join3(
                     async { Ok(acc.platform) },
                     get_username(&state, acc),
-                    get_revocation_status(acc),
+                    get_credential_status(&state, acc, &verification.presentation),
                 )
-                .map_ok(|(platform, username, revoked)| Account {
+                .map_ok(|(platform, username, status)| Account {
                     platform,
                     username,
-                    revoked,
+                    revoked: status == CredentialStatus::Revoked,
                 })
             });
 
@@ -546,7 +563,28 @@ async fn get_username(state: &AppState, account: &DbAccount) -> anyhow::Result<S
     }
 }
 
-async fn get_revocation_status(_account: &DbAccount) -> anyhow::Result<bool> {
-    // TODO: Look up on chain
-    Ok(false)
+async fn get_credential_status(
+    state: &AppState,
+    account: &DbAccount,
+    proof: &Presentation<ArCurve, Web3IdAttribute>,
+) -> anyhow::Result<CredentialStatus> {
+    let (mut contract_client, registry) = match account.platform {
+        Platform::Telegram => (state.telegram_contract.clone(), state.telegram_registry),
+        Platform::Discord => (state.discord_contract.clone(), state.discord_registry),
+    };
+
+    let cred_id = proof
+        .metadata()
+        .find_map(|cred| match cred.cred_metadata {
+            web3id::CredentialMetadata::Web3Id { contract, holder } if contract == registry => {
+                Some(holder)
+            }
+            _ => None,
+        })
+        .with_context(|| format!("No credential for {} in presentation", account.platform))?;
+
+    contract_client
+        .credential_status(cred_id, BlockIdentifier::LastFinal)
+        .await
+        .context("Failed to get credential status")
 }

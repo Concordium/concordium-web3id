@@ -163,7 +163,11 @@ async fn check_user(
         Ok(verification) => {
             let name = target_user.mention().unwrap_or(target_user.full_name());
             let accounts = verification.accounts;
-            let reply = if accounts.is_empty() {
+
+            let telegram_revoked = accounts
+                .iter()
+                .any(|acc| acc.platform == Platform::Telegram && acc.revoked);
+            let reply = if accounts.is_empty() || telegram_revoked {
                 format!("{name} is not verified with Concordia.")
             } else {
                 let mut reply = format!("{name} is verified with Concordia.");
