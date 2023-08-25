@@ -225,6 +225,8 @@ export default function Main(props: WalletConnectionProps) {
 
             const registryMetadataReturnValue = JSON.parse(await registryMetadata(client, Number(target.value)));
 
+            setSchemaCredential(registryMetadataReturnValue.credential_schema);
+
             const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
 
             fetch(schemaURL)
