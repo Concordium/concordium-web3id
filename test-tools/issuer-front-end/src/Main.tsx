@@ -186,7 +186,7 @@ export default function Main(props: WalletConnectionProps) {
             },
         });
 
-        const schemaURL = target.value.replace('http://', 'https://');
+        const schemaURL = target.value;
 
         fetch(schemaURL)
             .then((response) => response.json())
@@ -225,10 +225,7 @@ export default function Main(props: WalletConnectionProps) {
 
             const registryMetadataReturnValue = JSON.parse(await registryMetadata(client, Number(target.value)));
 
-            const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url.replace(
-                'http://',
-                'https://'
-            );
+            const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
 
             fetch(schemaURL)
                 .then((response) => response.json())
