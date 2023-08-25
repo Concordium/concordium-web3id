@@ -529,8 +529,8 @@ export default function Main(props: WalletConnectionProps) {
                                             issuerMetaData,
                                             issuerKeys?.verifyKey || '',
                                             schemaCredentialURL.value === ''
-                                                ? JSON.stringify(exampleCredentialSchema)
-                                                : JSON.stringify(schemaCredential),
+                                                ? exampleCredentialSchema
+                                                : schemaCredential,
                                             JSON.stringify(revocationKeys),
                                             credentialType
                                         );
