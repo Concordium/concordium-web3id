@@ -91,9 +91,74 @@ async function addRevokationKey(
 }
 
 type AttributeDetails = { tag: string; type: string; value: string | undefined; required: boolean };
+
 const WRONG_ATTRIBUTES: AttributeDetails[] = [
     { tag: 'myWrongAttribute', type: 'string', value: 'myWrongValue', required: false },
 ];
+
+function renderAddPrompt(details: AttributeDetails) {
+    if (details.required) {
+        return (
+            <div>
+                {' '}
+                Add <b className="text-warning">required</b> attribute <strong> {details.tag} </strong>{' '}
+            </div>
+        );
+    }
+    return (
+        <div>
+            {' '}
+            Add <strong> {details.tag} </strong>{' '}
+        </div>
+    );
+}
+
+async function extractFromSchema(url: string): Promise<AttributeDetails[]> {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Unable to get schema. Response code: ${response.status}`);
+    }
+    const json = await response.json();
+    const { properties, required } = json.properties.credentialSubject.properties.attributes;
+
+    const attributeSchemaValues: AttributeDetails[] = [];
+    Object.entries(properties).forEach(([key, obj]) => {
+        attributeSchemaValues.push({
+            tag: key,
+            type: (obj as { type: string }).type,
+            value: undefined,
+            required: (required as string[]).includes(key),
+        });
+    });
+    return attributeSchemaValues;
+}
+
+function parseAttributesFromForm(
+    attributeSchema: AttributeDetails[],
+    setParsingError: (msg: string) => void
+): Attribute {
+    const attributes: Attribute = {};
+    attributeSchema.forEach((obj) => {
+        if (obj.required && obj.value === undefined) {
+            setParsingError(`Attribute ${obj.tag} needs to be set.`);
+            throw new Error(`Attribute ${obj.tag} needs to be set.`);
+        } else if (obj.value !== undefined) {
+            if (obj.type === 'string') {
+                attributes[obj.tag] = obj.value;
+            } else if (obj.type === 'number') {
+                attributes[obj.tag] = BigInt(obj.value);
+            } else {
+                setParsingError(
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                );
+                throw new Error(
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                );
+            }
+        }
+    });
+    return attributes;
+}
 
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
@@ -218,6 +283,14 @@ export default function Main(props: WalletConnectionProps) {
                 url: target.value,
             },
         });
+        extractFromSchema(target.value)
+            .then((r) => {
+                setFetchingCredentialSchemaError('');
+                setAttributeSchema(r);
+            })
+            .catch((e) => {
+                setFetchingCredentialSchemaError(`Could not fetch credential schema: ${(e as Error).message}`);
+            });
     }, []);
 
     const changeCredentialMetaDataURLHandler = useCallback((event: ChangeEvent) => {
@@ -240,68 +313,40 @@ export default function Main(props: WalletConnectionProps) {
             const target = event.target as HTMLTextAreaElement;
             setCredentialRegistryContratIndex(Number(target.value));
 
-            registryMetadata(client, Number(target.value))
-                .then((value) => {
-                    setViewErrorSmartContractState('');
+            registryMetadata(client, Number(target.value)).then((value) => {
+                setViewErrorSmartContractState('');
 
-                    const registryMetadataReturnValue = JSON.parse(value);
-                    setSmartContractState(registryMetadataReturnValue);
+                const registryMetadataReturnValue = JSON.parse(value);
+                setSmartContractState(registryMetadataReturnValue);
 
-                    const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
+                const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
 
-                    fetch(schemaURL)
-                        .then((response) => {
-                            if (response.status !== 200) {
-                                throw new Error(`Status: ${response.status}; StatusText: ${response.statusText}`);
-                            }
-                            return response.json();
-                        })
-                        .then((json) => {
-                            const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                            const attributeSchemaValues: AttributeDetails[] = [];
-                            Object.entries(properties).forEach(([key, obj]) => {
-                                attributeSchemaValues.push({
-                                    tag: key,
-                                    type: (obj as { type: string }).type,
-                                    value: undefined,
-                                    required: Array.from(
-                                        json.properties.credentialSubject.properties.attributes.required
-                                    ).includes(key),
-                                });
-                            });
-                            setFetchingCredentialSchemaError('');
-                            setAttributeSchema(attributeSchemaValues);
-                        })
-                        .catch((e) => {
-                            setAttributeSchema([]);
-                            setFetchingCredentialSchemaError(
-                                `Could not fetch credential schema from smart contract: ${(e as Error).message}`
-                            );
-                        });
-                })
-                .catch((e) => {
-                    setAttributeSchema([]);
-                    setSmartContractState('');
-                    setViewErrorSmartContractState((e as Error).message);
-                });
-        },
-        []
-    );
-
-    const handleAttributeChange = useCallback(
-        (i: string, attributeSchemaValue: AttributeDetails[], event: ChangeEvent) => {
-            const target = event.target as HTMLTextAreaElement;
-
-            attributeSchemaValue.forEach((obj) => {
-                if (obj.tag === i) {
-                    // eslint-disable-next-line no-param-reassign
-                    obj.value = target.value;
-                }
+                extractFromSchema(schemaURL)
+                    .then((r) => {
+                        setFetchingCredentialSchemaError('');
+                        setAttributeSchema(r);
+                    })
+                    .catch((e) => {
+                        setAttributeSchema([]);
+                        setFetchingCredentialSchemaError(
+                            `Could not fetch credential schema from smart contract: ${(e as Error).message}`
+                        );
+                    });
             });
         },
         []
     );
+
+    const handleAttributeChange = (i: string, attributeSchemaValue: AttributeDetails[], event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+
+        attributeSchemaValue.forEach((obj) => {
+            if (obj.tag === i) {
+                // eslint-disable-next-line no-param-reassign
+                obj.value = target.value;
+            }
+        });
+    };
 
     // Refresh smartContractState periodically.
     // eslint-disable-next-line consistent-return
@@ -373,25 +418,8 @@ export default function Main(props: WalletConnectionProps) {
     }, [connection, account]);
 
     useEffect(() => {
-        fetch(EXAMPLE_CREDENTIAL_SCHEMA)
-            .then((response) => response.json())
-            .then((json) => {
-                const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                const attributeSchemaValues: AttributeDetails[] = [];
-                Object.entries(properties).forEach(([key, obj]) => {
-                    attributeSchemaValues.push({
-                        tag: key,
-                        type: (obj as { type: string }).type,
-                        value: undefined,
-                        required: Array.from(json.properties.credentialSubject.properties.attributes.required).includes(
-                            key
-                        ),
-                    });
-                });
-
-                setAttributeSchema(attributeSchemaValues);
-            })
+        extractFromSchema(EXAMPLE_CREDENTIAL_SCHEMA)
+            .then(setAttributeSchema)
             .catch((e) => console.error(e));
     }, []);
 
@@ -651,7 +679,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag} (Required: {item.required.toString()}):
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -777,24 +805,10 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        attributeSchema.forEach((obj) => {
-                                            if (obj.value !== undefined) {
-                                                if (obj.type === 'string') {
-                                                    attributes[obj.tag] = obj.value;
-                                                } else if (obj.type === 'number') {
-                                                    attributes[obj.tag] = BigInt(obj.value);
-                                                } else {
-                                                    setParsingError(
-                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                    );
-                                                    throw new Error(
-                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                    );
-                                                }
-                                            }
-                                        });
+                                        const attributes: Attribute = parseAttributesFromForm(
+                                            attributeSchema,
+                                            setParsingError
+                                        );
 
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
@@ -1189,7 +1203,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag} (Required: {item.required.toString()}):
+                                        {renderAddPrompt(item)}:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1311,26 +1325,9 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        attributeSchema.forEach((obj) => {
-                                            if (obj.value !== undefined) {
-                                                if (obj.type === 'string') {
-                                                    attributes[obj.tag] = obj.value;
-                                                } else if (obj.type === 'number') {
-                                                    attributes[obj.tag] = BigInt(obj.value);
-                                                } else {
-                                                    setParsingError(
-                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                    );
-                                                    throw new Error(
-                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                    );
-                                                }
-                                            }
-                                        });
-
+                                        const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
+
                                         provider
                                             .addWeb3IdCredential(
                                                 {
@@ -1452,7 +1449,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag} (Required: {item.required.toString()}):
+                                        {renderAddPrompt(item)}:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1574,25 +1571,7 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        attributeSchema.forEach((obj) => {
-                                            if (obj.value !== undefined) {
-                                                if (obj.type === 'string') {
-                                                    attributes[obj.tag] = obj.value;
-                                                } else if (obj.type === 'number') {
-                                                    attributes[obj.tag] = BigInt(obj.value);
-                                                } else {
-                                                    setParsingError(
-                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                    );
-                                                    throw new Error(
-                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                    );
-                                                }
-                                            }
-                                        });
-
+                                        const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
                                         provider
