@@ -90,8 +90,10 @@ async function addRevokationKey(
     }
 }
 
-type AttributeDetails = { tag: string; type: string; value: string | undefined };
-const WRONG_ATTRIBUTES: AttributeDetails[] = [{ tag: 'myWrongAttribute', type: 'string', value: 'myWrongValue' }];
+type AttributeDetails = { tag: string; type: string; value: string | undefined; required: boolean };
+const WRONG_ATTRIBUTES: AttributeDetails[] = [
+    { tag: 'myWrongAttribute', type: 'string', value: 'myWrongValue', required: false },
+];
 
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
@@ -263,6 +265,9 @@ export default function Main(props: WalletConnectionProps) {
                                     tag: key,
                                     type: (obj as { type: string }).type,
                                     value: undefined,
+                                    required: Array.from(
+                                        json.properties.credentialSubject.properties.attributes.required
+                                    ).includes(key),
                                 });
                             });
                             setFetchingCredentialSchemaError('');
@@ -375,7 +380,14 @@ export default function Main(props: WalletConnectionProps) {
 
                 const attributeSchemaValues: AttributeDetails[] = [];
                 Object.entries(properties).forEach(([key, obj]) => {
-                    attributeSchemaValues.push({ tag: key, type: (obj as { type: string }).type, value: undefined });
+                    attributeSchemaValues.push({
+                        tag: key,
+                        type: (obj as { type: string }).type,
+                        value: undefined,
+                        required: Array.from(json.properties.credentialSubject.properties.attributes.required).includes(
+                            key
+                        ),
+                    });
                 });
 
                 setAttributeSchema(attributeSchemaValues);
@@ -639,7 +651,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        Add {item.tag} (Required: {item.required.toString()}):
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -768,11 +780,6 @@ export default function Main(props: WalletConnectionProps) {
                                         const attributes: Attribute = {};
 
                                         attributeSchema.forEach((obj) => {
-                                            // if (obj.value === undefined) {
-                                            //     setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                            //     throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            // }
-
                                             if (obj.value !== undefined) {
                                                 if (obj.type === 'string') {
                                                     attributes[obj.tag] = obj.value;
@@ -1182,7 +1189,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        Add {item.tag} (Required: {item.required.toString()}):
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1307,22 +1314,19 @@ export default function Main(props: WalletConnectionProps) {
                                         const attributes: Attribute = {};
 
                                         attributeSchema.forEach((obj) => {
-                                            if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            }
-
-                                            if (obj.type === 'string') {
-                                                attributes[obj.tag] = obj.value;
-                                            } else if (obj.type === 'number') {
-                                                attributes[obj.tag] = BigInt(obj.value);
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
+                                            if (obj.value !== undefined) {
+                                                if (obj.type === 'string') {
+                                                    attributes[obj.tag] = obj.value;
+                                                } else if (obj.type === 'number') {
+                                                    attributes[obj.tag] = BigInt(obj.value);
+                                                } else {
+                                                    setParsingError(
+                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                                                    );
+                                                    throw new Error(
+                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                                                    );
+                                                }
                                             }
                                         });
 
@@ -1448,7 +1452,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        Add {item.tag} (Required: {item.required.toString()}):
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1573,22 +1577,19 @@ export default function Main(props: WalletConnectionProps) {
                                         const attributes: Attribute = {};
 
                                         attributeSchema.forEach((obj) => {
-                                            if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            }
-
-                                            if (obj.type === 'string') {
-                                                attributes[obj.tag] = obj.value;
-                                            } else if (obj.type === 'number') {
-                                                attributes[obj.tag] = BigInt(obj.value);
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
+                                            if (obj.value !== undefined) {
+                                                if (obj.type === 'string') {
+                                                    attributes[obj.tag] = obj.value;
+                                                } else if (obj.type === 'number') {
+                                                    attributes[obj.tag] = BigInt(obj.value);
+                                                } else {
+                                                    setParsingError(
+                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                                                    );
+                                                    throw new Error(
+                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                                                    );
+                                                }
                                             }
                                         });
 
@@ -1675,17 +1676,16 @@ export default function Main(props: WalletConnectionProps) {
                             </TestBox>
                             <TestBox
                                 header="Step 13: Register a credential (with wrong attributes)"
-                                note="Expected result after pressing the button: There should be one popups happening in the wallet
-                                    (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
-                                    The transaction hash or an error message should appear in the right column and the 
-                                    credential public key or an error message should appear in the above test unit. 
+                                note="Expected result after pressing the button: There should be one popup happening in the wallet
+                                    (first action to add the credential, second action to send the `issueCredential` tx should not appear because the flow has already thrown an error).
+                                    The browser wallet should not allow you to add such a credential.
                                     Pressing the button without any user input will create an example tx with the provided placeholder values.
-                                    Your credential will be shown in the `Verifiable Credential` 
-                                    section in the browser wallet after the `issueCredential` tx is finalized."
+                                    Your credential should NOT be shown in the `Verifiable Credential` 
+                                    section in the browser wallet."
                             >
                                 {WRONG_ATTRIBUTES.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        Add {item.tag} (Required: {item.required.toString()}):
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1813,12 +1813,7 @@ export default function Main(props: WalletConnectionProps) {
 
                                         const attributes: Attribute = {};
 
-                                        attributeSchema.forEach((obj) => {
-                                            // if (obj.value === undefined) {
-                                            //     setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                            //     throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            // }
-
+                                        WRONG_ATTRIBUTES.forEach((obj) => {
                                             if (obj.value !== undefined) {
                                                 if (obj.type === 'string') {
                                                     attributes[obj.tag] = obj.value;
