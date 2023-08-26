@@ -90,7 +90,71 @@ async function addRevokationKey(
     }
 }
 
-type AttributeDetails = { tag: string; type: string; value: string | undefined };
+type AttributeDetails = { tag: string; type: string; value: string | undefined; required: boolean };
+
+function renderAddPrompt(details: AttributeDetails) {
+    if (details.required) {
+        return (
+            <div>
+                {' '}
+                Add <b className="text-warning">required</b> attribute <strong> {details.tag} </strong>{' '}
+            </div>
+        );
+    }
+    return (
+        <div>
+            {' '}
+            Add <strong> {details.tag} </strong>{' '}
+        </div>
+    );
+}
+
+async function extractFromSchema(url: string): Promise<AttributeDetails[]> {
+    const response = await fetch(EXAMPLE_CREDENTIAL_SCHEMA);
+    if (!response.ok) {
+        throw new Error(`Unable to get schema. Response code: ${response.status}`);
+    }
+    const json = await response.json();
+    const { properties, required } = json.properties.credentialSubject.properties.attributes;
+
+    const attributeSchemaValues: AttributeDetails[] = [];
+    Object.entries(properties).forEach(([key, obj]) => {
+        attributeSchemaValues.push({
+            tag: key,
+            type: (obj as { type: string }).type,
+            value: undefined,
+            required: (required as string[]).includes(key),
+        });
+    });
+    return attributeSchemaValues;
+}
+
+function parseAttributesFromForm(
+    attributeSchema: AttributeDetails[],
+    setParsingError: (msg: string) => void
+): Attribute {
+    const attributes: Attribute = {};
+    attributeSchema.forEach((obj) => {
+        if (obj.required && obj.value === undefined) {
+            setParsingError(`Attribute ${obj.tag} needs to be set.`);
+            throw new Error(`Attribute ${obj.tag} needs to be set.`);
+        } else if (obj.value !== undefined) {
+            if (obj.type === 'string') {
+                attributes[obj.tag] = obj.value;
+            } else if (obj.type === 'number') {
+                attributes[obj.tag] = BigInt(obj.value);
+            } else {
+                setParsingError(
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                );
+                throw new Error(
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                );
+            }
+        }
+    });
+    return attributes;
+}
 
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
@@ -216,18 +280,8 @@ export default function Main(props: WalletConnectionProps) {
 
         const schemaURL = target.value;
 
-        fetch(schemaURL)
-            .then((response) => response.json())
-            .then((json) => {
-                const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                const attributeSchemaValues: AttributeDetails[] = [];
-                Object.entries(properties).forEach(([key, obj]) => {
-                    attributeSchemaValues.push({ tag: key, type: (obj as { type: string }).type, value: undefined });
-                });
-
-                setAttributeSchema(attributeSchemaValues);
-            })
+        extractFromSchema(schemaURL)
+            .then(setAttributeSchema)
             .catch((e) => console.log(e));
     }, []);
 
@@ -259,22 +313,8 @@ export default function Main(props: WalletConnectionProps) {
 
             const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
 
-            fetch(schemaURL)
-                .then((response) => response.json())
-                .then((json) => {
-                    const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                    const attributeSchemaValues: AttributeDetails[] = [];
-                    Object.entries(properties).forEach(([key, obj]) => {
-                        attributeSchemaValues.push({
-                            tag: key,
-                            type: (obj as { type: string }).type,
-                            value: undefined,
-                        });
-                    });
-
-                    setAttributeSchema(attributeSchemaValues);
-                })
+            extractFromSchema(schemaURL)
+                .then(setAttributeSchema)
                 .catch((e) => console.log(e));
         },
         []
@@ -363,18 +403,8 @@ export default function Main(props: WalletConnectionProps) {
     }, [connection, account]);
 
     useEffect(() => {
-        fetch(EXAMPLE_CREDENTIAL_SCHEMA)
-            .then((response) => response.json())
-            .then((json) => {
-                const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                const attributeSchemaValues: AttributeDetails[] = [];
-                Object.entries(properties).forEach(([key, obj]) => {
-                    attributeSchemaValues.push({ tag: key, type: (obj as { type: string }).type, value: undefined });
-                });
-
-                setAttributeSchema(attributeSchemaValues);
-            })
+        extractFromSchema(EXAMPLE_CREDENTIAL_SCHEMA)
+            .then(setAttributeSchema)
             .catch((e) => console.log(e));
     }, []);
 
@@ -629,7 +659,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -755,27 +785,10 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        attributeSchema.forEach((obj) => {
-                                            if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            }
-
-                                            if (obj.type === 'string') {
-                                                attributes[obj.tag] = obj.value;
-                                            } else if (obj.type === 'number') {
-                                                attributes[obj.tag] = BigInt(obj.value);
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                            }
-                                        });
+                                        const attributes: Attribute = parseAttributesFromForm(
+                                            attributeSchema,
+                                            setParsingError
+                                        );
 
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
@@ -1170,7 +1183,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        {renderAddPrompt(item)}:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1292,29 +1305,9 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        attributeSchema.forEach((obj) => {
-                                            if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            }
-
-                                            if (obj.type === 'string') {
-                                                attributes[obj.tag] = obj.value;
-                                            } else if (obj.type === 'number') {
-                                                attributes[obj.tag] = BigInt(obj.value);
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                            }
-                                        });
-
+                                        const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
+
                                         provider
                                             .addWeb3IdCredential(
                                                 {
@@ -1436,7 +1429,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        {renderAddPrompt(item)}:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1558,28 +1551,7 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        attributeSchema.forEach((obj) => {
-                                            if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            }
-
-                                            if (obj.type === 'string') {
-                                                attributes[obj.tag] = obj.value;
-                                            } else if (obj.type === 'number') {
-                                                attributes[obj.tag] = BigInt(obj.value);
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                            }
-                                        });
-
+                                        const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
                                         provider
