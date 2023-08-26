@@ -14,6 +14,7 @@ import {
     issueCredential,
     createNewIssuer,
     revokeCredential,
+    restoreCredential,
     updateIssuerMetadata,
     updateCredentialSchema,
     updateCredentialMetadata,
@@ -235,7 +236,7 @@ export default function Main(props: WalletConnectionProps) {
         setCredentialMetaDataURL(target.value);
     }, []);
 
-    const changeReasonRevokeHandler = useCallback((event: ChangeEvent) => {
+    const changeReasonHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setReason(target.value);
     }, []);
@@ -941,7 +942,7 @@ export default function Main(props: WalletConnectionProps) {
                                     id="reason"
                                     type="text"
                                     placeholder="ThisShouldBeRevoked"
-                                    onChange={changeReasonRevokeHandler}
+                                    onChange={changeReasonHandler}
                                 />
                                 <br />
                                 Add `AuxiliaryData`:
@@ -978,7 +979,54 @@ export default function Main(props: WalletConnectionProps) {
                                 </button>
                             </TestBox>
                             <TestBox
-                                header="Step 7: Update Issuer Metadata"
+                                header="Step 7: Restore Credential By Issuer"
+                                note="Expected result after pressing the button: The
+                                transaction hash or an error message should appear in the right column."
+                            >
+                                Credential Public Key:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="publicKey"
+                                    type="text"
+                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    onChange={changePublicKeyHandler}
+                                />
+                                <br />
+                                Reason:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="reason"
+                                    type="text"
+                                    placeholder="ThisShouldBeRestored"
+                                    onChange={changeReasonHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        const tx = restoreCredential(
+                                            connection,
+                                            account,
+                                            publicKey,
+                                            credentialRegistryContratIndex,
+                                            reason
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Restore Credential
+                                </button>
+                            </TestBox>
+                            <TestBox
+                                header="Step 8: Update Issuer Metadata"
                                 note="Expected result after pressing the button: The
                                 transaction hash or an error message should appear in the right column."
                             >
@@ -1014,7 +1062,7 @@ export default function Main(props: WalletConnectionProps) {
                                 </button>
                             </TestBox>
                             <TestBox
-                                header="Step 8: Update Credential Schema"
+                                header="Step 9: Update Credential Schema"
                                 note="Expected result after pressing the button: The
                                 transaction hash or an error message should appear in the right column."
                             >
@@ -1051,7 +1099,7 @@ export default function Main(props: WalletConnectionProps) {
                                 </button>
                             </TestBox>
                             <TestBox
-                                header="Step 9: Update Credential Metadata"
+                                header="Step 10: Update Credential Metadata"
                                 note="Expected result after pressing the button: The
                                 transaction hash or an error message should appear in the right column."
                             >
@@ -1103,7 +1151,7 @@ export default function Main(props: WalletConnectionProps) {
                             <br />
                             <br />
                             <TestBox
-                                header="Step 10: Register a credential (Issuer registers credential with some delay)"
+                                header="Step 11: Register a credential (Issuer registers credential with some delay)"
                                 note="Expected result after pressing the two buttons: There should be two popups happening in the wallet
                                 (first action when pressing the first button to add the credential, second action when pressing the second button to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 
@@ -1377,7 +1425,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 11: Register a credential (Issuer fails to provide correct randomness/signature)"
+                                header="Step 12: Register a credential (Issuer fails to provide correct randomness/signature)"
                                 note="Expected result after pressing the button: There should be two popups happening in the wallet
                                 (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 
