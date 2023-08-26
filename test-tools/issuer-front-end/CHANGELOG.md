@@ -1,10 +1,14 @@
 ## Unreleased changes
 
+## 1.0.4
+
+- Add test case to restore credential.
+
 ## 1.0.3
 
-- Add test case to update `issuerMetadata`
-- Add test case to update `credentialMetadata`
-- Add test case to update `credentialSchema`
+- Add test case to update `issuerMetadata`.
+- Add test case to update `credentialMetadata`.
+- Add test case to update `credentialSchema`.
 
 ## 1.0.2
 
@@ -16,4 +20,4 @@
 
 ## 1.0.0
 
-- Initial issuer front end
+- Initial issuer front end.
