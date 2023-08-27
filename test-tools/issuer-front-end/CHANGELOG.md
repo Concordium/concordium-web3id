@@ -3,6 +3,7 @@
 ## 1.0.5
 
 - Add support for optional attributes.
+- Credential schema is only loaded from the contract instance.
 
 ## 1.0.4
 

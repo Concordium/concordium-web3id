@@ -139,9 +139,8 @@ function parseAttributesFromForm(
 ): Attribute {
     const attributes: Attribute = {};
     attributeSchema.forEach((obj) => {
-        if (obj.required && obj.value === undefined) {
-            setParsingError(`Attribute ${obj.tag} needs to be set.`);
-            throw new Error(`Attribute ${obj.tag} needs to be set.`);
+        if (obj.value === undefined) {
+            console.warn(`Attribute ${obj.tag} is required but has not been set.`);
         } else if (obj.value !== undefined) {
             if (obj.type === 'string') {
                 attributes[obj.tag] = obj.value;
@@ -283,14 +282,6 @@ export default function Main(props: WalletConnectionProps) {
                 url: target.value,
             },
         });
-        extractFromSchema(target.value)
-            .then((r) => {
-                setFetchingCredentialSchemaError('');
-                setAttributeSchema(r);
-            })
-            .catch((e) => {
-                setFetchingCredentialSchemaError(`Could not fetch credential schema: ${(e as Error).message}`);
-            });
     }, []);
 
     const changeCredentialMetaDataURLHandler = useCallback((event: ChangeEvent) => {
@@ -313,40 +304,49 @@ export default function Main(props: WalletConnectionProps) {
             const target = event.target as HTMLTextAreaElement;
             setCredentialRegistryContratIndex(Number(target.value));
 
-            registryMetadata(client, Number(target.value)).then((value) => {
-                setViewErrorSmartContractState('');
+            registryMetadata(client, Number(target.value))
+                .then((value) => {
+                    setViewErrorSmartContractState('');
 
-                const registryMetadataReturnValue = JSON.parse(value);
-                setSmartContractState(registryMetadataReturnValue);
+                    const registryMetadataReturnValue = JSON.parse(value);
+                    setSmartContractState(registryMetadataReturnValue);
 
-                const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
+                    const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
 
-                extractFromSchema(schemaURL)
-                    .then((r) => {
-                        setFetchingCredentialSchemaError('');
-                        setAttributeSchema(r);
-                    })
-                    .catch((e) => {
-                        setAttributeSchema([]);
-                        setFetchingCredentialSchemaError(
-                            `Could not fetch credential schema from smart contract: ${(e as Error).message}`
-                        );
-                    });
-            });
+                    extractFromSchema(schemaURL)
+                        .then((r) => {
+                            setFetchingCredentialSchemaError('');
+                            setAttributeSchema(r);
+                        })
+                        .catch((e) => {
+                            setAttributeSchema([]);
+                            setFetchingCredentialSchemaError(
+                                `Could not fetch credential schema from smart contract: ${(e as Error).message}`
+                            );
+                        });
+                })
+                .catch((e) => {
+                    setAttributeSchema([]);
+                    setSmartContractState('');
+                    setViewErrorSmartContractState((e as Error).message);
+                });
         },
         []
     );
 
-    const handleAttributeChange = (i: string, attributeSchemaValue: AttributeDetails[], event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
+    const handleAttributeChange = useCallback(
+        (i: string, attributeSchemaValue: AttributeDetails[], event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
 
-        attributeSchemaValue.forEach((obj) => {
-            if (obj.tag === i) {
-                // eslint-disable-next-line no-param-reassign
-                obj.value = target.value;
-            }
-        });
-    };
+            attributeSchemaValue.forEach((obj) => {
+                if (obj.tag === i) {
+                    // eslint-disable-next-line no-param-reassign
+                    obj.value = target.value;
+                }
+            });
+        },
+        []
+    );
 
     // Refresh smartContractState periodically.
     // eslint-disable-next-line consistent-return
@@ -1664,7 +1664,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {WRONG_ATTRIBUTES.map((item) => (
                                     <div>
-                                        Add {item.tag} (Required: {item.required.toString()}):
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1790,24 +1790,7 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        WRONG_ATTRIBUTES.forEach((obj) => {
-                                            if (obj.value !== undefined) {
-                                                if (obj.type === 'string') {
-                                                    attributes[obj.tag] = obj.value;
-                                                } else if (obj.type === 'number') {
-                                                    attributes[obj.tag] = BigInt(obj.value);
-                                                } else {
-                                                    setParsingError(
-                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                    );
-                                                    throw new Error(
-                                                        `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                    );
-                                                }
-                                            }
-                                        });
+                                        const attributes = parseAttributesFromForm(WRONG_ATTRIBUTES, setParsingError);
 
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
