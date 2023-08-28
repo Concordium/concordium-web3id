@@ -90,7 +90,74 @@ async function addRevokationKey(
     }
 }
 
-type AttributeDetails = { tag: string; type: string; value: string | undefined };
+type AttributeDetails = { tag: string; type: string; value: string | undefined; required: boolean };
+
+const WRONG_ATTRIBUTES: AttributeDetails[] = [
+    { tag: 'myWrongAttribute', type: 'string', value: 'myWrongValue', required: false },
+];
+
+function renderAddPrompt(details: AttributeDetails) {
+    if (details.required) {
+        return (
+            <div>
+                {' '}
+                Add <b className="text-warning">required</b> attribute <strong> {details.tag} </strong>{' '}
+            </div>
+        );
+    }
+    return (
+        <div>
+            {' '}
+            Add <strong> {details.tag} </strong>{' '}
+        </div>
+    );
+}
+
+async function extractFromSchema(url: string): Promise<AttributeDetails[]> {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Unable to get schema. Response code: ${response.status}`);
+    }
+    const json = await response.json();
+    const { properties, required } = json.properties.credentialSubject.properties.attributes;
+
+    const attributeSchemaValues: AttributeDetails[] = [];
+    Object.entries(properties).forEach(([key, obj]) => {
+        attributeSchemaValues.push({
+            tag: key,
+            type: (obj as { type: string }).type,
+            value: undefined,
+            required: (required as string[]).includes(key),
+        });
+    });
+    return attributeSchemaValues;
+}
+
+function parseAttributesFromForm(
+    attributeSchema: AttributeDetails[],
+    setParsingError: (msg: string) => void
+): Attribute {
+    const attributes: Attribute = {};
+    attributeSchema.forEach((obj) => {
+        if (obj.required && obj.value === undefined) {
+            console.warn(`Attribute ${obj.tag} is required but has not been set.`);
+        } else if (obj.value !== undefined) {
+            if (obj.type === 'string') {
+                attributes[obj.tag] = obj.value;
+            } else if (obj.type === 'number') {
+                attributes[obj.tag] = BigInt(obj.value);
+            } else {
+                setParsingError(
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                );
+                throw new Error(
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                );
+            }
+        }
+    });
+    return attributes;
+}
 
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
@@ -98,7 +165,8 @@ export default function Main(props: WalletConnectionProps) {
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
 
-    const [viewError, setViewError] = useState('');
+    const [viewErrorSmartContractState, setViewErrorSmartContractState] = useState('');
+    const [viewErrorAccountBalance, setViewErrorAccountBalance] = useState('');
     const [transactionError, setTransactionError] = useState('');
     const [userInputError2, setUserInputError2] = useState('');
 
@@ -133,6 +201,7 @@ export default function Main(props: WalletConnectionProps) {
     const [updatedCredentialSchema, setUpdatedCredentialSchema] = useState('');
 
     const [smartContractState, setSmartContractState] = useState('');
+    const [fetchingCredentialSchemaError, setFetchingCredentialSchemaError] = useState('');
 
     const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(EXAMPLE_CREDENTIAL_METADATA);
     const [updatedCredentialMetaDataURL, setUpdatedCredentialMetaDataURL] = useState('');
@@ -213,22 +282,6 @@ export default function Main(props: WalletConnectionProps) {
                 url: target.value,
             },
         });
-
-        const schemaURL = target.value;
-
-        fetch(schemaURL)
-            .then((response) => response.json())
-            .then((json) => {
-                const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                const attributeSchemaValues: AttributeDetails[] = [];
-                Object.entries(properties).forEach(([key, obj]) => {
-                    attributeSchemaValues.push({ tag: key, type: (obj as { type: string }).type, value: undefined });
-                });
-
-                setAttributeSchema(attributeSchemaValues);
-            })
-            .catch((e) => console.log(e));
     }, []);
 
     const changeCredentialMetaDataURLHandler = useCallback((event: ChangeEvent) => {
@@ -251,31 +304,32 @@ export default function Main(props: WalletConnectionProps) {
             const target = event.target as HTMLTextAreaElement;
             setCredentialRegistryContratIndex(Number(target.value));
 
-            const registryMetadataReturnValue = JSON.parse(await registryMetadata(client, Number(target.value)));
+            registryMetadata(client, Number(target.value))
+                .then((value) => {
+                    setViewErrorSmartContractState('');
 
-            setSchemaCredential(registryMetadataReturnValue.credential_schema);
+                    const registryMetadataReturnValue = JSON.parse(value);
+                    setSmartContractState(registryMetadataReturnValue);
 
-            setSmartContractState(registryMetadataReturnValue);
+                    const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
 
-            const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
-
-            fetch(schemaURL)
-                .then((response) => response.json())
-                .then((json) => {
-                    const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                    const attributeSchemaValues: AttributeDetails[] = [];
-                    Object.entries(properties).forEach(([key, obj]) => {
-                        attributeSchemaValues.push({
-                            tag: key,
-                            type: (obj as { type: string }).type,
-                            value: undefined,
+                    extractFromSchema(schemaURL)
+                        .then((r) => {
+                            setFetchingCredentialSchemaError('');
+                            setAttributeSchema(r);
+                        })
+                        .catch((e) => {
+                            setAttributeSchema([]);
+                            setFetchingCredentialSchemaError(
+                                `Could not fetch credential schema from smart contract: ${(e as Error).message}`
+                            );
                         });
-                    });
-
-                    setAttributeSchema(attributeSchemaValues);
                 })
-                .catch((e) => console.log(e));
+                .catch((e) => {
+                    setAttributeSchema([]);
+                    setSmartContractState('');
+                    setViewErrorSmartContractState((e as Error).message);
+                });
         },
         []
     );
@@ -303,11 +357,12 @@ export default function Main(props: WalletConnectionProps) {
                     registryMetadata(grpcClient, credentialRegistryContratIndex)
                         .then((value) => {
                             setSmartContractState(JSON.parse(value));
-                            setViewError('');
+                            setViewErrorSmartContractState('');
                         })
                         .catch((e) => {
+                            setAttributeSchema([]);
                             setSmartContractState('');
-                            setViewError((e as Error).message);
+                            setViewErrorSmartContractState((e as Error).message);
                         });
                 }
             }, REFRESH_INTERVAL.asMilliseconds());
@@ -329,12 +384,12 @@ export default function Main(props: WalletConnectionProps) {
                                 value.accountCredentials[0].value.contents.credentialPublicKeys.keys[0].verifyKey
                             );
                         }
-                        setViewError('');
+                        setViewErrorAccountBalance('');
                     })
                     .catch((e) => {
                         setAccountBalance('');
                         setBrowserPublicKey('');
-                        setViewError((e as Error).message);
+                        setViewErrorAccountBalance((e as Error).message);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
             return () => clearInterval(interval);
@@ -352,10 +407,10 @@ export default function Main(props: WalletConnectionProps) {
                             value.accountCredentials[0].value.contents.credentialPublicKeys.keys[0].verifyKey
                         );
                     }
-                    setViewError('');
+                    setViewErrorAccountBalance('');
                 })
                 .catch((e) => {
-                    setViewError((e as Error).message);
+                    setViewErrorAccountBalance((e as Error).message);
                     setAccountBalance('');
                     setBrowserPublicKey('');
                 });
@@ -363,19 +418,9 @@ export default function Main(props: WalletConnectionProps) {
     }, [connection, account]);
 
     useEffect(() => {
-        fetch(EXAMPLE_CREDENTIAL_SCHEMA)
-            .then((response) => response.json())
-            .then((json) => {
-                const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                const attributeSchemaValues: AttributeDetails[] = [];
-                Object.entries(properties).forEach(([key, obj]) => {
-                    attributeSchemaValues.push({ tag: key, type: (obj as { type: string }).type, value: undefined });
-                });
-
-                setAttributeSchema(attributeSchemaValues);
-            })
-            .catch((e) => console.log(e));
+        extractFromSchema(EXAMPLE_CREDENTIAL_SCHEMA)
+            .then(setAttributeSchema)
+            .catch((e) => console.error(e));
     }, []);
 
     return (
@@ -594,11 +639,11 @@ export default function Main(props: WalletConnectionProps) {
                             <TestBox
                                 header="Step 3: Input Smart Contract Index"
                                 note="
-                                Expected result after inputing a value: The inex or
-                                an error message should appear in the above test unit.
-                                        "
+                                Expected result after inputting a value: The index should appear in the above test unit. In addition,
+                                an error message can appear either in the above test unit or on the right side if the credentialSchema
+                                cannot be fetched correctly from the given smart contract."
                             >
-                                Input smart contract index created in above step:
+                                Input smart contract index created in the above step:
                                 <br />
                                 <input
                                     className="inputFieldStyle"
@@ -616,6 +661,11 @@ export default function Main(props: WalletConnectionProps) {
                                         <div>{credentialRegistryContratIndex}</div>
                                     </div>
                                 )}
+                                {fetchingCredentialSchemaError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {fetchingCredentialSchemaError}.
+                                    </div>
+                                )}
                             </TestBox>
                             <TestBox
                                 header="Step 4: Register a credential"
@@ -629,7 +679,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -755,27 +805,10 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        attributeSchema.forEach((obj) => {
-                                            if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            }
-
-                                            if (obj.type === 'string') {
-                                                attributes[obj.tag] = obj.value;
-                                            } else if (obj.type === 'number') {
-                                                attributes[obj.tag] = BigInt(obj.value);
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                            }
-                                        });
+                                        const attributes: Attribute = parseAttributesFromForm(
+                                            attributeSchema,
+                                            setParsingError
+                                        );
 
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
@@ -979,7 +1012,7 @@ export default function Main(props: WalletConnectionProps) {
                                 </button>
                             </TestBox>
                             <TestBox
-                                header="Step 7: Restore Credential By Issuer"
+                                header="Step 7: Restore Credential By The Issuer"
                                 note="Expected result after pressing the button: The
                                 transaction hash or an error message should appear in the right column."
                             >
@@ -1164,13 +1197,13 @@ export default function Main(props: WalletConnectionProps) {
                                 - The backend does successfully register the credential in the smart contract but does not wait until 
                                 the transaction is finalized and immediately returns the correct signature/randomness/proof on the commitments 
                                 to the front end.
-                                Step 8 allows you to simulate both scenarios reliably by not clicking the second button or
+                                This test case allows you to simulate both scenarios reliably by not clicking the second button or
                                 by clicking the second button at some point later (delayed). Your credential will be shown in the `Verifiable Credential` 
                                 section in the browser wallet after the `issueCredential` tx is finalized."
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1292,29 +1325,9 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        attributeSchema.forEach((obj) => {
-                                            if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            }
-
-                                            if (obj.type === 'string') {
-                                                attributes[obj.tag] = obj.value;
-                                            } else if (obj.type === 'number') {
-                                                attributes[obj.tag] = BigInt(obj.value);
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                            }
-                                        });
-
+                                        const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
+
                                         provider
                                             .addWeb3IdCredential(
                                                 {
@@ -1436,7 +1449,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item.tag}:
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1558,28 +1571,7 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        attributeSchema.forEach((obj) => {
-                                            if (obj.value === undefined) {
-                                                setParsingError(`Attribute ${obj.tag} needs to be set.`);
-                                                throw new Error(`Attribute ${obj.tag} needs to be set.`);
-                                            }
-
-                                            if (obj.type === 'string') {
-                                                attributes[obj.tag] = obj.value;
-                                            } else if (obj.type === 'number') {
-                                                attributes[obj.tag] = BigInt(obj.value);
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
-                                                );
-                                            }
-                                        });
-
+                                        const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
                                         provider
@@ -1661,14 +1653,246 @@ export default function Main(props: WalletConnectionProps) {
                                     </div>
                                 )}
                             </TestBox>
+                            <TestBox
+                                header="Step 13: Register a credential (with wrong attributes)"
+                                note="Expected result after pressing the button: There should be one popup happening in the wallet
+                                    (first action to add the credential, second action to send the `issueCredential` tx should not appear because the flow has already thrown an error).
+                                    The browser wallet should not allow you to add such a credential.
+                                    Pressing the button without any user input will create an example with the provided placeholder value.
+                                    Your credential should NOT be shown in the `Verifiable Credential` 
+                                    section in the browser wallet."
+                            >
+                                {WRONG_ATTRIBUTES.map((item) => (
+                                    <div>
+                                        {renderAddPrompt(item)}
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id={item.tag}
+                                            name={item.tag}
+                                            type="text"
+                                            placeholder={item.type === 'string' ? 'myString' : '1234'}
+                                            onChange={(event) => {
+                                                handleAttributeChange(item.tag, WRONG_ATTRIBUTES, event);
+                                            }}
+                                        />
+                                        <br />
+                                        <br />
+                                    </div>
+                                ))}
+                                <br />
+                                <br />
+                                <div style={{ fontWeight: credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has expiry date
+                                </div>
+                                <Switch
+                                    onChange={() => {
+                                        setCredentialHasExpiryDate(!credentialHasExpiryDate);
+                                    }}
+                                    onColor="#308274"
+                                    offColor="#308274"
+                                    onHandleColor="#174039"
+                                    offHandleColor="#174039"
+                                    checked={!credentialHasExpiryDate}
+                                    checkedIcon={false}
+                                    uncheckedIcon={false}
+                                />
+                                <div style={{ fontWeight: !credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has NO expiry date
+                                </div>
+                                <br />
+                                <br />
+                                Add `valid_from`:
+                                <br />
+                                <br />
+                                <input
+                                    type="datetime-local"
+                                    id="valid_from"
+                                    name="valid_from"
+                                    value={validFromDate}
+                                    onChange={handleValidFromDateChange}
+                                />
+                                <br />
+                                <br />
+                                {credentialHasExpiryDate && (
+                                    <>
+                                        Add`valid_until`:
+                                        <br />
+                                        <br />
+                                        <input
+                                            type="datetime-local"
+                                            id="valid_until"
+                                            name="valid_until"
+                                            value={validUntilDate}
+                                            onChange={handleValidUntilDateChange}
+                                        />
+                                        <br />
+                                        <br />
+                                    </>
+                                )}
+                                Add `CredentialMetadata`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialMetaDataURL"
+                                    type="text"
+                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
+                                    onChange={changeCredentialMetaDataURLHandler}
+                                />
+                                <br />
+                                Add `AuxiliaryData`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="auxiliaryData"
+                                    type="text"
+                                    placeholder="[23,2,1,5,3,2]"
+                                    onChange={changeAuxiliaryDataHandler}
+                                />
+                                <div className="switch-wrapper">
+                                    <div style={{ fontWeight: isHolderRevocable ? 'bold' : 'normal' }}>
+                                        Holder can revoke credential
+                                    </div>
+                                    <Switch
+                                        onChange={() => {
+                                            setIsHolderRevocable(!isHolderRevocable);
+                                        }}
+                                        onColor="#308274"
+                                        offColor="#308274"
+                                        onHandleColor="#174039"
+                                        offHandleColor="#174039"
+                                        checked={!isHolderRevocable}
+                                        checkedIcon={false}
+                                        uncheckedIcon={false}
+                                    />
+                                    <div style={{ fontWeight: !isHolderRevocable ? 'bold' : 'normal' }}>
+                                        Holder can NOT revoke credential
+                                    </div>
+                                </div>
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={async () => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        setCredentialPublicKey('');
+                                        setParsingError('');
+
+                                        if (credentialRegistryContratIndex === undefined) {
+                                            setTransactionError(`Set Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Smart Contract Index in Step 3`);
+                                        }
+
+                                        const provider = await detectConcordiumProvider();
+
+                                        const metadataUrl = {
+                                            url: credentialMetaDataURL,
+                                        };
+
+                                        const attributes = parseAttributesFromForm(WRONG_ATTRIBUTES, setParsingError);
+
+                                        const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
+
+                                        provider
+                                            .addWeb3IdCredential(
+                                                {
+                                                    $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                                    type: [...types, credentialType],
+                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                                    issuanceDate: new Date().toISOString(),
+                                                    credentialSubject: { attributes },
+                                                    credentialSchema: {
+                                                        id: schemaCredential.schema_ref.url,
+                                                        type: credentialType,
+                                                    },
+                                                },
+                                                metadataUrl,
+                                                async (id) => {
+                                                    const publicKeyOfCredential = id.replace(
+                                                        'did:ccd:testnet:pkc:',
+                                                        ''
+                                                    );
+
+                                                    setCredentialPublicKey(publicKeyOfCredential);
+
+                                                    const tx = issueCredential(
+                                                        connection,
+                                                        account,
+                                                        publicKeyOfCredential,
+                                                        credentialHasExpiryDate,
+                                                        validFromDate,
+                                                        validUntilDate,
+                                                        credentialMetaDataURL,
+                                                        isHolderRevocable,
+                                                        credentialRegistryContratIndex,
+                                                        auxiliaryData
+                                                    );
+
+                                                    tx.then(setTxHash).catch((err: Error) =>
+                                                        setTransactionError((err as Error).message)
+                                                    );
+
+                                                    const commitments = {
+                                                        attributes,
+                                                        holderId: publicKeyOfCredential,
+                                                        issuer: {
+                                                            index: credentialRegistryContratIndex,
+                                                            subindex: 0,
+                                                        },
+                                                    };
+
+                                                    const requestSignatureResponse = (await requestSignature(
+                                                        seed,
+                                                        stringify(commitments)
+                                                    )) as RequestSignatureResponse;
+
+                                                    const proofObject = {
+                                                        type: 'Ed25519Signature2020' as const,
+                                                        verificationMethod: id,
+                                                        proofPurpose: 'assertionMethod' as const,
+                                                        proofValue:
+                                                            requestSignatureResponse.signedCommitments.signature,
+                                                    };
+
+                                                    return {
+                                                        proof: proofObject,
+                                                        randomness: requestSignatureResponse.randomness,
+                                                    };
+                                                }
+                                            )
+                                            .catch((e: Error) => {
+                                                console.error(e);
+                                            });
+                                    }}
+                                >
+                                    Register Credential
+                                </button>
+                                {credentialPublicKey && (
+                                    <>
+                                        <br />
+                                        <br />
+                                        <div className="actionResultBox">
+                                            Credential Public Key:
+                                            <div>{credentialPublicKey}</div>
+                                        </div>
+                                    </>
+                                )}
+                                {parsingError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {parsingError}.
+                                    </div>
+                                )}
+                            </TestBox>
                         </div>
                     )}
                     <div className="col-lg-6">
                         <div className="sticky-top">
                             <br />
                             <h5>
-                                This column refreshes every few seconds to update your account balance. It also displays
-                                your connected account, your public key, transaction hashes, and error messages.
+                                This column refreshes every few seconds to update your account balance and the smart
+                                contract state. It also displays your connected account, your public key, transaction
+                                hashes, and error messages.
                             </h5>
                             <div className="label">Connected account:</div>
                             <div>
@@ -1704,9 +1928,14 @@ export default function Main(props: WalletConnectionProps) {
                                     Error: {transactionError}.
                                 </div>
                             )}
-                            {viewError && (
+                            {viewErrorAccountBalance && (
                                 <div className="alert alert-danger" role="alert">
-                                    Error: {viewError}.
+                                    Error: {viewErrorAccountBalance}.
+                                </div>
+                            )}
+                            {viewErrorSmartContractState && (
+                                <div className="alert alert-danger" role="alert">
+                                    Error: {viewErrorSmartContractState}.
                                 </div>
                             )}
                             {txHash && (
