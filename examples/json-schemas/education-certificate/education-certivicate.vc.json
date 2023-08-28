@@ -14,7 +14,10 @@
         "attributes": {
             "degreeType": "BachelorDegree",
             "degreeName": "Bachelor of Science and Arts",
-            "graduationDate": "2010-06-01T00:00:00Z"
+            "graduationDate": {
+                "timestamp": "2010-06-01T00:00:00Z",
+                "type": "date-time"
+            }
         }
     },
     "credentialSchema": {

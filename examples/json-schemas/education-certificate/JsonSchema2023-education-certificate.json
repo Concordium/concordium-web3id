@@ -30,8 +30,21 @@
                         },
                         "graduationDate": {
                             "title": "Graduation date",
-                            "type": "string",
-                            "format": "date-time",
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "const": "date-time"
+                                },
+                                "timestamp": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "timestamp"
+                            ],
                             "description": "Graduation date"
                         }
                     },
