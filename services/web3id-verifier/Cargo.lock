@@ -569,7 +569,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-rust-sdk"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -632,7 +632,7 @@ dependencies = [
 
 [[package]]
 name = "concordium_base"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "aes",
  "anyhow",
@@ -2975,7 +2975,7 @@ dependencies = [
 
 [[package]]
 name = "web3id-verifier"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "axum",
