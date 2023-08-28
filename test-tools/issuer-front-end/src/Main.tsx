@@ -139,7 +139,7 @@ function parseAttributesFromForm(
 ): Attribute {
     const attributes: Attribute = {};
     attributeSchema.forEach((obj) => {
-        if (obj.value === undefined) {
+        if (obj.required && obj.value === undefined) {
             console.warn(`Attribute ${obj.tag} is required but has not been set.`);
         } else if (obj.value !== undefined) {
             if (obj.type === 'string') {
@@ -1203,7 +1203,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        {renderAddPrompt(item)}:
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1449,7 +1449,7 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        {renderAddPrompt(item)}:
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -1658,7 +1658,7 @@ export default function Main(props: WalletConnectionProps) {
                                 note="Expected result after pressing the button: There should be one popup happening in the wallet
                                     (first action to add the credential, second action to send the `issueCredential` tx should not appear because the flow has already thrown an error).
                                     The browser wallet should not allow you to add such a credential.
-                                    Pressing the button without any user input will create an example tx with the provided placeholder values.
+                                    Pressing the button without any user input will create an example with the provided placeholder value.
                                     Your credential should NOT be shown in the `Verifiable Credential` 
                                     section in the browser wallet."
                             >
