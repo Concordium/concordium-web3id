@@ -53,10 +53,15 @@ export default function RemoveVerification() {
     }
   };
 
+  const reset = () => {
+    setPending(false);
+    setRemoved(false);
+  }
+
   return (
     <>
       <Button onClick={() => setOpen(true)} color="link">Remove verification?</Button>
-      <Modal isOpen={open} toggle={toggle}>
+      <Modal isOpen={open} toggle={toggle} onClosed={reset}>
         <ModalHeader toggle={toggle}>Verificaton removal</ModalHeader>
         <ModalBody>
           <Card>
