@@ -37,7 +37,8 @@
                                     "const": "date-time"
                                 },
                                 "timestamp": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "format": "date-time"
                                 }
                             },
                             "required": [
