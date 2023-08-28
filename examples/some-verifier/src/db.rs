@@ -7,22 +7,21 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Row};
 
 const VERIFICATIONS_TABLE: &'static str = "verifications";
-const TELEGRAM_ID_COLUMN: &'static str = "telegram_id";
-const DISCORD_ID_COLUMN: &'static str = "discord_id";
 const PRESENTATION_COLUMN: &'static str = "presentation";
 const FIRST_NAME_COLUMN: &'static str = "first_name";
 const LAST_NAME_COLUMN: &'static str = "last_name";
 const ID_COLUMN: &'static str = "id";
+const VERIFICATION_ID_COLUMN: &'static str = "verification_id";
 const USERNAME_COLUMN: &'static str = "username";
 
 /// A trait that is implemented for the Platform enum to give some utility functons.
 trait DbName {
     /// The name of the corresponding table.
     fn table_name(&self) -> &'static str;
-    /// The name of the corresponding column.
-    fn column_name(&self) -> &'static str;
     /// The username alias used when joined with other platforms
     fn username_alias(&self) -> String;
+    /// The id alias used when joined with other platforms
+    fn id_alias(&self) -> String;
 }
 
 impl DbName for Platform {
@@ -33,15 +32,12 @@ impl DbName for Platform {
         }
     }
 
-    fn column_name(&self) -> &'static str {
-        match self {
-            Platform::Telegram => "telegram_id",
-            Platform::Discord => "discord_id",
-        }
-    }
-
     fn username_alias(&self) -> String {
         format!("{}_{USERNAME_COLUMN}", self.table_name())
+    }
+
+    fn id_alias(&self) -> String {
+        format!("{}_{ID_COLUMN}", self.table_name())
     }
 }
 
@@ -61,7 +57,7 @@ fn verification_from_row(row: Row) -> DbVerification {
     let accounts = Platform::SUPPORTED_PLATFORMS
         .into_iter()
         .map(|platform| {
-            let id = row.get(platform.column_name());
+            let id = row.get(platform.id_alias().as_str());
             let username = row.get(platform.username_alias().as_str());
 
             DbAccount {
@@ -119,15 +115,6 @@ impl VerificationsEntry {
     fn columns(&self) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
         [
             (
-                TELEGRAM_ID_COLUMN,
-                self.telegram.as_ref().map(|p| &p.id as &(dyn ToSql + Sync)),
-            ),
-            (
-                DISCORD_ID_COLUMN,
-                self.discord.as_ref().map(|p| &p.id as &(dyn ToSql + Sync)),
-            ),
-            (PRESENTATION_COLUMN, Some(&self.presentation)),
-            (
                 FIRST_NAME_COLUMN,
                 self.first_name.as_ref().map(|n| n as &(dyn ToSql + Sync)),
             ),
@@ -135,6 +122,7 @@ impl VerificationsEntry {
                 LAST_NAME_COLUMN,
                 self.last_name.as_ref().map(|n| n as &(dyn ToSql + Sync)),
             ),
+            (PRESENTATION_COLUMN, Some(&self.presentation)),
         ]
         .into_iter()
         .filter_map(|(name, val)| val.map(|v| (name, v)))
@@ -147,9 +135,16 @@ pub struct PlatformEntry {
 }
 
 impl PlatformEntry {
-    fn columns(&self) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
+    fn columns<'a>(
+        &'a self,
+        verification_id: &'a i64,
+    ) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
         [
             (ID_COLUMN, &self.id as &(dyn ToSql + Sync)),
+            (
+                VERIFICATION_ID_COLUMN,
+                verification_id as &(dyn ToSql + Sync),
+            ),
             (USERNAME_COLUMN, &self.username),
         ]
         .into_iter()
@@ -180,21 +175,21 @@ impl Database {
         platform: Platform,
     ) -> DbResult<Option<DbVerification>> {
         // The base statement
-        let mut statement = format!("SELECT {DISCORD_ID_COLUMN}, {TELEGRAM_ID_COLUMN}, {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN}");
+        let mut statement = format!("SELECT {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN}");
 
         // Additional columns to select and joins to perform built from the supported platforms.
         let (columns, joins) = Platform::SUPPORTED_PLATFORMS
             .into_iter()
             .map(|platform| {
                 let column = format!(
-                    "{}.{USERNAME_COLUMN} as {}",
+                    "{0}.{USERNAME_COLUMN} AS {1}, {}.{ID_COLUMN} AS {2}",
                     platform.table_name(),
-                    platform.username_alias()
+                    platform.username_alias(),
+                    platform.id_alias()
                 );
                 let join = format!(
-                    "JOIN {0} ON {0}.{ID_COLUMN}={VERIFICATIONS_TABLE}.{1}",
+                    "JOIN {0} ON {0}.{VERIFICATION_ID_COLUMN}={VERIFICATIONS_TABLE}.{ID_COLUMN}",
                     platform.table_name(),
-                    platform.column_name()
                 );
                 (column, join)
             })
@@ -210,7 +205,10 @@ impl Database {
         statement.push_str(&columns);
         statement.push_str(&format!(" FROM {VERIFICATIONS_TABLE}"));
         statement.push_str(&joins);
-        statement.push_str(&format!(" WHERE {} = $1", platform.column_name()));
+        statement.push_str(&format!(
+            " WHERE {}.{ID_COLUMN} = $1",
+            platform.table_name()
+        ));
 
         let verification = self
             .client
@@ -228,20 +226,22 @@ impl Database {
 
         let mut client = self.client.write().await;
         let transaction = client.transaction().await?;
-        if let Some(telegram) = &entry.telegram {
-            add_platform_entry(&transaction, Platform::Telegram, telegram).await?;
-        }
-        if let Some(discord) = &entry.discord {
-            add_platform_entry(&transaction, Platform::Discord, discord).await?;
-        }
 
         let statement = format!(
-            "INSERT INTO {VERIFICATIONS_TABLE} ({}) VALUES ({})",
+            "INSERT INTO {VERIFICATIONS_TABLE} ({}) VALUES ({}) RETURNING id",
             columns.join(", "),
             (1..=columns.len()).format_with(", ", |i, f| f(&format_args!("${i}")))
         );
 
-        transaction.execute(&statement, &values).await?;
+        let verification_id: i64 = transaction.query_one(&statement, &values).await?.get(0);
+
+        if let Some(telegram) = &entry.telegram {
+            add_platform_entry(&transaction, Platform::Telegram, telegram, verification_id).await?;
+        }
+        if let Some(discord) = &entry.discord {
+            add_platform_entry(&transaction, Platform::Discord, discord, verification_id).await?;
+        }
+
         transaction.commit().await
     }
 
@@ -249,33 +249,12 @@ impl Database {
         let mut client = self.client.write().await;
         let transaction = client.transaction().await?;
 
-        // First, delete any platform which is not the platform the provided ID is for.
-        for p in Platform::SUPPORTED_PLATFORMS.into_iter() {
-            if p != platform {
-                let statement = format!(
-                    "DELETE FROM {} WHERE {ID_COLUMN} IN (SELECT {} FROM {VERIFICATIONS_TABLE} WHERE {} = $1)",
-                    p.table_name(),
-                    p.column_name(),
-                    platform.column_name()
-                );
-                transaction.execute(&statement, &[&id]).await?;
-            }
-        }
-
         // Then delete the verification row.
         let statement = format!(
-            "DELETE FROM {VERIFICATIONS_TABLE} WHERE {} = $1",
-            platform.column_name()
-        );
-        transaction.execute(&statement, &[&id]).await?; // TODO: verify that this works...
-
-        // Finally, delete the row for the selected platform.
-        let statement = format!(
-            "DELETE FROM {} WHERE {ID_COLUMN} = $1",
+            "DELETE FROM {VERIFICATIONS_TABLE} WHERE {ID_COLUMN} IN (SELECT {VERIFICATION_ID_COLUMN} FROM {} WHERE {ID_COLUMN} = $1)",
             platform.table_name()
         );
         transaction.execute(&statement, &[&id]).await?;
-
         transaction.commit().await
     }
 }
@@ -284,8 +263,9 @@ async fn add_platform_entry(
     transaction: &tokio_postgres::Transaction<'_>,
     platform: Platform,
     entry: &PlatformEntry,
+    verification_id: i64,
 ) -> DbResult<()> {
-    let (columns, values): (Vec<_>, Vec<_>) = entry.columns().unzip();
+    let (columns, values): (Vec<_>, Vec<_>) = entry.columns(&verification_id).unzip();
 
     let statement = format!(
         "INSERT INTO {} ({}) VALUES ({})",
