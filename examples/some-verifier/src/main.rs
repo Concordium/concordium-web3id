@@ -340,7 +340,7 @@ async fn remove_verification(
         _ => return Err(Error::InvalidStatement),
     };
 
-    if let Err(err) = state.database.remove_verirication(&id, platform).await {
+    if let Err(err) = state.database.remove_verification(&id, platform).await {
         tracing::warn!("Error inserting entries: {err}");
         return Err(Error::DatabaseError(err));
     }

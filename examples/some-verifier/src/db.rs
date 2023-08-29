@@ -245,16 +245,16 @@ impl Database {
         transaction.commit().await
     }
 
-    pub async fn remove_verirication(&self, id: &str, platform: Platform) -> DbResult<()> {
+    pub async fn remove_verification(&self, id: &str, platform: Platform) -> DbResult<()> {
         let mut client = self.client.write().await;
         let transaction = client.transaction().await?;
 
         // Then delete the verification row.
         let statement = format!(
-            "DELETE FROM {VERIFICATIONS_TABLE} WHERE {ID_COLUMN} IN (SELECT {VERIFICATION_ID_COLUMN} FROM {} WHERE {ID_COLUMN} = $1)",
+            "DELETE FROM {VERIFICATIONS_TABLE} WHERE {ID_COLUMN} IN (SELECT {VERIFICATION_ID_COLUMN} FROM {} WHERE {ID_COLUMN} = $1) RETURNING {ID_COLUMN}",
             platform.table_name()
         );
-        transaction.execute(&statement, &[&id]).await?;
+        transaction.query_one(&statement, &[&id]).await?;
         transaction.commit().await
     }
 }

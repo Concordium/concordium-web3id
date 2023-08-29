@@ -74,6 +74,7 @@ export default function RemoveVerification() {
   const reset = () => {
     setPending(false);
     setRemoved(false);
+    setError(undefined);
   };
 
   return (
