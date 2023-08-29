@@ -1,5 +1,12 @@
 ## Unreleased changes
 
+## 1.0.7
+
+- Add `console.debug` whenever the front end sends data to the wallet or the backend.
+- Replace placeholder attribute at the input fields with the value of the `useState` hook that tracks this field.
+- Remove checks if input field values are set.
+- Input field ids are now unique.
+
 ## 1.0.6
 
 - Use credentialType and credentialSchema fetched from the smart contract instance.
