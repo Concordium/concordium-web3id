@@ -3,10 +3,12 @@ use std::time::Duration;
 
 use anyhow::Context;
 use clap::Parser;
+use concordium_rust_sdk::contract_client::CredentialStatus;
 use reqwest::Url;
 use some_verifier_lib::{Platform, Verification};
 use teloxide::dispatching::UpdateHandler;
-use teloxide::types::{InlineKeyboardButton, MessageKind, ReplyMarkup, User};
+use teloxide::types::{InlineKeyboardButton, MessageKind, ParseMode, ReplyMarkup, User};
+use teloxide::utils::markdown;
 use teloxide::RequestError;
 use teloxide::{prelude::*, utils::command::BotCommands};
 
@@ -161,24 +163,60 @@ async fn check_user(
 ) -> ResponseResult<()> {
     match get_verification(cfg, target_user.id).await {
         Ok(verification) => {
-            let name = target_user.mention().unwrap_or(target_user.full_name());
+            // The message will be formatted with MarkdownV2 (https://core.telegram.org/bots/api#markdownv2-style)
+            // Therefore, we need to escape all reserved characters and arbitrary strings
+            let mut mention = markdown::user_mention_or_link(target_user);
+            if mention.starts_with('@') {
+                mention = markdown::escape(&mention);
+            }
             let accounts = verification.accounts;
-            let reply = if accounts.is_empty() {
-                format!("{name} is not verified with Concordia.")
-            } else {
-                let mut reply = format!("{name} is verified with Concordia.");
-                if let Some(full_name) = verification.full_name {
-                    reply.push_str(&format!("\n- Real name: {full_name}"));
+
+            let telegram_status = accounts
+                .iter()
+                .find(|acc| acc.platform == Platform::Telegram)
+                .map(|acc| acc.cred_status);
+
+            let message = match telegram_status {
+                Some(CredentialStatus::Active) => {
+                    let mut message = format!("{mention} is verified with Concordia\\.");
+                    if let Some(full_name) = verification.full_name {
+                        let full_name = markdown::escape(&full_name.to_string());
+                        message.push_str(&format!("\n• Real name: {full_name}"));
+                    }
+                    for account in accounts
+                        .into_iter()
+                        .filter(|acc| acc.platform != Platform::Telegram)
+                    {
+                        message.push_str("\n• ");
+                        match account.cred_status {
+                            CredentialStatus::Active => {
+                                message.push_str(&format!(
+                                    "{}: {}",
+                                    account.platform,
+                                    markdown::escape(&account.username)
+                                ));
+                            }
+                            status => message.push_str(&format!(
+                                "~{}: {}~ \\({}\\)",
+                                account.platform,
+                                markdown::escape(&account.username),
+                                credential_status_msg(status)
+                            )),
+                        }
+                    }
+                    message
                 }
-                for account in accounts
-                    .into_iter()
-                    .filter(|a| a.platform != Platform::Telegram && !a.revoked)
-                {
-                    reply.push_str(&format!("\n- {}: {}", account.platform, account.username));
+                Some(status) => {
+                    format!(
+                        "{mention} is not verified with Concordia \\({}\\)\\.",
+                        credential_status_msg(status)
+                    )
                 }
-                reply
+                None => format!("{mention} is not verified with Concordia\\."),
             };
-            bot.send_message(msg.chat.id, reply)
+
+            bot.send_message(msg.chat.id, message)
+                .parse_mode(ParseMode::MarkdownV2)
                 .reply_to_message_id(msg.id)
                 .await?;
         }
@@ -186,6 +224,15 @@ async fn check_user(
     }
 
     Ok(())
+}
+
+fn credential_status_msg(status: CredentialStatus) -> &'static str {
+    match status {
+        CredentialStatus::Active => "Credential active",
+        CredentialStatus::Revoked => "Credential revoked",
+        CredentialStatus::Expired => "Credential expired",
+        CredentialStatus::NotActivated => "Credential not yet active",
+    }
 }
 
 /// Fallback handler.
