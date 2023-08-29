@@ -4,7 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, SecondsFormat, Utc};
 use clap::Parser;
@@ -189,7 +189,7 @@ async fn main() -> anyhow::Result<()> {
     let router = Router::new()
         .nest_service("/", serve_dir_service)
         .route("/verifications", post(add_verification))
-        .route("/verifications/remove", post(remove_verification))
+        .route("/verifications", delete(remove_verification))
         .route("/verifications/:platform/:id", get(get_verification))
         .with_state(state);
 
@@ -256,10 +256,10 @@ async fn add_verification(
 ) -> Result<StatusCode, Error> {
     tracing::info!("Request to verify.");
 
-    let request = request?;
+    let Json(request) = request?;
     verify_request(&mut state, &request).await?;
 
-    let Json(Request { proof, .. }) = request;
+    let Request { proof, .. } = request;
 
     // Check the statements and add them to the database
     let num_statements = proof.verifiable_credential.len();
@@ -293,10 +293,10 @@ async fn remove_verification(
 ) -> Result<StatusCode, Error> {
     tracing::info!("Request to remove verification.");
 
-    let request = request?;
+    let Json(request) = request?;
     verify_request(&mut state, &request).await?;
 
-    let Json(Request { proof, .. }) = request;
+    let Request { proof, .. } = request;
 
     // Check the statements and add them to the database
     let num_creds = proof.verifiable_credential.len();
@@ -350,11 +350,11 @@ async fn remove_verification(
     Ok(StatusCode::OK)
 }
 
-async fn verify_request(state: &mut AppState, request: &Json<Request>) -> Result<(), Error> {
-    let Json(Request { proof, timestamp }) = request;
+async fn verify_request(state: &mut AppState, request: &Request) -> Result<(), Error> {
+    let Request { proof, timestamp } = request;
 
     let delta = Utc::now().signed_duration_since(*timestamp);
-    if delta.num_hours() > 24 {
+    if delta.num_hours().abs() > 24 {
         return Err(Error::InvalidTimestamp);
     }
 

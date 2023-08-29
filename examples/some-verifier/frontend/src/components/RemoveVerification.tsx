@@ -50,8 +50,8 @@ export default function RemoveVerification() {
       );
 
       const body = { proof, timestamp };
-      const response = await fetch('/verifications/remove', {
-        method: 'POST',
+      const response = await fetch('/verifications', {
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -100,8 +100,13 @@ export default function RemoveVerification() {
             <Row>
               <Col md={12}>
                 <FormGroup>
-                  <Label>Select platform</Label>
-                  <Input type="select" name="platform" invalid={Boolean(error)}>
+                  <Label for="platform">Select platform</Label>
+                  <Input
+                    type="select"
+                    name="platform"
+                    id="platform"
+                    invalid={Boolean(error)}
+                  >
                     <option value={Platform.Discord}>Discord</option>
                     <option value={Platform.Telegram}>Telegram</option>
                   </Input>
