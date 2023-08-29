@@ -4,7 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
-use axum::routing::{delete, get, post};
+use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use chrono::{DateTime, SecondsFormat, Utc};
 use clap::Parser;
@@ -189,7 +189,7 @@ async fn main() -> anyhow::Result<()> {
     let router = Router::new()
         .nest_service("/", serve_dir_service)
         .route("/verifications", post(add_verification))
-        .route("/verifications", delete(remove_verification))
+        .route("/verifications", patch(remove_verification))
         .route("/verifications/:platform/:id", get(get_verification))
         .with_state(state);
 

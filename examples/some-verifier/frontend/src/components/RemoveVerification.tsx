@@ -51,7 +51,7 @@ export default function RemoveVerification() {
 
       const body = { proof, timestamp };
       const response = await fetch('/verifications', {
-        method: 'DELETE',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
