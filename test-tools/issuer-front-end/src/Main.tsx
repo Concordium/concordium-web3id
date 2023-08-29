@@ -58,7 +58,29 @@ type SchemaRef = {
 };
 
 interface Attribute {
-    [key: string]: string | bigint;
+    [key: string]: string | bigint | Date;
+}
+
+interface AttributeJSON {
+    [key: string]: string | bigint | { type: 'date-time'; timestamp: string };
+}
+
+// Transform attributes into the JSON format where date-time attributes
+// are represented as an object.
+function transformAttributes(attributes: Attribute): AttributeJSON {
+    const r: AttributeJSON = {};
+    for (const key in attributes) {
+        const v = attributes[key];
+        if (v instanceof Date) {
+            r[key] = {
+                type: 'date-time',
+                timestamp: v.toISOString(),
+            };
+        } else {
+            r[key] = v;
+        }
+    }
+    return r;
 }
 
 function TestBox({ header, children, note }: TestBoxProps) {
@@ -123,9 +145,13 @@ async function extractFromSchema(url: string): Promise<AttributeDetails[]> {
 
     const attributeSchemaValues: AttributeDetails[] = [];
     Object.entries(properties).forEach(([key, obj]) => {
+        let { type } = obj as { type: string };
+        if (type === 'object') {
+            type = (obj as { properties: { type: { const: string } } }).properties.type.const;
+        }
         attributeSchemaValues.push({
             tag: key,
-            type: (obj as { type: string }).type,
+            type,
             value: undefined,
             required: (required as string[]).includes(key),
         });
@@ -146,12 +172,20 @@ function parseAttributesFromForm(
                 attributes[obj.tag] = obj.value;
             } else if (obj.type === 'number') {
                 attributes[obj.tag] = BigInt(obj.value);
+            } else if (obj.type === 'date-time') {
+                if (isNaN(Date.parse(obj.value.trim()))) {
+                    const msg = `Unable to parse string "${obj.value.trim()}" as a date.`;
+                    setParsingError(msg);
+                    throw new Error(msg);
+                }
+                const date = new Date(obj.value.trim());
+                attributes[obj.tag] = date;
             } else {
                 setParsingError(
-                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number and date-time are supported.`
                 );
                 throw new Error(
-                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number and date-time are supported.`
                 );
             }
         }
@@ -879,7 +913,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 );
 
                                                 const commitments = {
-                                                    attributes,
+                                                    attributes: transformAttributes(attributes),
                                                     holderId: publicKeyOfCredential,
                                                     issuer: {
                                                         index: credentialRegistryContratIndex,
@@ -1428,7 +1462,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 // Issuer does not register credential here but instead when the next button is pressed.
 
                                                 const commitments = {
-                                                    attributes,
+                                                    attributes: transformAttributes(attributes),
                                                     holderId: publicKeyOfCredential,
                                                     issuer: {
                                                         index: credentialRegistryContratIndex,
@@ -1936,7 +1970,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 );
 
                                                 const commitments = {
-                                                    attributes,
+                                                    attributes: transformAttributes(attributes),
                                                     holderId: publicKeyOfCredential,
                                                     issuer: {
                                                         index: credentialRegistryContratIndex,

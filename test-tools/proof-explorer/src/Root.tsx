@@ -193,6 +193,7 @@ async function submitProof(
     const challengeBuffer = new Uint8Array(32);
     crypto.getRandomValues(challengeBuffer);
     const challenge = Buffer.from(challengeBuffer).toString('hex');
+    console.log(statement);
     try {
         proof = await provider.requestVerifiablePresentation(challenge, statement);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -417,10 +418,14 @@ function AttributeInRange({ setStatement, attributeOptions }: RevealAttributePro
         let lower_bound = lower[0];
         if (lower[1] == 'number') {
             lower_bound = BigInt(lower[0]);
+        } else if (lower[1] == 'date-time') {
+            lower_bound = new Date(lower[0].trim());
         }
         let upper_bound = upper[0];
         if (upper[1] == 'number') {
             upper_bound = BigInt(upper[0]);
+        } else if (upper[1] == 'date-time') {
+            upper_bound = new Date(upper[0].trim());
         }
         setStatement([
             {
@@ -485,6 +490,8 @@ function AttributeInSet({ member, setStatement, attributeOptions }: SetMembershi
     let proof_set = set.split(',').map((s) => s.trim());
     if (selected[1] == 'number') {
         proof_set = proof_set.map((x) => BigInt(x));
+    } else if (selected[1] == 'date-time') {
+        proof_set = proof_set.map((x) => new Date(x.trim()));
     }
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
@@ -739,11 +746,17 @@ function Issuers(
                                         ) {
                                             return oldTags;
                                         } else {
+                                            let { type } = v as { type: string };
+                                            if (type === 'object') {
+                                                type = (v as { properties: { type: { const: string } } }).properties
+                                                    .type.const;
+                                            }
+
                                             return [
                                                 {
                                                     value: (v as { title: string }).title,
                                                     label: tag,
-                                                    type: (v as { type: string }).type,
+                                                    type,
                                                 },
                                                 ...oldTags,
                                             ];
