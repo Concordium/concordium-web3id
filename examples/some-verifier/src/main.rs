@@ -304,7 +304,8 @@ async fn remove_verification(
         return Err(Error::NotSingleStatement(num_creds));
     }
 
-    let credential = proof.verifiable_credential.get(0).unwrap(); // We know we have exactly 1 credential
+    // We know we have exactly 1 credential
+    let credential = proof.verifiable_credential.get(0).unwrap();
     let (id, platform) = match credential {
         CredentialProof::Web3Id {
             network,
