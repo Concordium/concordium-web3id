@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 1.0.6
+
+- Use credentialType and credentialSchema fetched from the smart contract instance.
+
 ## 1.0.5
 
 - Add support for optional attributes.

@@ -215,6 +215,15 @@ export default function Main(props: WalletConnectionProps) {
         },
     });
 
+    const [credentialSchemaFromContractInstance, setCredentialSchemaFromContractIndex] = useState<string | undefined>(
+        undefined
+    );
+    const [credentialTypeFromContractInstance, setCredentialTypeFromContractIndex] = useState<string | undefined>(
+        undefined
+    );
+    const [manualCredentialType, setManualCredentialType] = useState<string | undefined>(undefined);
+    const [manualCredentialSchema, setManualCredentialSchema] = useState<string | undefined>(undefined);
+
     const [revocationKeys, setRevocationKeys] = useState<string[]>([]);
     const [revocationKeyInput, setRevocationKeyInput] = useState(
         '8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82'
@@ -299,6 +308,16 @@ export default function Main(props: WalletConnectionProps) {
         setCredentialType(target.value);
     }, []);
 
+    const changeManualCredentialTypeHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setManualCredentialType(target.value);
+    }, []);
+
+    const changeManualCredentialSchemaHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setManualCredentialSchema(target.value);
+    }, []);
+
     const changeCredentialRegistryContratIndexHandler = useCallback(
         async (client: ConcordiumGRPCClient | undefined, event: ChangeEvent) => {
             const target = event.target as HTMLTextAreaElement;
@@ -312,6 +331,12 @@ export default function Main(props: WalletConnectionProps) {
                     setSmartContractState(registryMetadataReturnValue);
 
                     const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
+
+                    setCredentialSchemaFromContractIndex(schemaURL);
+                    setManualCredentialSchema(schemaURL);
+
+                    setCredentialTypeFromContractIndex(registryMetadataReturnValue.credential_type.credential_type);
+                    setManualCredentialType(registryMetadataReturnValue.credential_type.credential_type);
 
                     extractFromSchema(schemaURL)
                         .then((r) => {
@@ -794,7 +819,11 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
                                         setParsingError('');
 
-                                        if (credentialRegistryContratIndex === undefined) {
+                                        if (
+                                            credentialRegistryContratIndex === undefined ||
+                                            credentialSchemaFromContractInstance === undefined ||
+                                            credentialTypeFromContractInstance === undefined
+                                        ) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -816,13 +845,13 @@ export default function Main(props: WalletConnectionProps) {
                                             .addWeb3IdCredential(
                                                 {
                                                     $schema: 'https://json-schema.org/draft/2020-12/schema',
-                                                    type: [...types, credentialType],
+                                                    type: [...types, credentialTypeFromContractInstance],
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
                                                     credentialSchema: {
-                                                        id: schemaCredential.schema_ref.url,
-                                                        type: credentialType,
+                                                        id: credentialSchemaFromContractInstance,
+                                                        type: credentialTypeFromContractInstance,
                                                     },
                                                 },
                                                 metadataUrl,
@@ -1199,7 +1228,8 @@ export default function Main(props: WalletConnectionProps) {
                                 to the front end.
                                 This test case allows you to simulate both scenarios reliably by not clicking the second button or
                                 by clicking the second button at some point later (delayed). Your credential will be shown in the `Verifiable Credential` 
-                                section in the browser wallet after the `issueCredential` tx is finalized."
+                                section in the browser wallet after the `issueCredential` tx is finalized.
+                                Another test you can execute with this test case is how the wallet reacts when you add manually a `CredentialType` and/or `CredentialSchema` that is different to the one registered in the contract."
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
@@ -1279,6 +1309,26 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
+                                Add manually a `CredentialType`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="changeManualCredentialType"
+                                    type="text"
+                                    placeholder={credentialTypeFromContractInstance}
+                                    onChange={changeManualCredentialTypeHandler}
+                                />
+                                <br />
+                                Add manually a `CredentialSchema`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="changeManualCredentialSchema"
+                                    type="text"
+                                    placeholder={credentialSchemaFromContractInstance}
+                                    onChange={changeManualCredentialSchemaHandler}
+                                />
+                                <br />
                                 Add `AuxiliaryData`:
                                 <br />
                                 <input
@@ -1328,17 +1378,27 @@ export default function Main(props: WalletConnectionProps) {
                                         const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
+                                        if (manualCredentialType === undefined) {
+                                            setTransactionError(`Set manualCredentialType`);
+                                            throw new Error(`Set manualCredentialType`);
+                                        }
+
+                                        if (manualCredentialSchema === undefined) {
+                                            setTransactionError(`Set manualCredentialSchema`);
+                                            throw new Error(`Set manualCredentialSchema`);
+                                        }
+
                                         provider
                                             .addWeb3IdCredential(
                                                 {
                                                     $schema: 'https://json-schema.org/draft/2020-12/schema',
-                                                    type: [...types, credentialType],
+                                                    type: [...types, manualCredentialType],
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
                                                     credentialSchema: {
-                                                        id: schemaCredential.schema_ref.url,
-                                                        type: credentialType,
+                                                        id: manualCredentialSchema,
+                                                        type: manualCredentialType,
                                                     },
                                                 },
                                                 metadataUrl,
@@ -1560,7 +1620,11 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
                                         setParsingError('');
 
-                                        if (credentialRegistryContratIndex === undefined) {
+                                        if (
+                                            credentialRegistryContratIndex === undefined ||
+                                            credentialSchemaFromContractInstance === undefined ||
+                                            credentialTypeFromContractInstance === undefined
+                                        ) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -1578,13 +1642,13 @@ export default function Main(props: WalletConnectionProps) {
                                             .addWeb3IdCredential(
                                                 {
                                                     $schema: 'https://json-schema.org/draft/2020-12/schema',
-                                                    type: [...types, credentialType],
+                                                    type: [...types, credentialTypeFromContractInstance],
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
                                                     credentialSchema: {
-                                                        id: schemaCredential.schema_ref.url,
-                                                        type: credentialType,
+                                                        id: credentialSchemaFromContractInstance,
+                                                        type: credentialTypeFromContractInstance,
                                                     },
                                                 },
                                                 metadataUrl,
@@ -1779,7 +1843,11 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
                                         setParsingError('');
 
-                                        if (credentialRegistryContratIndex === undefined) {
+                                        if (
+                                            credentialRegistryContratIndex === undefined ||
+                                            credentialSchemaFromContractInstance === undefined ||
+                                            credentialTypeFromContractInstance === undefined
+                                        ) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -1798,13 +1866,13 @@ export default function Main(props: WalletConnectionProps) {
                                             .addWeb3IdCredential(
                                                 {
                                                     $schema: 'https://json-schema.org/draft/2020-12/schema',
-                                                    type: [...types, credentialType],
+                                                    type: [...types, credentialTypeFromContractInstance],
                                                     issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
                                                     issuanceDate: new Date().toISOString(),
                                                     credentialSubject: { attributes },
                                                     credentialSchema: {
-                                                        id: schemaCredential.schema_ref.url,
-                                                        type: credentialType,
+                                                        id: credentialSchemaFromContractInstance,
+                                                        type: credentialTypeFromContractInstance,
                                                     },
                                                 },
                                                 metadataUrl,
