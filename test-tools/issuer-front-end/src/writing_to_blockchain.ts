@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { createContext } from 'react';
 import {
     AccountTransactionType,
@@ -60,18 +61,24 @@ export async function createNewIssuer(
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
-    return connection.signAndSendTransaction(
-        account,
-        AccountTransactionType.InitContract,
-        {
-            amount: new CcdAmount(BigInt(0)),
-            moduleRef: new ModuleReference(MODULE_REFERENCE_CREDENTIAL_REGISTRY),
-            initName: 'credential_registry',
-            param: toBuffer(''),
-            maxContractExecutionEnergy: 30000n,
-        } as InitContractPayload,
-        schema
-    );
+    const payload = {
+        amount: new CcdAmount(BigInt(0)),
+        moduleRef: new ModuleReference(MODULE_REFERENCE_CREDENTIAL_REGISTRY),
+        initName: 'credential_registry',
+        param: toBuffer(''),
+        maxContractExecutionEnergy: 30000n,
+    } as InitContractPayload;
+
+    console.debug('Sending init transaction:');
+    console.debug('Parameter:');
+    console.debug(parameter);
+    console.debug('Payload:');
+    console.debug(payload);
+    console.debug('Account:');
+    console.debug(account);
+    console.debug('');
+
+    return connection.signAndSendTransaction(account, AccountTransactionType.InitContract, payload, schema);
 }
 
 export async function updateCredentialSchema(
@@ -88,32 +95,40 @@ export async function updateCredentialSchema(
         throw new Error(`Set credentialSchema`);
     }
 
-    const schema = {
-        parameters: {
-            schema_ref: {
-                hash: {
-                    None: [],
-                },
-                url: credentialSchema,
+    const parameter = {
+        schema_ref: {
+            hash: {
+                None: [],
             },
+            url: credentialSchema,
         },
+    } as SmartContractParameters;
+
+    const schema = {
+        parameters: parameter,
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
-    return connection.signAndSendTransaction(
-        account,
-        AccountTransactionType.Update,
-        {
-            amount: new CcdAmount(BigInt(0)),
-            address: {
-                index: BigInt(credentialRegistryContratIndex),
-                subindex: CONTRACT_SUB_INDEX,
-            },
-            receiveName: 'credential_registry.updateCredentialSchema',
-            maxContractExecutionEnergy: 30000n,
-        } as UpdateContractPayload,
-        schema
-    );
+    const payload = {
+        amount: new CcdAmount(BigInt(0)),
+        address: {
+            index: BigInt(credentialRegistryContratIndex),
+            subindex: CONTRACT_SUB_INDEX,
+        },
+        receiveName: 'credential_registry.updateCredentialSchema',
+        maxContractExecutionEnergy: 30000n,
+    } as UpdateContractPayload;
+
+    console.debug('Sending update transaction:');
+    console.debug('Parameter:');
+    console.debug(parameter);
+    console.debug('Payload:');
+    console.debug(payload);
+    console.debug('Account:');
+    console.debug(account);
+    console.debug('');
+
+    return connection.signAndSendTransaction(account, AccountTransactionType.Update, payload, schema);
 }
 
 export async function updateCredentialMetadata(
@@ -139,35 +154,43 @@ export async function updateCredentialMetadata(
         throw new Error(`Set credentialMetadata`);
     }
 
-    const schema = {
-        parameters: Array.from([
-            {
-                credential_id: credentialPublicKey,
-                metadata_url: {
-                    hash: {
-                        None: [],
-                    },
-                    url: credentialMetadata,
+    const parameter = Array.from([
+        {
+            credential_id: credentialPublicKey,
+            metadata_url: {
+                hash: {
+                    None: [],
                 },
+                url: credentialMetadata,
             },
-        ]),
+        },
+    ]) as SmartContractParameters;
+
+    const schema = {
+        parameters: parameter,
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
-    return connection.signAndSendTransaction(
-        account,
-        AccountTransactionType.Update,
-        {
-            amount: new CcdAmount(BigInt(0)),
-            address: {
-                index: BigInt(credentialRegistryContratIndex),
-                subindex: CONTRACT_SUB_INDEX,
-            },
-            receiveName: 'credential_registry.updateCredentialMetadata',
-            maxContractExecutionEnergy: 30000n,
-        } as UpdateContractPayload,
-        schema
-    );
+    const payload = {
+        amount: new CcdAmount(BigInt(0)),
+        address: {
+            index: BigInt(credentialRegistryContratIndex),
+            subindex: CONTRACT_SUB_INDEX,
+        },
+        receiveName: 'credential_registry.updateCredentialMetadata',
+        maxContractExecutionEnergy: 30000n,
+    } as UpdateContractPayload;
+
+    console.debug('Sending update transaction:');
+    console.debug('Parameter:');
+    console.debug(parameter);
+    console.debug('Payload:');
+    console.debug(payload);
+    console.debug('Account:');
+    console.debug(account);
+    console.debug('');
+
+    return connection.signAndSendTransaction(account, AccountTransactionType.Update, payload, schema);
 }
 
 export async function updateIssuerMetadata(
@@ -184,30 +207,38 @@ export async function updateIssuerMetadata(
         throw new Error(`Set issuerMetaData`);
     }
 
-    const schema = {
-        parameters: {
-            hash: {
-                None: [],
-            },
-            url: issuerMetaData,
+    const parameter = {
+        hash: {
+            None: [],
         },
+        url: issuerMetaData,
+    } as SmartContractParameters;
+
+    const schema = {
+        parameters: parameter,
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
-    return connection.signAndSendTransaction(
-        account,
-        AccountTransactionType.Update,
-        {
-            amount: new CcdAmount(BigInt(0)),
-            address: {
-                index: BigInt(credentialRegistryContratIndex),
-                subindex: CONTRACT_SUB_INDEX,
-            },
-            receiveName: 'credential_registry.updateIssuerMetadata',
-            maxContractExecutionEnergy: 30000n,
-        } as UpdateContractPayload,
-        schema
-    );
+    const payload = {
+        amount: new CcdAmount(BigInt(0)),
+        address: {
+            index: BigInt(credentialRegistryContratIndex),
+            subindex: CONTRACT_SUB_INDEX,
+        },
+        receiveName: 'credential_registry.updateIssuerMetadata',
+        maxContractExecutionEnergy: 30000n,
+    } as UpdateContractPayload;
+
+    console.debug('Sending update transaction:');
+    console.debug('Parameter:');
+    console.debug(parameter);
+    console.debug('Payload:');
+    console.debug(payload);
+    console.debug('Account:');
+    console.debug(account);
+    console.debug('');
+
+    return connection.signAndSendTransaction(account, AccountTransactionType.Update, payload, schema);
 }
 
 export async function revokeCredential(
@@ -243,20 +274,26 @@ export async function revokeCredential(
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
-    return connection.signAndSendTransaction(
-        account,
-        AccountTransactionType.Update,
-        {
-            amount: new CcdAmount(BigInt(0)),
-            address: {
-                index: BigInt(credentialRegistryContratIndex),
-                subindex: CONTRACT_SUB_INDEX,
-            },
-            receiveName: 'credential_registry.revokeCredentialIssuer',
-            maxContractExecutionEnergy: 30000n,
-        } as UpdateContractPayload,
-        schema
-    );
+    const payload = {
+        amount: new CcdAmount(BigInt(0)),
+        address: {
+            index: BigInt(credentialRegistryContratIndex),
+            subindex: CONTRACT_SUB_INDEX,
+        },
+        receiveName: 'credential_registry.revokeCredentialIssuer',
+        maxContractExecutionEnergy: 30000n,
+    } as UpdateContractPayload;
+
+    console.debug('Sending update transaction:');
+    console.debug('Parameter:');
+    console.debug(parameter);
+    console.debug('Payload:');
+    console.debug(payload);
+    console.debug('Account:');
+    console.debug(account);
+    console.debug('');
+
+    return connection.signAndSendTransaction(account, AccountTransactionType.Update, payload, schema);
 }
 
 export async function restoreCredential(
@@ -290,20 +327,26 @@ export async function restoreCredential(
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
-    return connection.signAndSendTransaction(
-        account,
-        AccountTransactionType.Update,
-        {
-            amount: new CcdAmount(BigInt(0)),
-            address: {
-                index: BigInt(credentialRegistryContratIndex),
-                subindex: CONTRACT_SUB_INDEX,
-            },
-            receiveName: 'credential_registry.restoreCredential',
-            maxContractExecutionEnergy: 30000n,
-        } as UpdateContractPayload,
-        schema
-    );
+    const payload = {
+        amount: new CcdAmount(BigInt(0)),
+        address: {
+            index: BigInt(credentialRegistryContratIndex),
+            subindex: CONTRACT_SUB_INDEX,
+        },
+        receiveName: 'credential_registry.restoreCredential',
+        maxContractExecutionEnergy: 30000n,
+    } as UpdateContractPayload;
+
+    console.debug('Sending update transaction:');
+    console.debug('Parameter:');
+    console.debug(parameter);
+    console.debug('Payload:');
+    console.debug(payload);
+    console.debug('Account:');
+    console.debug(account);
+    console.debug('');
+
+    return connection.signAndSendTransaction(account, AccountTransactionType.Update, payload, schema);
 }
 
 export async function issueCredential(
@@ -372,20 +415,26 @@ export async function issueCredential(
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
-    return connection.signAndSendTransaction(
-        account,
-        AccountTransactionType.Update,
-        {
-            amount: new CcdAmount(BigInt(0)),
-            address: {
-                index: BigInt(credentialRegistryContratIndex),
-                subindex: CONTRACT_SUB_INDEX,
-            },
-            receiveName: 'credential_registry.registerCredential',
-            maxContractExecutionEnergy: 30000n,
-        } as UpdateContractPayload,
-        schema
-    );
+    const payload = {
+        amount: new CcdAmount(BigInt(0)),
+        address: {
+            index: BigInt(credentialRegistryContratIndex),
+            subindex: CONTRACT_SUB_INDEX,
+        },
+        receiveName: 'credential_registry.registerCredential',
+        maxContractExecutionEnergy: 30000n,
+    } as UpdateContractPayload;
+
+    console.debug('Sending update transaction:');
+    console.debug('Parameter:');
+    console.debug(parameter);
+    console.debug('Payload:');
+    console.debug(payload);
+    console.debug('Account:');
+    console.debug(account);
+    console.debug('');
+
+    return connection.signAndSendTransaction(account, AccountTransactionType.Update, payload, schema);
 }
 
 /**

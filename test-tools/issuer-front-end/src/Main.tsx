@@ -498,7 +498,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="seed"
+                                    id="seedTestCase1"
                                     type="text"
                                     placeholder="myRandomSeedString"
                                     onChange={changeSeedHandler}
@@ -539,7 +539,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="issuerMetaDataURL"
+                                    id="issuerMetaDataURLTestCase2"
                                     type="text"
                                     placeholder={EXAMPLE_ISSUER_METADATA}
                                     onChange={changeIssuerMetaDataURLHandler}
@@ -550,7 +550,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialType"
+                                    id="credentialTypeTestCase2"
                                     type="text"
                                     placeholder="myCredentialType"
                                     onChange={changeCredentialTypeHandler}
@@ -560,7 +560,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialSchemaURL"
+                                    id="credentialSchemaURLTestCase2"
                                     type="text"
                                     placeholder={EXAMPLE_CREDENTIAL_SCHEMA}
                                     onChange={changeCredentialSchemaURLHandler}
@@ -629,9 +629,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setTxHash('');
                                         setTransactionError('');
 
-                                        const schemaCredentialURL = document.getElementById(
-                                            'credentialSchemaURL'
-                                        ) as unknown as HTMLFormElement;
+                                        const schemaCredentialURL = schemaCredential.schema_ref.url;
 
                                         const exampleCredentialSchema = {
                                             schema_ref: {
@@ -647,9 +645,7 @@ export default function Main(props: WalletConnectionProps) {
                                             account,
                                             issuerMetaData,
                                             issuerKeys?.verifyKey || '',
-                                            schemaCredentialURL.value === ''
-                                                ? exampleCredentialSchema
-                                                : schemaCredential,
+                                            schemaCredentialURL === '' ? exampleCredentialSchema : schemaCredential,
                                             JSON.stringify(revocationKeys),
                                             credentialType
                                         );
@@ -672,7 +668,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialRegistryContratIndex"
+                                    id="credentialRegistryContratIndexTestCase3"
                                     type="text"
                                     placeholder="1111"
                                     onChange={(event) => {
@@ -708,7 +704,7 @@ export default function Main(props: WalletConnectionProps) {
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item.tag}
+                                            id={`${item.tag}+TestCase4`}
                                             name={item.tag}
                                             type="text"
                                             placeholder={item.type === 'string' ? 'myString' : '1234'}
@@ -747,7 +743,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_from"
+                                    id="valid_fromTestCase4"
                                     name="valid_from"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
@@ -761,7 +757,7 @@ export default function Main(props: WalletConnectionProps) {
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_until"
+                                            id="valid_untilTestCase4"
                                             name="valid_until"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
@@ -774,7 +770,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialMetaDataURL"
+                                    id="credentialMetaDataURLTestCase4"
                                     type="text"
                                     placeholder={EXAMPLE_CREDENTIAL_METADATA}
                                     onChange={changeCredentialMetaDataURLHandler}
@@ -784,7 +780,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="auxiliaryData"
+                                    id="auxiliaryDataTestCase4"
                                     type="text"
                                     placeholder="[23,2,1,5,3,2]"
                                     onChange={changeAuxiliaryDataHandler}
@@ -841,73 +837,90 @@ export default function Main(props: WalletConnectionProps) {
 
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
+                                        const payload = {
+                                            $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                            type: [...types, credentialTypeFromContractInstance],
+                                            issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                            issuanceDate: new Date().toISOString(),
+                                            credentialSubject: { attributes },
+                                            credentialSchema: {
+                                                id: credentialSchemaFromContractInstance,
+                                                type: credentialTypeFromContractInstance,
+                                            },
+                                        };
+
+                                        console.debug('Adding web3Id credential to browser wallet:');
+                                        console.debug('MetadataUrl:');
+                                        console.debug(metadataUrl);
+                                        console.debug('Payload:');
+                                        console.debug(payload);
+                                        console.debug('');
+
                                         provider
-                                            .addWeb3IdCredential(
-                                                {
-                                                    $schema: 'https://json-schema.org/draft/2020-12/schema',
-                                                    type: [...types, credentialTypeFromContractInstance],
-                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
-                                                    issuanceDate: new Date().toISOString(),
-                                                    credentialSubject: { attributes },
-                                                    credentialSchema: {
-                                                        id: credentialSchemaFromContractInstance,
-                                                        type: credentialTypeFromContractInstance,
+                                            .addWeb3IdCredential(payload, metadataUrl, async (id) => {
+                                                const publicKeyOfCredential = id.replace('did:ccd:testnet:pkc:', '');
+
+                                                setCredentialPublicKey(publicKeyOfCredential);
+
+                                                const tx = issueCredential(
+                                                    connection,
+                                                    account,
+                                                    publicKeyOfCredential,
+                                                    credentialHasExpiryDate,
+                                                    validFromDate,
+                                                    validUntilDate,
+                                                    credentialMetaDataURL,
+                                                    isHolderRevocable,
+                                                    credentialRegistryContratIndex,
+                                                    auxiliaryData
+                                                );
+
+                                                tx.then(setTxHash).catch((err: Error) =>
+                                                    setTransactionError((err as Error).message)
+                                                );
+
+                                                const commitments = {
+                                                    attributes,
+                                                    holderId: publicKeyOfCredential,
+                                                    issuer: {
+                                                        index: credentialRegistryContratIndex,
+                                                        subindex: 0,
                                                     },
-                                                },
-                                                metadataUrl,
-                                                async (id) => {
-                                                    const publicKeyOfCredential = id.replace(
-                                                        'did:ccd:testnet:pkc:',
-                                                        ''
-                                                    );
+                                                };
 
-                                                    setCredentialPublicKey(publicKeyOfCredential);
+                                                console.debug('Requesting signature from backend:');
+                                                console.debug('Seed:');
+                                                console.debug(seed);
+                                                console.debug('Commitments:');
+                                                console.debug(commitments);
+                                                console.debug('');
 
-                                                    const tx = issueCredential(
-                                                        connection,
-                                                        account,
-                                                        publicKeyOfCredential,
-                                                        credentialHasExpiryDate,
-                                                        validFromDate,
-                                                        validUntilDate,
-                                                        credentialMetaDataURL,
-                                                        isHolderRevocable,
-                                                        credentialRegistryContratIndex,
-                                                        auxiliaryData
-                                                    );
+                                                const requestSignatureResponse = (await requestSignature(
+                                                    seed,
+                                                    stringify(commitments)
+                                                )) as RequestSignatureResponse;
 
-                                                    tx.then(setTxHash).catch((err: Error) =>
-                                                        setTransactionError((err as Error).message)
-                                                    );
+                                                const proofObject = {
+                                                    type: 'Ed25519Signature2020' as const,
+                                                    verificationMethod: id,
+                                                    proofPurpose: 'assertionMethod' as const,
+                                                    proofValue: requestSignatureResponse.signedCommitments.signature,
+                                                };
 
-                                                    const commitments = {
-                                                        attributes,
-                                                        holderId: publicKeyOfCredential,
-                                                        issuer: {
-                                                            index: credentialRegistryContratIndex,
-                                                            subindex: 0,
-                                                        },
-                                                    };
+                                                const { randomness } = requestSignatureResponse;
 
-                                                    const requestSignatureResponse = (await requestSignature(
-                                                        seed,
-                                                        stringify(commitments)
-                                                    )) as RequestSignatureResponse;
+                                                console.debug('Returning proof to wallet:');
+                                                console.debug('ProofObject:');
+                                                console.debug(proofObject);
+                                                console.debug('Randomness:');
+                                                console.debug(randomness);
+                                                console.debug('');
 
-                                                    const proofObject = {
-                                                        type: 'Ed25519Signature2020' as const,
-                                                        verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod' as const,
-                                                        proofValue:
-                                                            requestSignatureResponse.signedCommitments.signature,
-                                                    };
-
-                                                    return {
-                                                        proof: proofObject,
-                                                        randomness: requestSignatureResponse.randomness,
-                                                    };
-                                                }
-                                            )
+                                                return {
+                                                    proof: proofObject,
+                                                    randomness,
+                                                };
+                                            })
                                             .catch((e: Error) => {
                                                 console.error(e);
                                             });
@@ -941,7 +954,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="publicKey"
+                                    id="publicKeyTestCase5"
                                     type="text"
                                     placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
                                     onChange={changePublicKeyHandler}
@@ -991,7 +1004,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="publicKey"
+                                    id="publicKeyTestCase6"
                                     type="text"
                                     placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
                                     onChange={changePublicKeyHandler}
@@ -1001,7 +1014,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="reason"
+                                    id="reasonTestCase6"
                                     type="text"
                                     placeholder="ThisShouldBeRevoked"
                                     onChange={changeReasonHandler}
@@ -1011,7 +1024,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="auxiliaryData"
+                                    id="auxiliaryDataTestCase6"
                                     type="text"
                                     placeholder="[23,2,1,5,3,2]"
                                     onChange={changeAuxiliaryDataHandler}
@@ -1049,7 +1062,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="publicKey"
+                                    id="publicKeyTestCase7"
                                     type="text"
                                     placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
                                     onChange={changePublicKeyHandler}
@@ -1059,7 +1072,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="reason"
+                                    id="reasonTestCase7"
                                     type="text"
                                     placeholder="ThisShouldBeRestored"
                                     onChange={changeReasonHandler}
@@ -1096,7 +1109,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="issuerMetaDataURL"
+                                    id="issuerMetaDataURLTestCase8"
                                     type="text"
                                     placeholder={EXAMPLE_ISSUER_METADATA}
                                     onChange={changeUpdatedIssuerMetaDataURLHandler}
@@ -1133,7 +1146,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialSchemaURL"
+                                    id="credentialSchemaURLTestCase9"
                                     type="text"
                                     placeholder={EXAMPLE_CREDENTIAL_SCHEMA}
                                     onChange={changeUpdatedCredentialSchemaURLHandler}
@@ -1169,7 +1182,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialMetaDataURL"
+                                    id="credentialMetaDataURLTestCase10"
                                     type="text"
                                     placeholder={EXAMPLE_CREDENTIAL_METADATA}
                                     onChange={changeUpdatedCredentialMetaDataURLHandler}
@@ -1179,7 +1192,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="publicKey"
+                                    id="publicKeyTestCase10"
                                     type="text"
                                     placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
                                     onChange={changePublicKeyHandler}
@@ -1237,7 +1250,7 @@ export default function Main(props: WalletConnectionProps) {
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item.tag}
+                                            id={`${item.tag}+TestCase11`}
                                             name={item.tag}
                                             type="text"
                                             placeholder={item.type === 'string' ? 'myString' : '1234'}
@@ -1276,7 +1289,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_from"
+                                    id="valid_fromTestCase11"
                                     name="valid_from"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
@@ -1290,7 +1303,7 @@ export default function Main(props: WalletConnectionProps) {
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_until"
+                                            id="valid_untilTestCase11"
                                             name="valid_until"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
@@ -1303,7 +1316,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialMetaDataURL"
+                                    id="credentialMetaDataURLTestCase11"
                                     type="text"
                                     placeholder={EXAMPLE_CREDENTIAL_METADATA}
                                     onChange={changeCredentialMetaDataURLHandler}
@@ -1313,7 +1326,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="changeManualCredentialType"
+                                    id="changeManualCredentialTypeTestCase11"
                                     type="text"
                                     placeholder={credentialTypeFromContractInstance}
                                     onChange={changeManualCredentialTypeHandler}
@@ -1323,7 +1336,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="changeManualCredentialSchema"
+                                    id="changeManualCredentialSchemaTestCase11"
                                     type="text"
                                     placeholder={credentialSchemaFromContractInstance}
                                     onChange={changeManualCredentialSchemaHandler}
@@ -1333,7 +1346,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="auxiliaryData"
+                                    id="auxiliaryDataTestCase11"
                                     type="text"
                                     placeholder="[23,2,1,5,3,2]"
                                     onChange={changeAuxiliaryDataHandler}
@@ -1388,58 +1401,75 @@ export default function Main(props: WalletConnectionProps) {
                                             throw new Error(`Set manualCredentialSchema`);
                                         }
 
+                                        const payload = {
+                                            $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                            type: [...types, manualCredentialType],
+                                            issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                            issuanceDate: new Date().toISOString(),
+                                            credentialSubject: { attributes },
+                                            credentialSchema: {
+                                                id: manualCredentialSchema,
+                                                type: manualCredentialType,
+                                            },
+                                        };
+
+                                        console.debug('Adding web3Id credential to browser wallet:');
+                                        console.debug('MetadataUrl:');
+                                        console.debug(metadataUrl);
+                                        console.debug('Payload:');
+                                        console.debug(payload);
+                                        console.debug('');
+
                                         provider
-                                            .addWeb3IdCredential(
-                                                {
-                                                    $schema: 'https://json-schema.org/draft/2020-12/schema',
-                                                    type: [...types, manualCredentialType],
-                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
-                                                    issuanceDate: new Date().toISOString(),
-                                                    credentialSubject: { attributes },
-                                                    credentialSchema: {
-                                                        id: manualCredentialSchema,
-                                                        type: manualCredentialType,
+                                            .addWeb3IdCredential(payload, metadataUrl, async (id) => {
+                                                const publicKeyOfCredential = id.replace('did:ccd:testnet:pkc:', '');
+
+                                                setCredentialPublicKey(publicKeyOfCredential);
+
+                                                // Issuer does not register credential here but instead when the next button is pressed.
+
+                                                const commitments = {
+                                                    attributes,
+                                                    holderId: publicKeyOfCredential,
+                                                    issuer: {
+                                                        index: credentialRegistryContratIndex,
+                                                        subindex: 0,
                                                     },
-                                                },
-                                                metadataUrl,
-                                                async (id) => {
-                                                    const publicKeyOfCredential = id.replace(
-                                                        'did:ccd:testnet:pkc:',
-                                                        ''
-                                                    );
+                                                };
 
-                                                    setCredentialPublicKey(publicKeyOfCredential);
+                                                console.debug('Requesting signature from backend:');
+                                                console.debug('Seed:');
+                                                console.debug(seed);
+                                                console.debug('Commitments:');
+                                                console.debug(commitments);
+                                                console.debug('');
 
-                                                    // Issuer does not register credential here but instead when the next button is pressed.
+                                                const requestSignatureResponse = (await requestSignature(
+                                                    seed,
+                                                    stringify(commitments)
+                                                )) as RequestSignatureResponse;
 
-                                                    const commitments = {
-                                                        attributes,
-                                                        holderId: publicKeyOfCredential,
-                                                        issuer: {
-                                                            index: credentialRegistryContratIndex,
-                                                            subindex: 0,
-                                                        },
-                                                    };
+                                                const proofObject = {
+                                                    type: 'Ed25519Signature2020' as const,
+                                                    verificationMethod: id,
+                                                    proofPurpose: 'assertionMethod' as const,
+                                                    proofValue: requestSignatureResponse.signedCommitments.signature,
+                                                };
 
-                                                    const requestSignatureResponse = (await requestSignature(
-                                                        seed,
-                                                        stringify(commitments)
-                                                    )) as RequestSignatureResponse;
+                                                const { randomness } = requestSignatureResponse;
 
-                                                    const proofObject = {
-                                                        type: 'Ed25519Signature2020' as const,
-                                                        verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod' as const,
-                                                        proofValue:
-                                                            requestSignatureResponse.signedCommitments.signature,
-                                                    };
+                                                console.debug('Returning proof to wallet:');
+                                                console.debug('ProofObject:');
+                                                console.debug(proofObject);
+                                                console.debug('Randomness:');
+                                                console.debug(randomness);
+                                                console.debug('');
 
-                                                    return {
-                                                        proof: proofObject,
-                                                        randomness: requestSignatureResponse.randomness,
-                                                    };
-                                                }
-                                            )
+                                                return {
+                                                    proof: proofObject,
+                                                    randomness,
+                                                };
+                                            })
                                             .catch((e: Error) => {
                                                 console.error(e);
                                             });
@@ -1513,7 +1543,7 @@ export default function Main(props: WalletConnectionProps) {
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item.tag}
+                                            id={`${item.tag}+TestCase12`}
                                             name={item.tag}
                                             type="text"
                                             placeholder={item.type === 'string' ? 'myString' : '1234'}
@@ -1552,7 +1582,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_from"
+                                    id="valid_fromTestCase12"
                                     name="valid_from"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
@@ -1566,7 +1596,7 @@ export default function Main(props: WalletConnectionProps) {
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_until"
+                                            id="valid_untilTestCase12"
                                             name="valid_until"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
@@ -1579,7 +1609,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialMetaDataURL"
+                                    id="credentialMetaDataURLTestCase12"
                                     type="text"
                                     placeholder={EXAMPLE_CREDENTIAL_METADATA}
                                     onChange={changeCredentialMetaDataURLHandler}
@@ -1589,7 +1619,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="auxiliaryData"
+                                    id="auxiliaryDataTestCase12"
                                     type="text"
                                     placeholder="[23,2,1,5,3,2]"
                                     onChange={changeAuxiliaryDataHandler}
@@ -1638,62 +1668,64 @@ export default function Main(props: WalletConnectionProps) {
                                         const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
+                                        const payload = {
+                                            $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                            type: [...types, credentialTypeFromContractInstance],
+                                            issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                            issuanceDate: new Date().toISOString(),
+                                            credentialSubject: { attributes },
+                                            credentialSchema: {
+                                                id: credentialSchemaFromContractInstance,
+                                                type: credentialTypeFromContractInstance,
+                                            },
+                                        };
+
+                                        console.debug('Adding web3Id credential to browser wallet:');
+                                        console.debug('MetadataUrl:');
+                                        console.debug(metadataUrl);
+                                        console.debug('Payload:');
+                                        console.debug(payload);
+                                        console.debug('');
+
                                         provider
-                                            .addWeb3IdCredential(
-                                                {
-                                                    $schema: 'https://json-schema.org/draft/2020-12/schema',
-                                                    type: [...types, credentialTypeFromContractInstance],
-                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
-                                                    issuanceDate: new Date().toISOString(),
-                                                    credentialSubject: { attributes },
-                                                    credentialSchema: {
-                                                        id: credentialSchemaFromContractInstance,
-                                                        type: credentialTypeFromContractInstance,
-                                                    },
-                                                },
-                                                metadataUrl,
-                                                async (id) => {
-                                                    const publicKeyOfCredential = id.replace(
-                                                        'did:ccd:testnet:pkc:',
-                                                        ''
-                                                    );
+                                            .addWeb3IdCredential(payload, metadataUrl, async (id) => {
+                                                const publicKeyOfCredential = id.replace('did:ccd:testnet:pkc:', '');
 
-                                                    setCredentialPublicKey(publicKeyOfCredential);
+                                                setCredentialPublicKey(publicKeyOfCredential);
 
-                                                    const tx = issueCredential(
-                                                        connection,
-                                                        account,
-                                                        publicKeyOfCredential,
-                                                        credentialHasExpiryDate,
-                                                        validFromDate,
-                                                        validUntilDate,
-                                                        credentialMetaDataURL,
-                                                        isHolderRevocable,
-                                                        credentialRegistryContratIndex,
-                                                        auxiliaryData
-                                                    );
+                                                const tx = issueCredential(
+                                                    connection,
+                                                    account,
+                                                    publicKeyOfCredential,
+                                                    credentialHasExpiryDate,
+                                                    validFromDate,
+                                                    validUntilDate,
+                                                    credentialMetaDataURL,
+                                                    isHolderRevocable,
+                                                    credentialRegistryContratIndex,
+                                                    auxiliaryData
+                                                );
 
-                                                    tx.then(setTxHash).catch((err: Error) =>
-                                                        setTransactionError((err as Error).message)
-                                                    );
+                                                tx.then(setTxHash).catch((err: Error) =>
+                                                    setTransactionError((err as Error).message)
+                                                );
 
-                                                    const randomness = {
-                                                        Hello: '2d5bbf82232465715f23396f4ece8ccc40ad178b7262d01aad97c9de5380ae07',
-                                                        No: '0cc9acd652b6c29aaff42bcf8da242afee622262b0d3e37f17c57ac8d4ae42d9',
-                                                        Three: '1fad03391f7c8d72980e53a44e0782f58822eb74f06ff2c7e9e09e6b08f7ca73',
-                                                    };
+                                                const randomness = {
+                                                    Hello: '2d5bbf82232465715f23396f4ece8ccc40ad178b7262d01aad97c9de5380ae07',
+                                                    No: '0cc9acd652b6c29aaff42bcf8da242afee622262b0d3e37f17c57ac8d4ae42d9',
+                                                    Three: '1fad03391f7c8d72980e53a44e0782f58822eb74f06ff2c7e9e09e6b08f7ca73',
+                                                };
 
-                                                    const proofObject = {
-                                                        type: 'Ed25519Signature2020' as const,
-                                                        verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod' as const,
-                                                        proofValue:
-                                                            'e8c3944d6a9a19e74ad3ef028b04c0637756540306aba8842000f557cbfb7415187f907d26f20474081d4084fc8e5ff14167171f65fac76b06508ae46f55aa05',
-                                                    };
+                                                const proofObject = {
+                                                    type: 'Ed25519Signature2020' as const,
+                                                    verificationMethod: id,
+                                                    proofPurpose: 'assertionMethod' as const,
+                                                    proofValue:
+                                                        'e8c3944d6a9a19e74ad3ef028b04c0637756540306aba8842000f557cbfb7415187f907d26f20474081d4084fc8e5ff14167171f65fac76b06508ae46f55aa05',
+                                                };
 
-                                                    return { proof: proofObject, randomness };
-                                                }
-                                            )
+                                                return { proof: proofObject, randomness };
+                                            })
                                             .catch((e: Error) => {
                                                 console.error(e);
                                             });
@@ -1732,7 +1764,7 @@ export default function Main(props: WalletConnectionProps) {
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item.tag}
+                                            id={`${item.tag}+TestCase13`}
                                             name={item.tag}
                                             type="text"
                                             placeholder={item.type === 'string' ? 'myString' : '1234'}
@@ -1771,7 +1803,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_from"
+                                    id="valid_fromTestCase13"
                                     name="valid_from"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
@@ -1785,7 +1817,7 @@ export default function Main(props: WalletConnectionProps) {
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_until"
+                                            id="valid_untilTestCase13"
                                             name="valid_until"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
@@ -1798,7 +1830,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialMetaDataURL"
+                                    id="credentialMetaDataURLTestCase13"
                                     type="text"
                                     placeholder={EXAMPLE_CREDENTIAL_METADATA}
                                     onChange={changeCredentialMetaDataURLHandler}
@@ -1808,7 +1840,7 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="auxiliaryData"
+                                    id="auxiliaryDataTestCase13"
                                     type="text"
                                     placeholder="[23,2,1,5,3,2]"
                                     onChange={changeAuxiliaryDataHandler}
@@ -1862,73 +1894,90 @@ export default function Main(props: WalletConnectionProps) {
 
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
+                                        const payload = {
+                                            $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                            type: [...types, credentialTypeFromContractInstance],
+                                            issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                            issuanceDate: new Date().toISOString(),
+                                            credentialSubject: { attributes },
+                                            credentialSchema: {
+                                                id: credentialSchemaFromContractInstance,
+                                                type: credentialTypeFromContractInstance,
+                                            },
+                                        };
+
+                                        console.debug('Adding web3Id credential to browser wallet:');
+                                        console.debug('MetadataUrl:');
+                                        console.debug(metadataUrl);
+                                        console.debug('Payload:');
+                                        console.debug(payload);
+                                        console.debug('');
+
                                         provider
-                                            .addWeb3IdCredential(
-                                                {
-                                                    $schema: 'https://json-schema.org/draft/2020-12/schema',
-                                                    type: [...types, credentialTypeFromContractInstance],
-                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
-                                                    issuanceDate: new Date().toISOString(),
-                                                    credentialSubject: { attributes },
-                                                    credentialSchema: {
-                                                        id: credentialSchemaFromContractInstance,
-                                                        type: credentialTypeFromContractInstance,
+                                            .addWeb3IdCredential(payload, metadataUrl, async (id) => {
+                                                const publicKeyOfCredential = id.replace('did:ccd:testnet:pkc:', '');
+
+                                                setCredentialPublicKey(publicKeyOfCredential);
+
+                                                const tx = issueCredential(
+                                                    connection,
+                                                    account,
+                                                    publicKeyOfCredential,
+                                                    credentialHasExpiryDate,
+                                                    validFromDate,
+                                                    validUntilDate,
+                                                    credentialMetaDataURL,
+                                                    isHolderRevocable,
+                                                    credentialRegistryContratIndex,
+                                                    auxiliaryData
+                                                );
+
+                                                tx.then(setTxHash).catch((err: Error) =>
+                                                    setTransactionError((err as Error).message)
+                                                );
+
+                                                const commitments = {
+                                                    attributes,
+                                                    holderId: publicKeyOfCredential,
+                                                    issuer: {
+                                                        index: credentialRegistryContratIndex,
+                                                        subindex: 0,
                                                     },
-                                                },
-                                                metadataUrl,
-                                                async (id) => {
-                                                    const publicKeyOfCredential = id.replace(
-                                                        'did:ccd:testnet:pkc:',
-                                                        ''
-                                                    );
+                                                };
 
-                                                    setCredentialPublicKey(publicKeyOfCredential);
+                                                console.debug('Requesting signature from backend:');
+                                                console.debug('Seed:');
+                                                console.debug(seed);
+                                                console.debug('Commitments:');
+                                                console.debug(commitments);
+                                                console.debug('');
 
-                                                    const tx = issueCredential(
-                                                        connection,
-                                                        account,
-                                                        publicKeyOfCredential,
-                                                        credentialHasExpiryDate,
-                                                        validFromDate,
-                                                        validUntilDate,
-                                                        credentialMetaDataURL,
-                                                        isHolderRevocable,
-                                                        credentialRegistryContratIndex,
-                                                        auxiliaryData
-                                                    );
+                                                const requestSignatureResponse = (await requestSignature(
+                                                    seed,
+                                                    stringify(commitments)
+                                                )) as RequestSignatureResponse;
 
-                                                    tx.then(setTxHash).catch((err: Error) =>
-                                                        setTransactionError((err as Error).message)
-                                                    );
+                                                const proofObject = {
+                                                    type: 'Ed25519Signature2020' as const,
+                                                    verificationMethod: id,
+                                                    proofPurpose: 'assertionMethod' as const,
+                                                    proofValue: requestSignatureResponse.signedCommitments.signature,
+                                                };
 
-                                                    const commitments = {
-                                                        attributes,
-                                                        holderId: publicKeyOfCredential,
-                                                        issuer: {
-                                                            index: credentialRegistryContratIndex,
-                                                            subindex: 0,
-                                                        },
-                                                    };
+                                                const { randomness } = requestSignatureResponse;
 
-                                                    const requestSignatureResponse = (await requestSignature(
-                                                        seed,
-                                                        stringify(commitments)
-                                                    )) as RequestSignatureResponse;
+                                                console.debug('Returning proof to wallet:');
+                                                console.debug('ProofObject:');
+                                                console.debug(proofObject);
+                                                console.debug('Randomness:');
+                                                console.debug(randomness);
+                                                console.debug('');
 
-                                                    const proofObject = {
-                                                        type: 'Ed25519Signature2020' as const,
-                                                        verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod' as const,
-                                                        proofValue:
-                                                            requestSignatureResponse.signedCommitments.signature,
-                                                    };
-
-                                                    return {
-                                                        proof: proofObject,
-                                                        randomness: requestSignatureResponse.randomness,
-                                                    };
-                                                }
-                                            )
+                                                return {
+                                                    proof: proofObject,
+                                                    randomness,
+                                                };
+                                            })
                                             .catch((e: Error) => {
                                                 console.error(e);
                                             });
