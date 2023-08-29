@@ -170,9 +170,9 @@ export default function Main(props: WalletConnectionProps) {
     const [transactionError, setTransactionError] = useState('');
     const [userInputError2, setUserInputError2] = useState('');
 
-    const [auxiliaryData, setAuxiliaryData] = useState<number[]>([]);
+    const [auxiliaryData, setAuxiliaryData] = useState<number[]>([1, 2, 3]);
 
-    const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState<number | undefined>(undefined);
+    const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState<number | undefined>(0);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
 
@@ -182,7 +182,7 @@ export default function Main(props: WalletConnectionProps) {
 
     const [attributeSchema, setAttributeSchema] = useState<AttributeDetails[]>([]);
 
-    const [reason, setReason] = useState('');
+    const [reason, setReason] = useState('ThisIsTheReason');
 
     const [accountBalance, setAccountBalance] = useState('');
 
@@ -190,7 +190,7 @@ export default function Main(props: WalletConnectionProps) {
     const [credentialRegistryStateError, setCredentialRegistryStateError] = useState('');
 
     const [txHash, setTxHash] = useState('');
-    const [publicKey, setPublicKey] = useState('');
+    const [publicKey, setPublicKey] = useState('8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82');
 
     const [credentialPublicKey, setCredentialPublicKey] = useState('');
 
@@ -500,7 +500,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="seedTestCase1"
                                     type="text"
-                                    placeholder="myRandomSeedString"
+                                    value={seed}
                                     onChange={changeSeedHandler}
                                 />
                                 <br />
@@ -541,7 +541,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="issuerMetaDataURLTestCase2"
                                     type="text"
-                                    placeholder={EXAMPLE_ISSUER_METADATA}
+                                    value={issuerMetaData}
                                     onChange={changeIssuerMetaDataURLHandler}
                                 />
                                 <br />
@@ -552,7 +552,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialTypeTestCase2"
                                     type="text"
-                                    placeholder="myCredentialType"
+                                    value={credentialType}
                                     onChange={changeCredentialTypeHandler}
                                 />
                                 <br />
@@ -562,7 +562,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialSchemaURLTestCase2"
                                     type="text"
-                                    placeholder={EXAMPLE_CREDENTIAL_SCHEMA}
+                                    value={schemaCredential.schema_ref.url}
                                     onChange={changeCredentialSchemaURLHandler}
                                 />
                                 {revocationKeys.length !== 0 && (
@@ -599,7 +599,6 @@ export default function Main(props: WalletConnectionProps) {
                                         <Col sm={10}>
                                             <InputGroup className="mb-3">
                                                 <Form.Control
-                                                    placeholder="RevocationKey"
                                                     value={revocationKeyInput}
                                                     onChange={(e) => setRevocationKeyInput(e.target.value)}
                                                 />
@@ -670,7 +669,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialRegistryContratIndexTestCase3"
                                     type="text"
-                                    placeholder="1111"
+                                    value={credentialRegistryContratIndex}
                                     onChange={(event) => {
                                         changeCredentialRegistryContratIndexHandler(grpcClient, event);
                                     }}
@@ -738,13 +737,13 @@ export default function Main(props: WalletConnectionProps) {
                                 </div>
                                 <br />
                                 <br />
-                                Add `valid_from`:
+                                Add `validFrom`:
                                 <br />
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_fromTestCase4"
-                                    name="valid_from"
+                                    id="validFromTestCase4"
+                                    name="validFrom"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
                                 />
@@ -752,13 +751,13 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 {credentialHasExpiryDate && (
                                     <>
-                                        Add`valid_until`:
+                                        Add`validUntil`:
                                         <br />
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_untilTestCase4"
-                                            name="valid_until"
+                                            id="validUntilTestCase4"
+                                            name="validUntil"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
                                         />
@@ -772,7 +771,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURLTestCase4"
                                     type="text"
-                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
+                                    value={credentialMetaDataURL}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -782,7 +781,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase4"
                                     type="text"
-                                    placeholder="[23,2,1,5,3,2]"
+                                    value={auxiliaryData.toString()}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -956,7 +955,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="publicKeyTestCase5"
                                     type="text"
-                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    value={publicKey}
                                     onChange={changePublicKeyHandler}
                                 />
                                 <button
@@ -1006,7 +1005,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="publicKeyTestCase6"
                                     type="text"
-                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    value={publicKey}
                                     onChange={changePublicKeyHandler}
                                 />
                                 <br />
@@ -1016,7 +1015,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="reasonTestCase6"
                                     type="text"
-                                    placeholder="ThisShouldBeRevoked"
+                                    value={reason}
                                     onChange={changeReasonHandler}
                                 />
                                 <br />
@@ -1026,7 +1025,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase6"
                                     type="text"
-                                    placeholder="[23,2,1,5,3,2]"
+                                    value={auxiliaryData.toString()}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <br />
@@ -1064,7 +1063,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="publicKeyTestCase7"
                                     type="text"
-                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    value={publicKey}
                                     onChange={changePublicKeyHandler}
                                 />
                                 <br />
@@ -1074,7 +1073,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="reasonTestCase7"
                                     type="text"
-                                    placeholder="ThisShouldBeRestored"
+                                    value={reason}
                                     onChange={changeReasonHandler}
                                 />
                                 <br />
@@ -1111,7 +1110,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="issuerMetaDataURLTestCase8"
                                     type="text"
-                                    placeholder={EXAMPLE_ISSUER_METADATA}
+                                    value={updatedIssuerMetaData}
                                     onChange={changeUpdatedIssuerMetaDataURLHandler}
                                 />
                                 <br />
@@ -1148,7 +1147,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialSchemaURLTestCase9"
                                     type="text"
-                                    placeholder={EXAMPLE_CREDENTIAL_SCHEMA}
+                                    value={updatedCredentialSchema}
                                     onChange={changeUpdatedCredentialSchemaURLHandler}
                                 />
                                 <br />
@@ -1184,7 +1183,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURLTestCase10"
                                     type="text"
-                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
+                                    value={updatedCredentialMetaDataURL}
                                     onChange={changeUpdatedCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1194,7 +1193,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="publicKeyTestCase10"
                                     type="text"
-                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    value={publicKey}
                                     onChange={changePublicKeyHandler}
                                 />
                                 <br />
@@ -1284,13 +1283,13 @@ export default function Main(props: WalletConnectionProps) {
                                 </div>
                                 <br />
                                 <br />
-                                Add `valid_from`:
+                                Add `validFrom`:
                                 <br />
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_fromTestCase11"
-                                    name="valid_from"
+                                    id="validFromTestCase11"
+                                    name="validFrom"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
                                 />
@@ -1298,13 +1297,13 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 {credentialHasExpiryDate && (
                                     <>
-                                        Add`valid_until`:
+                                        Add`validUntil`:
                                         <br />
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_untilTestCase11"
-                                            name="valid_until"
+                                            id="validUntilTestCase11"
+                                            name="validUntil"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
                                         />
@@ -1318,7 +1317,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURLTestCase11"
                                     type="text"
-                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
+                                    value={credentialMetaDataURL}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1328,7 +1327,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="changeManualCredentialTypeTestCase11"
                                     type="text"
-                                    placeholder={credentialTypeFromContractInstance}
+                                    value={manualCredentialType}
                                     onChange={changeManualCredentialTypeHandler}
                                 />
                                 <br />
@@ -1338,7 +1337,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="changeManualCredentialSchemaTestCase11"
                                     type="text"
-                                    placeholder={credentialSchemaFromContractInstance}
+                                    value={manualCredentialSchema}
                                     onChange={changeManualCredentialSchemaHandler}
                                 />
                                 <br />
@@ -1348,7 +1347,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase11"
                                     type="text"
-                                    placeholder="[23,2,1,5,3,2]"
+                                    value={auxiliaryData.toString()}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -1577,13 +1576,13 @@ export default function Main(props: WalletConnectionProps) {
                                 </div>
                                 <br />
                                 <br />
-                                Add `valid_from`:
+                                Add `validFrom`:
                                 <br />
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_fromTestCase12"
-                                    name="valid_from"
+                                    id="validFromTestCase12"
+                                    name="validFrom"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
                                 />
@@ -1591,13 +1590,13 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 {credentialHasExpiryDate && (
                                     <>
-                                        Add`valid_until`:
+                                        Add`validUntil`:
                                         <br />
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_untilTestCase12"
-                                            name="valid_until"
+                                            id="validUntilTestCase12"
+                                            name="validUntil"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
                                         />
@@ -1611,7 +1610,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURLTestCase12"
                                     type="text"
-                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
+                                    value={credentialMetaDataURL}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1621,7 +1620,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase12"
                                     type="text"
-                                    placeholder="[23,2,1,5,3,2]"
+                                    value={auxiliaryData.toString()}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -1798,13 +1797,13 @@ export default function Main(props: WalletConnectionProps) {
                                 </div>
                                 <br />
                                 <br />
-                                Add `valid_from`:
+                                Add `validFrom`:
                                 <br />
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_fromTestCase13"
-                                    name="valid_from"
+                                    id="validFromTestCase13"
+                                    name="validFrom"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
                                 />
@@ -1812,13 +1811,13 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 {credentialHasExpiryDate && (
                                     <>
-                                        Add`valid_until`:
+                                        Add`validUntil`:
                                         <br />
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_untilTestCase13"
-                                            name="valid_until"
+                                            id="validUntilTestCase13"
+                                            name="validUntil"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
                                         />
@@ -1832,7 +1831,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="credentialMetaDataURLTestCase13"
                                     type="text"
-                                    placeholder={EXAMPLE_CREDENTIAL_METADATA}
+                                    value={credentialMetaDataURL}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1842,7 +1841,7 @@ export default function Main(props: WalletConnectionProps) {
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase13"
                                     type="text"
-                                    placeholder="[23,2,1,5,3,2]"
+                                    value={auxiliaryData.toString()}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
