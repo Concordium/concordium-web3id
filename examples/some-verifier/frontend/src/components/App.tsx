@@ -1,12 +1,6 @@
 import { useState } from 'react';
 import '../scss/App.scss';
-import {
-  Button,
-  Card,
-  CardBody,
-  Col,
-  Row,
-} from 'reactstrap';
+import { Button, Card, CardBody, Col, Row } from 'reactstrap';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 import Verify from './Verify';
 

@@ -1,7 +1,22 @@
-import { FormEvent, useState } from "react";
-import { Alert, Button, Card, CardBody, Col, Form, FormFeedback, FormGroup, Input, Label, Modal, ModalBody, ModalHeader, Row } from "reactstrap";
-import { Config, Platform } from "../lib/types";
-import { hash, requestProof } from "./util";
+import { FormEvent, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Card,
+  CardBody,
+  Col,
+  Form,
+  FormFeedback,
+  FormGroup,
+  Input,
+  Label,
+  Modal,
+  ModalBody,
+  ModalHeader,
+  Row,
+} from 'reactstrap';
+import { Config, Platform } from '../lib/types';
+import { hash, requestProof } from './util';
 import _config from '../../config.json';
 const config = _config as Config;
 
@@ -29,7 +44,10 @@ export default function RemoveVerification() {
     try {
       const timestamp = new Date().toISOString();
       const challenge = await hash(timestamp);
-      const proof = await requestProof([config.issuers[platform as Platform]], challenge);
+      const proof = await requestProof(
+        [config.issuers[platform as Platform]],
+        challenge,
+      );
 
       const body = { proof, timestamp };
       const response = await fetch('/verifications/remove', {
@@ -56,20 +74,29 @@ export default function RemoveVerification() {
   const reset = () => {
     setPending(false);
     setRemoved(false);
-  }
+  };
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} color="link">Remove verification?</Button>
+      <Button onClick={() => setOpen(true)} color="link">
+        Remove verification?
+      </Button>
       <Modal isOpen={open} toggle={toggle} onClosed={reset}>
         <ModalHeader toggle={toggle}>Verificaton removal</ModalHeader>
         <ModalBody>
           <Card>
             <CardBody>
-              To remove your concordia verification, you must first prove ownership of an account included in the verification.
+              To remove your concordia verification, you must first prove
+              ownership of an account included in the verification.
             </CardBody>
           </Card>
-          <Form onSubmit={(e) => { void submit(e); }} onChange={() => setError(undefined)} className="pt-3">
+          <Form
+            onSubmit={(e) => {
+              void submit(e);
+            }}
+            onChange={() => setError(undefined)}
+            className="pt-3"
+          >
             <Row>
               <Col md={12}>
                 <FormGroup>
@@ -82,7 +109,11 @@ export default function RemoveVerification() {
                 </FormGroup>
               </Col>
               <Col md={12}>
-                {removed && <Alert color="success">Verification successfully removed</Alert>}
+                {removed && (
+                  <Alert color="success">
+                    Verification successfully removed
+                  </Alert>
+                )}
                 {removed || (
                   <Button color="danger" type="submit" disabled={pending}>
                     Remove verification
@@ -94,5 +125,5 @@ export default function RemoveVerification() {
         </ModalBody>
       </Modal>
     </>
-  )
+  );
 }

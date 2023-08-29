@@ -38,18 +38,14 @@ const stepTitleMap: { [p in VerificationStep]: string } = {
   [VerificationStep.Issue]: 'Issue credentials',
   [VerificationStep.Verify]: 'Verification',
   [VerificationStep.Check]: 'Check verification',
-}
+};
 
 type StepProps = PropsWithChildren<{
   step: VerificationStep;
   text: string;
 }>;
 
-function Step({
-  children,
-  step,
-  text,
-}: StepProps) {
+function Step({ children, step, text }: StepProps) {
   return (
     <AccordionItem>
       <AccordionHeader targetId={step.toString()}>
@@ -130,7 +126,6 @@ export default function Verify() {
     const url = new URL(window.location.href);
     url.searchParams.set(Platform.Telegram, 'true');
     window.history.replaceState(null, '', url);
-
   };
   const issueDiscord = () => {
     setDiscordChecked(true);
@@ -153,7 +148,10 @@ export default function Verify() {
     (async () => {
       const timestamp = new Date().toISOString();
       const challenge = await hash(timestamp);
-      const proof = await requestProof(issuers, challenge, { revealName: fullNameChecked, revealUsername: true });
+      const proof = await requestProof(issuers, challenge, {
+        revealName: fullNameChecked,
+        revealUsername: true,
+      });
       const body = { proof, timestamp };
 
       const response = await fetch('/verifications', {
@@ -282,5 +280,5 @@ export default function Verify() {
       </Accordion>
       <RemoveVerification />
     </>
-  )
+  );
 }

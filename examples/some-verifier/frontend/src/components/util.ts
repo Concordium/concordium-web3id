@@ -1,6 +1,10 @@
-import { AttributeKeyString, VerifiablePresentation, Web3StatementBuilder } from "@concordium/web-sdk";
-import { Issuer } from "../lib/types";
-import { detectConcordiumProvider } from "@concordium/browser-wallet-api-helpers";
+import {
+  AttributeKeyString,
+  VerifiablePresentation,
+  Web3StatementBuilder,
+} from '@concordium/web-sdk';
+import { Issuer } from '../lib/types';
+import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 
 export async function hash(message: string): Promise<string> {
   const msgUint8 = new TextEncoder().encode(message);
@@ -12,20 +16,17 @@ export async function hash(message: string): Promise<string> {
   return hashHex;
 }
 
-type ProofOptions = {
+interface ProofOptions {
   /** Whether request user to reveal name of selected identity. Defaults to false */
   revealName?: boolean;
   /** Whether request user to reveal its username for each platform. Defaults to false */
   revealUsername?: boolean;
-};
+}
 
 export async function requestProof(
   issuers: Issuer[],
   challenge: string,
-  {
-    revealName = false,
-    revealUsername = false,
-  }: ProofOptions = {},
+  { revealName = false, revealUsername = false }: ProofOptions = {},
 ): Promise<VerifiablePresentation> {
   let builder = new Web3StatementBuilder();
 
@@ -34,7 +35,7 @@ export async function requestProof(
       [
         {
           index: BigInt(issuer.index),
-          subindex: BigInt(issuer.subindex)
+          subindex: BigInt(issuer.subindex),
         },
       ],
       (b) => {
