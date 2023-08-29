@@ -26,16 +26,12 @@ export async function createNewIssuer(
     revocationKeys: string,
     credentialType: string
 ) {
-    if (issuerMetaData === '') {
-        throw new Error(`Set issuerMetaData`);
-    }
-
     if (issuerKey === '') {
         throw new Error(`Create issuer verifyKey in step 1`);
     }
 
-    if (credentialType === '') {
-        throw new Error(`Set credentialType`);
+    if (issuerKey.length !== 64) {
+        throw new Error(`issuerKey needs a length of 64`);
     }
 
     const parameter = {
@@ -91,10 +87,6 @@ export async function updateCredentialSchema(
         throw new Error(`Set credentialRegistryContratIndex`);
     }
 
-    if (credentialSchema === '') {
-        throw new Error(`Set credentialSchema`);
-    }
-
     const parameter = {
         schema_ref: {
             hash: {
@@ -142,16 +134,8 @@ export async function updateCredentialMetadata(
         throw new Error(`Set credentialRegistryContratIndex`);
     }
 
-    if (credentialPublicKey === '') {
-        throw new Error(`Set credentialPublicKey`);
-    }
-
     if (credentialPublicKey.length !== 64) {
         throw new Error(`credentialPublicKey needs a length of 64`);
-    }
-
-    if (credentialMetadata === '') {
-        throw new Error(`Set credentialMetadata`);
     }
 
     const parameter = Array.from([
@@ -203,10 +187,6 @@ export async function updateIssuerMetadata(
         throw new Error(`Set credentialRegistryContratIndex`);
     }
 
-    if (issuerMetaData === '') {
-        throw new Error(`Set issuerMetaData`);
-    }
-
     const parameter = {
         hash: {
             None: [],
@@ -249,10 +229,6 @@ export async function revokeCredential(
     auxiliaryData: number[],
     reason: string
 ) {
-    if (credentialPublicKey === '') {
-        throw new Error(`Set credentialPublicKey`);
-    }
-
     if (credentialPublicKey.length !== 64) {
         throw new Error(`credentialPublicKey needs a length of 64`);
     }
@@ -303,10 +279,6 @@ export async function restoreCredential(
     credentialRegistryContratIndex: number | undefined,
     reason: string
 ) {
-    if (credentialPublicKey === '') {
-        throw new Error(`Set credentialPublicKey`);
-    }
-
     if (credentialPublicKey.length !== 64) {
         throw new Error(`credentialPublicKey needs a length of 64`);
     }
@@ -361,10 +333,6 @@ export async function issueCredential(
     credentialRegistryContratIndex: number | undefined,
     auxiliaryData: number[]
 ) {
-    if (credentialPublicKey === '') {
-        throw new Error(`Set credentialPublicKey`);
-    }
-
     if (credentialPublicKey.length !== 64) {
         throw new Error(`credentialPublicKey needs a length of 64`);
     }
@@ -382,10 +350,6 @@ export async function issueCredential(
         } else {
             validUntilDateISOString = new Date(Date.parse(validUntilDate)).toISOString();
         }
-    }
-
-    if (credentialMetaDataURL === '') {
-        throw new Error(`Set credentialMetaDataURL`);
     }
 
     if (credentialRegistryContratIndex === undefined) {
