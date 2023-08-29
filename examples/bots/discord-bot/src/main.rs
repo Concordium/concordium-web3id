@@ -97,16 +97,6 @@ async fn check(
         .map(|acc| acc.cred_status);
 
     let message = match discord_status {
-        None => format!("{mention} is not verified with Concordia."),
-        Some(CredentialStatus::Expired) => {
-            format!("{mention} is not verified with Concordia: Verification has expired.")
-        }
-        Some(CredentialStatus::NotActivated) => {
-            format!("{mention} is not verified with Concordia: Verification is not yet active.")
-        }
-        Some(CredentialStatus::Revoked) => {
-            format!("{mention} is not verified with Concordia: Verification was revoked.")
-        }
         Some(CredentialStatus::Active) => {
             let mut message = format!("{mention} is verified with Concordia.");
             if let Some(full_name) = verification.full_name {
@@ -121,18 +111,36 @@ async fn check(
                     CredentialStatus::Active => {
                         message.push_str(&format!("{}: {}", account.platform, account.username));
                     }
-                    _ => message.push_str(&format!(
-                        "~~{}: {}~~ [{}]",
-                        account.platform, account.username, account.cred_status
+                    status => message.push_str(&format!(
+                        "~~{}: {}~~ ({})",
+                        account.platform,
+                        account.username,
+                        credential_status_msg(status)
                     )),
                 }
             }
             message
         }
+        Some(status) => {
+            format!(
+                "{mention} is not verified with Concordia ({}).",
+                credential_status_msg(status)
+            )
+        }
+        None => format!("{mention} is not verified with Concordia."),
     };
     ctx.say(message).await?;
 
     Ok(())
+}
+
+fn credential_status_msg(status: CredentialStatus) -> &'static str {
+    match status {
+        CredentialStatus::Active => "Credential active",
+        CredentialStatus::Revoked => "Credential revoked",
+        CredentialStatus::Expired => "Credential expired",
+        CredentialStatus::NotActivated => "Credential not yet active",
+    }
 }
 
 async fn on_error<U, E: Display>(err: FrameworkError<'_, U, E>) {

@@ -165,9 +165,9 @@ async fn check_user(
         Ok(verification) => {
             // The message will be formatted with MarkdownV2 (https://core.telegram.org/bots/api#markdownv2-style)
             // Therefore, we need to escape all reserved characters and arbitrary strings
-            let mut name = markdown::user_mention_or_link(target_user);
-            if name.starts_with('@') {
-                name = markdown::escape(&name);
+            let mut mention = markdown::user_mention_or_link(target_user);
+            if mention.starts_with('@') {
+                mention = markdown::escape(&mention);
             }
             let accounts = verification.accounts;
 
@@ -177,20 +177,8 @@ async fn check_user(
                 .map(|acc| acc.cred_status);
 
             let message = match telegram_status {
-                None => format!("{name} is not verified with Concordia\\."),
-                Some(CredentialStatus::Expired) => {
-                    format!("{name} is not verified with Concordia: Verification has expired\\.")
-                }
-                Some(CredentialStatus::NotActivated) => {
-                    format!(
-                        "{name} is not verified with Concordia: Verification is not yet active\\."
-                    )
-                }
-                Some(CredentialStatus::Revoked) => {
-                    format!("{name} is not verified with Concordia: Verification was revoked\\.")
-                }
                 Some(CredentialStatus::Active) => {
-                    let mut message = format!("{name} is verified with Concordia\\.");
+                    let mut message = format!("{mention} is verified with Concordia\\.");
                     if let Some(full_name) = verification.full_name {
                         let full_name = markdown::escape(&full_name.to_string());
                         message.push_str(&format!("\n• Real name: {full_name}"));
@@ -208,16 +196,23 @@ async fn check_user(
                                     markdown::escape(&account.username)
                                 ));
                             }
-                            _ => message.push_str(&format!(
-                                "~{}: {}~ \\[{}\\]",
+                            status => message.push_str(&format!(
+                                "~{}: {}~ \\({}\\)",
                                 account.platform,
                                 markdown::escape(&account.username),
-                                account.cred_status
+                                credential_status_msg(status)
                             )),
                         }
                     }
                     message
                 }
+                Some(status) => {
+                    format!(
+                        "{mention} is not verified with Concordia \\({}\\)\\.",
+                        credential_status_msg(status)
+                    )
+                }
+                None => format!("{mention} is not verified with Concordia\\."),
             };
 
             bot.send_message(msg.chat.id, message)
@@ -229,6 +224,15 @@ async fn check_user(
     }
 
     Ok(())
+}
+
+fn credential_status_msg(status: CredentialStatus) -> &'static str {
+    match status {
+        CredentialStatus::Active => "Credential active",
+        CredentialStatus::Revoked => "Credential revoked",
+        CredentialStatus::Expired => "Credential expired",
+        CredentialStatus::NotActivated => "Credential not yet active",
+    }
 }
 
 /// Fallback handler.
