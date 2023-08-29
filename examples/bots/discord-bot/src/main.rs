@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use anyhow::Context as AnyhowContext;
 use clap::Parser;
+use concordium_rust_sdk::contract_client::CredentialStatus;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use poise::FrameworkError;
 use reqwest::Url;
@@ -89,24 +90,57 @@ async fn check(
     let verification = get_verification(ctx.data(), user.id).await?;
     let accounts = verification.accounts;
     let mention = user.mention();
-    let message = if accounts.is_empty() {
-        format!("{mention} is not verified with Concordia.")
-    } else {
-        let mut message = format!("{mention} is verified with Concordia.");
-        if let Some(full_name) = verification.full_name {
-            message.push_str(&format!("\n- Real name: {full_name}"));
+
+    let discord_status = accounts
+        .iter()
+        .find(|acc| acc.platform == Platform::Discord)
+        .map(|acc| acc.cred_status);
+
+    let message = match discord_status {
+        Some(CredentialStatus::Active) => {
+            let mut message = format!("{mention} is verified with Concordia.");
+            if let Some(full_name) = verification.full_name {
+                message.push_str(&format!("\n- Real name: {full_name}"));
+            }
+            for account in accounts
+                .into_iter()
+                .filter(|acc| acc.platform != Platform::Discord)
+            {
+                message.push_str("\n- ");
+                match account.cred_status {
+                    CredentialStatus::Active => {
+                        message.push_str(&format!("{}: {}", account.platform, account.username));
+                    }
+                    status => message.push_str(&format!(
+                        "~~{}: {}~~ ({})",
+                        account.platform,
+                        account.username,
+                        credential_status_msg(status)
+                    )),
+                }
+            }
+            message
         }
-        for account in accounts
-            .into_iter()
-            .filter(|a| a.platform != Platform::Discord && !a.revoked)
-        {
-            message.push_str(&format!("\n- {}: {}", account.platform, account.username));
+        Some(status) => {
+            format!(
+                "{mention} is not verified with Concordia ({}).",
+                credential_status_msg(status)
+            )
         }
-        message
+        None => format!("{mention} is not verified with Concordia."),
     };
     ctx.say(message).await?;
 
     Ok(())
+}
+
+fn credential_status_msg(status: CredentialStatus) -> &'static str {
+    match status {
+        CredentialStatus::Active => "Credential active",
+        CredentialStatus::Revoked => "Credential revoked",
+        CredentialStatus::Expired => "Credential expired",
+        CredentialStatus::NotActivated => "Credential not yet active",
+    }
 }
 
 async fn on_error<U, E: Display>(err: FrameworkError<'_, U, E>) {

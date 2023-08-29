@@ -68,13 +68,18 @@ fn verification_from_row(row: Row) -> DbVerification {
         })
         .collect();
 
+    let presentation = row.get::<_, serde_json::Value>(PRESENTATION_COLUMN);
+    let presentation =
+        serde_json::from_value(presentation).expect("presentations can be deserialized");
+
     DbVerification {
         accounts,
         full_name,
+        presentation,
     }
 }
 
-/// A platform and an user id for that platform.
+/// A platform and user id + username for that platform.
 #[derive(Debug)]
 pub struct DbAccount {
     pub platform: Platform,
@@ -86,6 +91,7 @@ pub struct DbAccount {
 pub struct DbVerification {
     pub accounts: Vec<DbAccount>,
     pub full_name: Option<FullName>,
+    pub presentation: Presentation<ArCurve, Web3IdAttribute>,
 }
 
 /// Initializer for verification entries, including the entries of the platform tables.
@@ -93,8 +99,7 @@ pub struct VerificationsEntry {
     pub telegram: Option<PlatformEntry>,
     pub discord: Option<PlatformEntry>,
     pub presentation: serde_json::Value,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
+    pub full_name: Option<FullName>,
 }
 
 pub struct Database {
@@ -107,8 +112,7 @@ impl VerificationsEntry {
             telegram: None,
             discord: None,
             presentation: serde_json::to_value(proof).expect("Presentations can be serialized"),
-            first_name: None,
-            last_name: None,
+            full_name: None,
         }
     }
 
@@ -116,11 +120,15 @@ impl VerificationsEntry {
         [
             (
                 FIRST_NAME_COLUMN,
-                self.first_name.as_ref().map(|n| n as &(dyn ToSql + Sync)),
+                self.full_name
+                    .as_ref()
+                    .map(|n| &n.first_name as &(dyn ToSql + Sync)),
             ),
             (
                 LAST_NAME_COLUMN,
-                self.last_name.as_ref().map(|n| n as &(dyn ToSql + Sync)),
+                self.full_name
+                    .as_ref()
+                    .map(|n| &n.last_name as &(dyn ToSql + Sync)),
             ),
             (PRESENTATION_COLUMN, Some(&self.presentation)),
         ]
@@ -175,7 +183,8 @@ impl Database {
         platform: Platform,
     ) -> DbResult<Option<DbVerification>> {
         // The base statement
-        let mut statement = format!("SELECT {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN}");
+        let mut statement =
+            format!("SELECT {PRESENTATION_COLUMN}, {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN}");
 
         // Additional columns to select and joins to perform built from the supported platforms.
         let (columns, joins) = Platform::SUPPORTED_PLATFORMS
