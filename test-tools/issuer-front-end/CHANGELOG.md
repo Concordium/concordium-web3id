@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 1.0.8
+
+- Add support for date-time attributes.
+
 ## 1.0.7
 
 - Add `console.debug` whenever the front end sends data to the wallet or the backend.
