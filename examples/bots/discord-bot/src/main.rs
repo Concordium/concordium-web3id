@@ -1,13 +1,13 @@
-use std::fmt::Display;
-use std::time::Duration;
-
 use anyhow::Context as AnyhowContext;
 use clap::Parser;
 use concordium_rust_sdk::contract_client::CredentialStatus;
-use poise::serenity_prelude::{self as serenity, Mentionable};
-use poise::FrameworkError;
+use poise::{
+    serenity_prelude::{self as serenity, Mentionable},
+    FrameworkError,
+};
 use reqwest::Url;
 use some_verifier_lib::{Platform, Verification};
+use std::{fmt::Display, time::Duration};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -18,14 +18,14 @@ struct App {
         help = "Discord bot API token.",
         env = "DISCORD_BOT_TOKEN"
     )]
-    bot_token: String,
+    bot_token:       String,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "DISCORD_BOT_LOG_LEVEL"
     )]
-    log_level: tracing_subscriber::filter::LevelFilter,
+    log_level:       tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
@@ -39,16 +39,17 @@ struct App {
         help = "URL of the SoMe verifier.",
         env = "DISCORD_BOT_VERIFIER_URL"
     )]
-    verifier_url: Url,
+    verifier_url:    Url,
 }
 
 struct BotConfig {
     verifier_url: Url,
-    client: reqwest::Client,
+    client:       reqwest::Client,
 }
 type Context<'a> = poise::Context<'a, BotConfig, anyhow::Error>;
 
-// Note: The doc comments of the commands below define what the user sees as a help message
+// Note: The doc comments of the commands below define what the user sees as a
+// help message
 /// Displays the list of commands
 #[poise::command(slash_command, prefix_command)]
 async fn help(
@@ -175,6 +176,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let client = reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(5))
         .timeout(Duration::from_millis(app.request_timeout))
         .build()
         .context("Unable to start HTTP client.")?;
