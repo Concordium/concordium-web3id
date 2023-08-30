@@ -14,21 +14,24 @@
   dependencies:
     regenerator-runtime "^0.13.11"
 
-"@concordium/browser-wallet-api-helpers@../../../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers":
-  version "2.5.1"
+"@concordium/browser-wallet-api-helpers@2.6.0":
+  version "2.6.0"
+  resolved "https://registry.yarnpkg.com/@concordium/browser-wallet-api-helpers/-/browser-wallet-api-helpers-2.6.0.tgz#5cc98fae952cef045c87cd11a0749b29ef310c05"
+  integrity sha512-af/hQLsdVRm2pgEu1bY33Px2xVo457YUEnEhPVslKcFJvM14JJ1P9Vp9HWot9iALBJE+bNPnCVoHQoOeqlboBQ==
   dependencies:
-    "@concordium/web-sdk" "^6.1.0-alpha.1"
+    "@concordium/web-sdk" "^6.1.1"
 
-"@concordium/common-sdk@9.1.0-alpha.1":
-  version "9.1.0-alpha.1"
-  resolved "https://registry.yarnpkg.com/@concordium/common-sdk/-/common-sdk-9.1.0-alpha.1.tgz#0d0461ef3fd77cac90dcd94e3a7c488c65f27466"
-  integrity sha512-7rt7tDj1/p2cPdKXPg+M5usOUuSp7MbjuG428pY5RE4LsNevz4bsBUAEmACJexWqDtPQ9fkpKYKUHRWLcQOnlw==
+"@concordium/common-sdk@9.1.1":
+  version "9.1.1"
+  resolved "https://registry.yarnpkg.com/@concordium/common-sdk/-/common-sdk-9.1.1.tgz#939e325e71b845947515d6fdcb1d120a677f7447"
+  integrity sha512-LpHTFg4GNuM3DjzQ3lvttP+HiFi9JzmmegULFIbmM4oIg9tcwK9mvvoRXfoRnokaI60CZOClKhkSNIQig77KEA==
   dependencies:
-    "@concordium/rust-bindings" "1.2.0-alpha.1"
+    "@concordium/rust-bindings" "1.2.0"
     "@grpc/grpc-js" "^1.3.4"
     "@noble/ed25519" "^1.7.1"
     "@protobuf-ts/runtime-rpc" "^2.8.2"
     "@scure/bip39" "^1.1.0"
+    big.js "^6.2.0"
     bs58check "^2.1.2"
     buffer "^6.0.3"
     cross-fetch "3.1.5"
@@ -37,18 +40,18 @@
     json-bigint "^1.0.0"
     uuid "^8.3.2"
 
-"@concordium/rust-bindings@1.2.0-alpha.1":
-  version "1.2.0-alpha.1"
-  resolved "https://registry.yarnpkg.com/@concordium/rust-bindings/-/rust-bindings-1.2.0-alpha.1.tgz#6c20dc3413d55ee923953a59003056add88d55c4"
-  integrity sha512-SdMGzJ7Etstwq0dOGTKLSVL379tsrIumKGmiN6UD0FOtH1td0KiQjveWcrcOczD7PIR4Pim07P4GZsf914ZgPQ==
+"@concordium/rust-bindings@1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@concordium/rust-bindings/-/rust-bindings-1.2.0.tgz#9ae3ed802bb4fdc99a1a5ccf28e91689095fb889"
+  integrity sha512-GlfHg8uQCr0QJZZt6b1qZacJrVrgDXWjj68D0PvE3CNXo0yAqr81JXrUbpgfVzUXNabzfsUaDUifS8z8b197HA==
 
-"@concordium/web-sdk@^6.1.0-alpha.1":
-  version "6.1.0-alpha.1"
-  resolved "https://registry.yarnpkg.com/@concordium/web-sdk/-/web-sdk-6.1.0-alpha.1.tgz#68c36b3cd882fc30533d5342011716e9ebe0b4f1"
-  integrity sha512-6qcT0mp7gApxsjQ4nSsrPf+Hc1xFsSZX2rwbRwjSD62aLIEsuSa54PWd7m6Jq6HNHvPKR8zuM8n6vUHPkWM8vA==
+"@concordium/web-sdk@^6.1.1":
+  version "6.1.1"
+  resolved "https://registry.yarnpkg.com/@concordium/web-sdk/-/web-sdk-6.1.1.tgz#4876a9d7c51dc4e4d159f8e999c875ab4c7e1378"
+  integrity sha512-TqGJq8lhPbuFecSlbwsp8Q3Ulo65RRann8pUZV81eKFN+inW0DbnlMF+AYLAePL4y6cU3Z9Qd2P9bF8HpsnDwg==
   dependencies:
-    "@concordium/common-sdk" "9.1.0-alpha.1"
-    "@concordium/rust-bindings" "1.2.0-alpha.1"
+    "@concordium/common-sdk" "9.1.1"
+    "@concordium/rust-bindings" "1.2.0"
     "@grpc/grpc-js" "^1.3.4"
     "@protobuf-ts/grpcweb-transport" "^2.8.2"
     buffer "^6.0.3"
@@ -694,6 +697,11 @@ base64-js@^1.3.1:
   version "1.5.1"
   resolved "https://registry.yarnpkg.com/base64-js/-/base64-js-1.5.1.tgz#1b1b440160a5bf7ad40b650f095963481903930a"
   integrity sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==
+
+big.js@^6.2.0:
+  version "6.2.1"
+  resolved "https://registry.yarnpkg.com/big.js/-/big.js-6.2.1.tgz#7205ce763efb17c2e41f26f121c420c6a7c2744f"
+  integrity sha512-bCtHMwL9LeDIozFn+oNhhFoq+yQ3BNdnsLSASUxLciOb1vgvpHsIO1dsENiGMgbb4SkP5TrzWzRiLddn8ahVOQ==
 
 bignumber.js@^9.0.0:
   version "9.1.1"

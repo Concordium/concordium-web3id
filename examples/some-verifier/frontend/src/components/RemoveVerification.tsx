@@ -16,7 +16,7 @@ import {
   Row,
 } from 'reactstrap';
 import { Config, Platform } from '../lib/types';
-import { hash, requestProof } from './util';
+import { hash, requestProof } from '../lib/util';
 import _config from '../../config.json';
 const config = _config as Config;
 

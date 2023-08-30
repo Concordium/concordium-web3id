@@ -25,7 +25,7 @@ import Issuer from './Issuer';
 import { FormEvent, PropsWithChildren, useMemo, useState } from 'react';
 import _config from '../../config.json';
 import RemoveVerification from './RemoveVerification';
-import { hash, requestProof } from './util';
+import { hash, requestProof } from '../lib/util';
 const config = _config as Config;
 
 enum VerificationStep {
