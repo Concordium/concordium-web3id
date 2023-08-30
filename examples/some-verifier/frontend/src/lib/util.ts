@@ -3,7 +3,7 @@ import {
   VerifiablePresentation,
   Web3StatementBuilder,
 } from '@concordium/web-sdk';
-import { Issuer } from '../lib/types';
+import { Issuer } from './types';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 
 export async function hash(message: string): Promise<string> {

@@ -127,6 +127,16 @@ struct AppState {
     crypto_params:     Arc<CryptographicParameters>,
 }
 
+impl AppState {
+    fn get_platform_for_contract(&self, address: &ContractAddress) -> Result<Platform, Error> {
+        match address {
+            addr if addr == &self.telegram_registry => Ok(Platform::Telegram),
+            addr if addr == &self.discord_registry => Ok(Platform::Discord),
+            _ => return Err(Error::InvalidIssuer),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app = App::parse();
@@ -318,42 +328,25 @@ async fn remove_verification(
     }
 
     // We know we have exactly 1 credential
-    let credential = proof.verifiable_credential.get(0).unwrap();
-    let (id, platform) = match credential {
+    let credential = &proof.verifiable_credential[0];
+    let (cred_id, platform) = match credential {
         CredentialProof::Web3Id {
             network,
             contract,
-            proofs,
+            holder,
             ..
         } => {
             if network != &state.network {
                 return Err(Error::InvalidIssuer);
             }
-            let platform = match contract {
-                addr if addr == &state.telegram_registry => Platform::Telegram,
-                addr if addr == &state.discord_registry => Platform::Discord,
-                _ => return Err(Error::InvalidIssuer),
-            };
+            let platform = state.get_platform_for_contract(contract)?;
 
-            let id = match &proofs[..] {
-                [(
-                    _,
-                    AtomicProof::RevealAttribute {
-                        attribute: Web3IdAttribute::String(AttributeKind(id)),
-                        ..
-                    },
-                )] => id.clone(),
-                _ => {
-                    return Err(Error::InvalidStatement);
-                }
-            };
-
-            (id, platform)
+            (holder, platform)
         }
         _ => return Err(Error::InvalidStatement),
     };
 
-    if let Err(err) = state.database.remove_verification(&id, platform).await {
+    if let Err(err) = state.database.remove_verification(cred_id, platform).await {
         tracing::warn!("Error removing entries: {err}");
         return Err(Error::DatabaseError(err));
     }
@@ -417,6 +410,7 @@ fn proof_to_verifications_entry(
             network,
             contract,
             proofs,
+            holder,
             ..
         } => {
             if network != &state.network {
@@ -442,12 +436,16 @@ fn proof_to_verifications_entry(
                 }
             };
 
-            let platform_entry = PlatformEntry { id, username };
-            match contract {
-                addr if addr == &state.telegram_registry => entry.telegram = Some(platform_entry),
-                addr if addr == &state.discord_registry => entry.discord = Some(platform_entry),
-                _ => return Err(Error::InvalidIssuer),
-            }
+            let platform_entry = PlatformEntry {
+                id,
+                cred_id: *holder,
+                username,
+            };
+            match state.get_platform_for_contract(contract) {
+                Ok(Platform::Telegram) => entry.telegram = Some(platform_entry),
+                Ok(Platform::Discord) => entry.discord = Some(platform_entry),
+                Err(e) => return Err(e),
+            };
 
             Ok(())
         }

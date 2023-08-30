@@ -11,7 +11,10 @@ axum = "0.6"
 clap = { version = "4.3", features = ["derive", "env"] }
 serde_json = "1.0"
 tokio = { version = "1.29", features = ["rt-multi-thread", "macros"] }
-tokio-postgres = { version = "0.7", features = ["with-serde_json-1"] }
+tokio-postgres = { version = "0.7", features = [
+  "with-serde_json-1",
+  "array-impls",
+] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 concordium-rust-sdk = { version = "*", path = "../../deps/concordium-rust-sdk" }

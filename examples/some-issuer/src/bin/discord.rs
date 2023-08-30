@@ -24,7 +24,7 @@ use rand::Rng;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use some_issuer::{issue_credential, IssueResponse, IssuerState};
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
@@ -156,13 +156,15 @@ struct AccessTokenRequestData<'a> {
 }
 
 #[derive(Deserialize)]
-#[allow(unused)]
 struct AccessTokenResponse {
-    access_token:  String,
-    token_type:    String,
-    expires_in:    u32,
-    refresh_token: String,
-    scope:         String,
+    access_token: String,
+    token_type:   String,
+    scope:        String,
+}
+
+#[derive(Deserialize)]
+struct Oauth2RedirectParams {
+    code: String,
 }
 
 #[derive(Serialize)]
@@ -175,16 +177,15 @@ struct OauthTemplateParams<'a> {
 /// Handles OAuth2 redirects and inserts an id in the session.
 async fn handle_oauth_redirect(
     State(state): State<AppState>,
-    Query(params): Query<HashMap<String, String>>,
+    Query(params): Query<Oauth2RedirectParams>,
     session: WritableSession,
 ) -> Result<Html<String>, StatusCode> {
     async fn respond(
         state: AppState,
-        params: HashMap<String, String>,
+        code: String,
         mut session: WritableSession,
     ) -> anyhow::Result<Html<String>> {
-        let code = params.get("code").context("Missing 'code' query param")?;
-        let user = get_user(&state, code)
+        let user = get_user(&state, &code)
             .await
             .context("Error getting Discord user.")?;
 
@@ -217,7 +218,7 @@ async fn handle_oauth_redirect(
         Ok(Html(output))
     }
 
-    match respond(state, params, session).await {
+    match respond(state, params.code, session).await {
         Ok(response) => Ok(response),
         Err(err) => {
             tracing::warn!("Unsuccessful OAuth2 redirect: {err}");
