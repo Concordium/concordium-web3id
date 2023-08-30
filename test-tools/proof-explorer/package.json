@@ -1,11 +1,11 @@
 {
     "name": "proof-explorer",
     "license": "Apache-2.0",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "packageManager": "yarn@3.2.0",
     "dependencies": {
-        "@concordium/browser-wallet-api-helpers": "file:../../deps/concordium-browser-wallet/packages/browser-wallet-api-helpers",
-        "@concordium/web-sdk": "^6.1.0-alpha.1",
+        "@concordium/browser-wallet-api-helpers": "2.6.0",
+        "@concordium/web-sdk": "^6.1.1",
         "@protobuf-ts/grpcweb-transport": "^2.9.1",
         "@walletconnect/qrcode-modal": "^1.8.0",
         "@walletconnect/sign-client": "^2.1.5",
@@ -14,6 +14,9 @@
         "react": "^18.1.0",
         "react-dom": "^18.1.0",
         "react-select": "^5.7.0"
+    },
+    "resolutions": {
+        "@concordium/web-sdk": "^6.1.1"
     },
     "devDependencies": {
         "@craftamap/esbuild-plugin-html": "^0.4.0",

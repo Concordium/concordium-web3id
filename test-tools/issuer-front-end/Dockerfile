@@ -17,12 +17,7 @@ RUN yarn set version 3.2.0
 
 # Copy front end files
 WORKDIR /build
-COPY ./deps/concordium-browser-wallet ./deps/concordium-browser-wallet
 COPY ./test-tools/issuer-front-end ./test-tools/issuer-front-end
-
-# Install front end dependencies
-WORKDIR /build/deps/concordium-browser-wallet
-RUN yarn install && yarn build:api-helpers
 
 WORKDIR /build/test-tools/issuer-front-end
 RUN yarn install && yarn build
