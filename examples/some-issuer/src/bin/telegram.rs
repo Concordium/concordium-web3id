@@ -7,7 +7,7 @@ use reqwest::Url;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use some_issuer::{issue_credential, IssueResponse, IssuerState};
-use std::fmt::{self, Display};
+use std::fmt::{self, Display, Write};
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
@@ -131,38 +131,34 @@ struct User {
 
 type HmacSha256 = Hmac<Sha256>;
 impl User {
-    fn check(&self, telegram_bot_token: &str) -> anyhow::Result<()> {
-        let mut hasher = Sha256::new();
-        hasher.update(telegram_bot_token);
-        let key = hasher.finalize();
+    /// See https://core.telegram.org/widgets/login
+    fn data_check_string(&self) -> String {
+        let mut buf = String::new();
+        writeln!(&mut buf, "auth_date={}", self.auth_date).expect("can write to string");
+        writeln!(&mut buf, "first_name={}", self.first_name).expect("can write to string");
+        write!(&mut buf, "id={}", self.id).expect("can write to string");
+        if let Some(last_name) = &self.last_name {
+            write!(&mut buf, "\nlast_name={last_name}").expect("can write to string");
+        }
+        if let Some(photo_url) = &self.photo_url {
+            write!(&mut buf, "\nphoto_url={photo_url}").expect("can write to string");
+        }
+        if let Some(username) = &self.username {
+            write!(&mut buf, "\nusername={username}").expect("can write to string");
+        }
+        buf
+    }
 
-        let mut mac = HmacSha256::new_from_slice(&key).unwrap();
-        mac.update(self.to_string().as_bytes());
+    fn check(&self, telegram_bot_token: &str) -> anyhow::Result<()> {
+        let key = Sha256::digest(telegram_bot_token.as_bytes());
+
+        let mut mac = HmacSha256::new_from_slice(&key).expect("key is 32 bytes");
+        mac.update(self.data_check_string().as_bytes());
 
         let mac_bytes = mac.finalize().into_bytes();
         let expected = hex::decode(&self.hash)?;
 
         anyhow::ensure!(&mac_bytes[..] == &expected[..], "MAC did not match hash.");
-        Ok(())
-    }
-}
-
-/// Note: the exact format of this is important, as it is used for verification.
-/// See https://core.telegram.org/widgets/login
-impl Display for User {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "auth_date={}", self.auth_date)?;
-        writeln!(f, "first_name={}", self.first_name)?;
-        write!(f, "id={}", self.id)?;
-        if let Some(last_name) = &self.last_name {
-            write!(f, "\nlast_name={last_name}")?;
-        }
-        if let Some(photo_url) = &self.photo_url {
-            write!(f, "\nphoto_url={photo_url}")?;
-        }
-        if let Some(username) = &self.username {
-            write!(f, "\nusername={username}")?;
-        }
         Ok(())
     }
 }

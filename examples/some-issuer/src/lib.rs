@@ -45,7 +45,7 @@ pub async fn issue_credential(
     user_id: String,
     username: String,
 ) -> Result<Json<IssueResponse>, StatusCode> {
-    tracing::info!("Request to issue a credential.");
+    tracing::debug!("Request to issue a credential.");
 
     if let Err(err) = validate_credential(&issuer, &credential) {
         tracing::warn!("Failed to validate credential: {err}");
@@ -54,7 +54,7 @@ pub async fn issue_credential(
 
     match register_credential(issuer, credential, user_id, username).await {
         Ok(res) => {
-            tracing::info!("Successfully issued credential.");
+            tracing::debug!("Successfully issued credential.");
             Ok(Json(res))
         }
         Err(err) => {
@@ -99,7 +99,7 @@ async fn register_credential(
     // Compute expiry after acquiring the lock to make sure we don't wait
     // too long before acquiring the lock, rendering expiry problematic
     let expiry = TransactionTime::minutes_after(5);
-    tracing::info!("Using nonce {} to send the transaction.", *nonce_guard);
+    tracing::debug!("Using nonce {} to send the transaction.", *nonce_guard);
     let metadata = Cis4TransactionMetadata {
         sender_address: issuer.issuer.address,
         nonce: *nonce_guard,
@@ -179,6 +179,6 @@ fn make_secrets(
         values,
         randomness,
         signature: signed_commitments.signature,
-        credential_schema: "todo!()".into(),
+        credential_schema: issuer.credential_schema_url.to_string(),
     })
 }
