@@ -188,7 +188,7 @@ function parseAttributesFromForm(
                 if (Number.isNaN(date.getTime())) {
                     const msg = `Unable to parse string "${obj.value.trim()}" as a date.`;
                     setParsingError(msg);
-                    throw new Error(msg);
+                    // throw new Error(msg);
                 }
                 attributes[obj.tag] = date;
             } else {
