@@ -104,6 +104,13 @@ struct App {
         env = "SOME_VERIFIER_LISTEN_ADDRESS"
     )]
     listen_address:     std::net::SocketAddr,
+    #[clap(
+        long = "frontend",
+        default_value = "./frontend/dist",
+        help = "Path to the directory where frontend assets are located.",
+        env = "SOME_VERIFIER_FRONTEND"
+    )]
+    frontend_assets:    std::path::PathBuf,
 }
 
 #[derive(Clone)]
@@ -182,16 +189,18 @@ async fn main() -> anyhow::Result<()> {
     };
 
     tracing::info!("Starting server...");
-    let serve_dir_service = ServeDir::new("frontend/dist");
+    let serve_dir_service = ServeDir::new(app.frontend_assets);
     let router = Router::new()
         .nest_service("/", serve_dir_service)
         .route("/verifications", post(add_verification))
         .route("/verifications", patch(remove_verification))
         .route("/verifications/:platform/:id", get(get_verification))
         .with_state(state)
-        .layer(tower_http::trace::TraceLayer::new_for_http().
-               make_span_with(tower_http::trace::DefaultMakeSpan::new()).
-               on_response(tower_http::trace::DefaultOnResponse::new()))
+        .layer(
+            tower_http::trace::TraceLayer::new_for_http()
+                .make_span_with(tower_http::trace::DefaultMakeSpan::new())
+                .on_response(tower_http::trace::DefaultOnResponse::new()),
+        )
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))
