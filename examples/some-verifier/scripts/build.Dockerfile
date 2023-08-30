@@ -14,7 +14,7 @@ RUN yarn install && yarn build
 
 FROM ${build_image} AS build
 
-WORKDIR /buildp
+WORKDIR /build
 COPY examples/some-verifier examples/some-verifier
 COPY examples/some-verifier-lib examples/some-verifier-lib
 COPY deps/concordium-rust-sdk deps/concordium-rust-sdk
