@@ -23,12 +23,6 @@ export const BROWSER_WALLET = ephemeralConnectorType(BrowserWalletConnector.crea
 // The 'PARAMETER'/'RETURN_VALUE' schemas are created by running the command `cargo concordium --schema-json-out ./` in the `smart-contract` folder.
 // This produces an output file in the same folder which those schemas.
 
-export const STORAGE_CONTRACT_SERIALIZATION_HELPER_PARAMETER_SCHEMA =
-    'FAAEAAAACQAAAHRpbWVzdGFtcA0QAAAAY29udHJhY3RfYWRkcmVzcwwIAAAAbWV0YWRhdGEUAQEAAAADFAAAAGVuY3J5cHRlZF9jcmVkZW50aWFsEAEC';
-
-export const STORAGE_CONTRACT_STORE_PARAMETER_SCHEMA =
-    'FAADAAAACgAAAHB1YmxpY19rZXkeIAAAAAkAAABzaWduYXR1cmUeQAAAAAQAAABkYXRhFAAEAAAACQAAAHRpbWVzdGFtcA0QAAAAY29udHJhY3RfYWRkcmVzcwwIAAAAbWV0YWRhdGEUAQEAAAADFAAAAGVuY3J5cHRlZF9jcmVkZW50aWFsEAEC';
-
 export const REGISTRY_CONTRACT_CREDENTIAL_ENTRY_PARAMETER_SCHEMA = 'HiAAAAA';
 
 export const REGISTRY_CONTRACT_CREDENTIAL_ENTRY_RETURN_VALUE_SCHEMA =

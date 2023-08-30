@@ -497,7 +497,7 @@ export default function Main(props: WalletConnectionProps) {
         <main className="container">
             <div className="textCenter">
                 Version: {version}
-                <h1>Web3ID Issuer Front End</h1>
+                <h1>Web3ID Testing Front End</h1>
                 <WalletConnectionTypeButton
                     connectorType={BROWSER_WALLET}
                     connectorName="Browser Wallet"
