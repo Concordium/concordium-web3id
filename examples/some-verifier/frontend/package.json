@@ -1,6 +1,7 @@
 {
   "name": "some-verifier",
   "private": true,
+  "packageManager": "yarn@3.2.0",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -22,6 +23,9 @@
     "react-social-login-buttons": "^3.9.1",
     "react-telegram-login": "^1.1.2",
     "reactstrap": "^9.2.0"
+  },
+  "resolutions": {
+    "@concordium/web-sdk": "^6.1.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",

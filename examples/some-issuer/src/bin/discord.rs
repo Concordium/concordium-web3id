@@ -1,31 +1,32 @@
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
-
 use anyhow::Context;
-use axum::extract::{Query, State};
-use axum::response::Html;
-use axum::routing::{get, post};
-use axum::{Json, Router};
-use axum_sessions::async_session::CookieStore;
-use axum_sessions::extractors::{ReadableSession, WritableSession};
-use axum_sessions::SessionLayer;
+use axum::{
+    extract::{Query, State},
+    response::Html,
+    routing::{get, post},
+    Json, Router,
+};
+use axum_sessions::{
+    async_session::CookieStore,
+    extractors::{ReadableSession, WritableSession},
+    SessionLayer,
+};
 use clap::Parser;
-use concordium_rust_sdk::cis4::Cis4Contract;
-use concordium_rust_sdk::contract_client::CredentialInfo;
-use concordium_rust_sdk::types::{ContractAddress, Energy, WalletAccount};
-use concordium_rust_sdk::v2::{self, BlockIdentifier};
-use concordium_rust_sdk::web3id::did::Network;
+use concordium_rust_sdk::{
+    cis4::Cis4Contract,
+    contract_client::CredentialInfo,
+    types::{ContractAddress, Energy, WalletAccount},
+    v2::{self, BlockIdentifier},
+    web3id::did::Network,
+};
 use handlebars::Handlebars;
 use http::{HeaderValue, StatusCode};
 use rand::Rng;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use some_issuer::{issue_credential, IssueResponse, IssuerState};
+use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tonic::transport::ClientTlsConfig;
-use tower_http::cors::CorsLayer;
-use tower_http::services::ServeDir;
+use tower_http::{cors::CorsLayer, services::ServeDir};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -37,46 +38,46 @@ struct App {
         default_value = "http://localhost:20000",
         env = "DISCORD_ISSUER_NODE"
     )]
-    endpoint: v2::Endpoint,
+    endpoint:              v2::Endpoint,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "DISCORD_ISSUER_LOG_LEVEL"
     )]
-    log_level: tracing_subscriber::filter::LevelFilter,
+    log_level:             tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "network",
         help = "The network of the issuer.",
         default_value = "testnet",
         env = "DISCORD_ISSUER_NETWORK"
     )]
-    network: Network,
+    network:               Network,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "DISCORD_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout: u64,
+    request_timeout:       u64,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "DISCORD_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry: ContractAddress,
+    registry:              ContractAddress,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "DISCORD_ISSUER_WALLET"
     )]
-    wallet: PathBuf,
+    wallet:                PathBuf,
     #[clap(
         long = "issuer-key",
         help = "Path to the issuer's key, used to sign commitments.",
         env = "DISCORD_ISSUER_KEY"
     )]
-    issuer_key: PathBuf,
+    issuer_key:            PathBuf,
     #[clap(
         long = "max-register-energy",
         help = "The amount of energy to allow for execution of the register credential \
@@ -85,13 +86,13 @@ struct App {
         default_value = "10000",
         env = "DISCORD_ISSUER_MAX_REGISTER_ENERGY"
     )]
-    max_register_energy: Energy,
+    max_register_energy:   Energy,
     #[clap(
         long = "discord-client-id",
         help = "Discord client ID for OAuth2.",
         env = "DISCORD_CLIENT_ID"
     )]
-    discord_client_id: String,
+    discord_client_id:     String,
     #[clap(
         long = "discord-client-secret",
         help = "Discord client secret for OAuth2.",
@@ -104,32 +105,32 @@ struct App {
         default_value = "0.0.0.0:8081",
         env = "DISCORD_ISSUER_LISTEN_ADDRESS"
     )]
-    listen_address: SocketAddr,
+    listen_address:        SocketAddr,
     #[clap(
         long = "url",
         help = "URL of the Discord issuer.",
         default_value = "http://127.0.0.1:8081/",
         env = "DISCORD_ISSUER_URL"
     )]
-    url: Url,
+    url:                   Url,
     #[clap(
         long = "dapp-domain",
         help = "The domain of the dApp, used for CORS.",
         default_value = "http://127.0.0.1",
         env = "DISCORD_ISSUER_DAPP_URL"
     )]
-    dapp_domain: String,
+    dapp_domain:           String,
 }
 
 #[derive(Clone)]
 struct AppState {
-    issuer: IssuerState,
-    discord_client_id: Arc<String>,
+    issuer:                IssuerState,
+    discord_client_id:     Arc<String>,
     discord_client_secret: Arc<String>,
-    http_client: reqwest::Client,
-    handlebars: Arc<Handlebars<'static>>,
-    discord_redirect_uri: Arc<Url>,
-    dapp_domain: Arc<String>,
+    http_client:           reqwest::Client,
+    handlebars:            Arc<Handlebars<'static>>,
+    discord_redirect_uri:  Arc<Url>,
+    dapp_domain:           Arc<String>,
 }
 
 /// Request for issuance of Discord credential.
@@ -140,25 +141,25 @@ struct DiscordIssueRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 struct User {
-    id: String,
-    username: String,
+    id:            String,
+    username:      String,
     discriminator: String,
 }
 
 #[derive(Serialize)]
 struct AccessTokenRequestData<'a> {
-    client_id: &'a str,
+    client_id:     &'a str,
     client_secret: &'a str,
-    grant_type: &'static str,
-    code: &'a str,
-    redirect_uri: &'a str,
+    grant_type:    &'static str,
+    code:          &'a str,
+    redirect_uri:  &'a str,
 }
 
 #[derive(Deserialize)]
 struct AccessTokenResponse {
     access_token: String,
-    token_type: String,
-    scope: String,
+    token_type:   String,
+    scope:        String,
 }
 
 #[derive(Deserialize)]
@@ -168,8 +169,8 @@ struct Oauth2RedirectParams {
 
 #[derive(Serialize)]
 struct OauthTemplateParams<'a> {
-    id: &'a str,
-    username: &'a str,
+    id:          &'a str,
+    username:    &'a str,
     dapp_domain: &'a str,
 }
 
@@ -188,8 +189,8 @@ async fn handle_oauth_redirect(
             .await
             .context("Error getting Discord user.")?;
 
-        // Discord added the option to get unique usernames. If the discriminator is "0", it
-        // indicates that the user has a unique username.
+        // Discord added the option to get unique usernames. If the discriminator is
+        // "0", it indicates that the user has a unique username.
         let username = if user.discriminator == "0" {
             user.username
         } else {
@@ -204,8 +205,8 @@ async fn handle_oauth_redirect(
             .expect("username can be serialized");
 
         let params = OauthTemplateParams {
-            id: &user.id,
-            username: &username,
+            id:          &user.id,
+            username:    &username,
             dapp_domain: &state.dapp_domain,
         };
 
@@ -410,8 +411,17 @@ async fn main() -> anyhow::Result<()> {
         .route("/discord-oauth2", get(handle_oauth_redirect))
         .route_layer(session_layer)
         .nest_service("/json-schemas", json_schema_service)
+        .with_state(state)
         .layer(cors)
-        .with_state(state);
+        .layer(
+            tower_http::trace::TraceLayer::new_for_http()
+                .make_span_with(tower_http::trace::DefaultMakeSpan::new())
+                .on_response(tower_http::trace::DefaultOnResponse::new()),
+        )
+        .layer(tower_http::timeout::TimeoutLayer::new(
+            std::time::Duration::from_millis(app.request_timeout),
+        ))
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)); // at most 100kB of data
 
     tracing::info!("Starting server on {}...", app.listen_address);
 

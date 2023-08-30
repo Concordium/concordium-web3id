@@ -83,6 +83,7 @@ async fn main() -> anyhow::Result<()> {
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_millis(app.request_timeout))
+        .connect_timeout(Duration::from_secs(5))
         .build()
         .context("Failed to start HTTP server.")?;
 

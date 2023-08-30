@@ -65,3 +65,41 @@ Adds a new verification, taking JSON parameter examplified by the following obje
 ### PATCH `/verifications`
 
 Removes a verification. Takes a JSON parameter similar to as the corresponding `POST` endpoint, but will reject any proof made from anything else than 1 verifiable credential.
+
+
+## Docker image
+
+The docker image with the `some-verifier` can be built using the provided
+[`Dockerfile`](./scripts/build.Dockerfile).
+
+```console
+podman build     --build-arg build_image=rust:1.67-buster --build-arg frontend_build_image=node:16-slim --build-arg base_image=debian:buster -f examples/some-verifier/scripts/build.Dockerfile .
+```
+
+running from the **root** of the repository.
+
+This will produce a docker image with a binary `some-verifier` that is located in
+`/usr/local/bin`. That is meant to be the entrypoint of the image.
+
+### Configuration options for the image.
+
+The following configuration options are supported
+
+      --node <ENDPOINT>
+          GRPC V2 interface of the node. [env: SOME_VERIFIER_NODE=] [default: http://localhost:20000]
+      --network <NETWORK>
+          Network to which the verifier is connected. [env: SOME_VERIFIER_NETWORK=] [default: testnet]
+      --telegram-registry <TELEGRAM_REGISTRY>
+          Address of the Telegram registry smart contract. [env: SOME_VERIFIER_TELEGRAM_REGISTRY_ADDRESS=]
+      --discord-registry <DISCORD_REGISTRY>
+          Address of the Discord registry smart contract. [env: SOME_VERIFIER_DISCORD_REGISTRY_ADDRESS=]
+      --discord-bot-token <DISCORD_BOT_TOKEN>
+          Discord bot token for looking up usernames. [env: SOME_VERIFIER_DISCORD_BOT_TOKEN=]
+      --db <DB_CONFIG>
+          Database connection string. [env: SOME_VERIFIER_DB_STRING=] [default: "host=localhost dbname=some-verifier user=postgres password=password port=5432"]
+      --log-level <LOG_LEVEL>
+          Maximum log level. [env: SOME_VERIFIER_LOG_LEVEL=] [default: info]
+      --request-timeout <REQUEST_TIMEOUT>
+          Request timeout (both of request to the node and server requests) in milliseconds. [env: SOME_VERIFIER_REQUEST_TIMEOUT=] [default: 5000]
+      --port <LISTEN_ADDRESS>
+          Address where the server will listen on. [env: SOME_VERIFIER_LISTEN_ADDRESS=] [default: 0.0.0.0:80]

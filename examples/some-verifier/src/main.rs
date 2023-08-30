@@ -1,26 +1,26 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::Arc;
-
+use crate::db::{Database, DbAccount};
 use anyhow::Context;
-use axum::extract::rejection::JsonRejection;
-use axum::extract::{Path, State};
-use axum::routing::{get, patch, post};
-use axum::{Json, Router};
+use axum::{
+    extract::{rejection::JsonRejection, Path, State},
+    routing::{get, patch, post},
+    Json, Router,
+};
 use chrono::{DateTime, SecondsFormat, Utc};
 use clap::Parser;
-use concordium_rust_sdk::cis4::Cis4Contract;
-use concordium_rust_sdk::contract_client::CredentialStatus;
-use concordium_rust_sdk::id::constants::{ArCurve, AttributeKind};
-use concordium_rust_sdk::id::id_proof_types::{
-    AtomicProof, AtomicStatement, RevealAttributeStatement,
-};
-use concordium_rust_sdk::smart_contracts::common::attributes;
-use concordium_rust_sdk::types::{ContractAddress, CryptographicParameters};
-use concordium_rust_sdk::v2::{self, BlockIdentifier};
-use concordium_rust_sdk::web3id::did::Network;
-use concordium_rust_sdk::web3id::{
-    self, CredentialLookupError, CredentialProof, Presentation, PresentationVerificationError,
-    Web3IdAttribute,
+use concordium_rust_sdk::{
+    cis4::Cis4Contract,
+    contract_client::CredentialStatus,
+    id::{
+        constants::{ArCurve, AttributeKind},
+        id_proof_types::{AtomicProof, AtomicStatement, RevealAttributeStatement},
+    },
+    smart_contracts::common::attributes,
+    types::{ContractAddress, CryptographicParameters},
+    v2::{self, BlockIdentifier},
+    web3id::{
+        self, did::Network, CredentialLookupError, CredentialProof, Presentation,
+        PresentationVerificationError, Web3IdAttribute,
+    },
 };
 use db::{PlatformEntry, VerificationsEntry};
 use futures::{future, TryFutureExt};
@@ -28,10 +28,9 @@ use reqwest::StatusCode;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use some_verifier_lib::{Account, FullName, Platform, Verification};
+use std::sync::Arc;
 use tonic::transport::ClientTlsConfig;
 use tower_http::services::ServeDir;
-
-use crate::db::{Database, DbAccount};
 
 mod db;
 
@@ -44,14 +43,14 @@ struct App {
         default_value = "http://localhost:20000",
         env = "SOME_VERIFIER_NODE"
     )]
-    endpoint: v2::Endpoint,
+    endpoint:          v2::Endpoint,
     #[clap(
         long = "network",
         help = "Network to which the verifier is connected.",
         default_value = "testnet",
         env = "SOME_VERIFIER_NETWORK"
     )]
-    network: Network,
+    network:           Network,
     #[clap(
         long = "telegram-registry",
         help = "Address of the Telegram registry smart contract.",
@@ -63,73 +62,63 @@ struct App {
         help = "Address of the Discord registry smart contract.",
         env = "SOME_VERIFIER_DISCORD_REGISTRY_ADDRESS"
     )]
-    discord_registry: ContractAddress,
+    discord_registry:  ContractAddress,
     #[clap(
         long = "discord-bot-token",
         help = "Discord bot token for looking up usernames.",
-        env = "DISCORD_BOT_TOKEN"
+        env = "SOME_VERIFIER_DISCORD_BOT_TOKEN"
     )]
     discord_bot_token: String,
     #[clap(
-        long = "telegram-api-id",
-        help = "Telegram API ID for looking up usernames.",
-        env = "TELEGRAM_API_ID"
-    )]
-    telegram_api_id: i32,
-    #[clap(
-        long = "telegram-api-hash",
-        help = "Telegram API hash for looking up usernames.",
-        env = "TELEGRAM_API_HASH"
-    )]
-    telegram_api_hash: String,
-    #[clap(
-        long = "telegram-bot-token",
-        help = "Telegram bot token for looking up usernames.",
-        env = "TELEGRAM_BOT_TOKEN"
-    )]
-    telegram_bot_token: String,
-    #[clap(
         long = "db",
-        default_value = "host=localhost dbname=some-verifier user=postgres password=password port=5432",
+        default_value = "host=localhost dbname=some-verifier user=postgres password=password \
+                         port=5432",
         help = "Database connection string.",
         env = "SOME_VERIFIER_DB_STRING"
     )]
-    db_config: tokio_postgres::Config,
+    db_config:         tokio_postgres::Config,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "SOME_VERIFIER_LOG_LEVEL"
     )]
-    log_level: tracing_subscriber::filter::LevelFilter,
+    log_level:         tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
-        help = "Request timeout in milliseconds.",
+        help = "Request timeout (both of request to the node and server requests) in milliseconds.",
         default_value = "5000",
         env = "SOME_VERIFIER_REQUEST_TIMEOUT"
     )]
-    request_timeout: u64,
+    request_timeout:   u64,
     #[clap(
         long = "port",
-        default_value = "80",
-        help = "Port of the SoMe verifier.",
-        env = "SOME_VERIFIER_PORT"
+        default_value = "0.0.0.0:80",
+        help = "Address where the server will listen on.",
+        env = "SOME_VERIFIER_LISTEN_ADDRESS"
     )]
-    port: u16,
+    listen_address:    std::net::SocketAddr,
+    #[clap(
+        long = "frontend",
+        default_value = "./frontend/dist",
+        help = "Path to the directory where frontend assets are located.",
+        env = "SOME_VERIFIER_FRONTEND"
+    )]
+    frontend_assets:   std::path::PathBuf,
 }
 
 #[derive(Clone)]
 struct AppState {
-    http_client: reqwest::Client,
-    node_client: v2::Client,
+    http_client:       reqwest::Client,
+    node_client:       v2::Client,
     telegram_registry: ContractAddress,
-    discord_registry: ContractAddress,
+    discord_registry:  ContractAddress,
     telegram_contract: Cis4Contract,
-    discord_contract: Cis4Contract,
+    discord_contract:  Cis4Contract,
     discord_bot_token: Arc<String>,
-    database: Arc<Database>,
-    network: Network,
-    crypto_params: Arc<CryptographicParameters>,
+    database:          Arc<Database>,
+    network:           Network,
+    crypto_params:     Arc<CryptographicParameters>,
 }
 
 impl AppState {
@@ -204,15 +193,25 @@ async fn main() -> anyhow::Result<()> {
     };
 
     tracing::info!("Starting server...");
-    let serve_dir_service = ServeDir::new("frontend/dist");
+    let serve_dir_service = ServeDir::new(app.frontend_assets);
     let router = Router::new()
         .nest_service("/", serve_dir_service)
         .route("/verifications", post(add_verification))
         .route("/verifications", patch(remove_verification))
         .route("/verifications/:platform/:id", get(get_verification))
-        .with_state(state);
+        .with_state(state)
+        .layer(
+            tower_http::trace::TraceLayer::new_for_http()
+                .make_span_with(tower_http::trace::DefaultMakeSpan::new())
+                .on_response(tower_http::trace::DefaultOnResponse::new()),
+        )
+        .layer(tower_http::timeout::TimeoutLayer::new(
+            std::time::Duration::from_millis(app.request_timeout),
+        ))
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(1_000_000)) // at most 1000kB of data.
+        .layer(tower_http::compression::CompressionLayer::new());
 
-    let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), app.port);
+    let socket = app.listen_address;
     axum::Server::bind(&socket)
         .serve(router.into_make_service())
         .await?;
@@ -264,7 +263,7 @@ impl axum::response::IntoResponse for Error {
 
 #[derive(Deserialize)]
 struct Request {
-    proof: Presentation<ArCurve, Web3IdAttribute>,
+    proof:     Presentation<ArCurve, Web3IdAttribute>,
     timestamp: DateTime<Utc>,
 }
 
@@ -545,7 +544,7 @@ const DISCORD_API_ENDPOINT: &'static str = "https://discord.com/api/v10";
 
 #[derive(Deserialize)]
 struct DiscordUser {
-    username: String,
+    username:      String,
     discriminator: String,
 }
 
