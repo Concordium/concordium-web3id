@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 1.0.9
+
+- Change to use a hexString for the auxiliary data.
+
 ## 1.0.8
 
 - Add support for date-time attributes.
