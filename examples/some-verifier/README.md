@@ -65,3 +65,37 @@ Adds a new verification, taking JSON parameter examplified by the following obje
 ### PATCH `/verifications`
 
 Removes a verification. Takes a JSON parameter similar to as the corresponding `POST` endpoint, but will reject any proof made from anything else than 1 verifiable credential.
+
+
+## Docker image
+
+The docker image with the `some-verifier` can be built using the provided
+[`Dockerfile`](./scripts/build.Dockerfile).
+
+```console
+docker build --build-arg build_image=rust:1.67-buster --build-arg base_image=debian:buster -f examples/some-verifier/scripts/build.Dockerfile .
+```
+
+running from the **root** of the repository.
+
+This will produce a docker image with abinary `some-verifier` that is located in
+`/usr/local/bin`. That is meant to be the entrypoint of the image.
+
+### Configuration options
+
+The following configuration options are supported
+
+
+- `SOME_VERIFIER_NODE` (default: http://localhost:20000) the node to connect to
+- `SOME_VERIFIER_NETWORK` - the network to which it is connected, either `testnet` or `mainnet` [default: testnet]
+- `SOME_VERIFIER_TELEGRAM_REGISTRY_ADDRESS` - address of the registry contract
+      for Telegram Web3 ID credentials. In the format `<index, subindex>`
+- `SOME_VERIFIER_DISCORD_REGISTRY_ADDRESS` - address of the registry contract
+      for Discord Web3 ID credentials. In the format `<index, subindex>`
+- `SOME_VERIFIER_DISCORD_BOT_TOKEN` - Discord bot token for looking up usernames
+- `SOME_VERIFIER_TELEGRAM_BOT_TOKEN` - Telegram bot token for looking up usernames
+- `SOME_VERIFIER_DB_STRING` - Postgres database connection string [default: `"host=localhost dbname=some-verifier user=postgres password=password port=5432"`]
+- `SOME_VERIFIER_LOG_LEVEL` - Maximum log level. [default: info]
+- `SOME_VERIFIER_REQUEST_TIMEOUT` - Timeout of requests to the node and the
+  responses from the server in `ms`. [default: 5000]
+- `SOME_VERIFIER_LISTEN_ADDRESS` - The address the server will expose the API on. [default: 0.0.0.0:80]
