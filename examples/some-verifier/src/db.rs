@@ -1,5 +1,5 @@
 use concordium_rust_sdk::id::constants::ArCurve;
-use concordium_rust_sdk::web3id::{Presentation, Web3IdAttribute};
+use concordium_rust_sdk::web3id::{CredentialHolderId, Presentation, Web3IdAttribute};
 use itertools::Itertools;
 use some_verifier_lib::{FullName, Platform};
 use tokio::sync::RwLock;
@@ -11,6 +11,7 @@ const PRESENTATION_COLUMN: &'static str = "presentation";
 const FIRST_NAME_COLUMN: &'static str = "first_name";
 const LAST_NAME_COLUMN: &'static str = "last_name";
 const ID_COLUMN: &'static str = "id";
+const CRED_ID_COLUMN: &'static str = "cred_id";
 const VERIFICATION_ID_COLUMN: &'static str = "verification_id";
 const USERNAME_COLUMN: &'static str = "username";
 
@@ -139,6 +140,7 @@ impl VerificationsEntry {
 
 pub struct PlatformEntry {
     pub id: String,
+    pub cred_id: CredentialHolderId,
     pub username: String,
 }
 
@@ -149,6 +151,10 @@ impl PlatformEntry {
     ) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
         [
             (ID_COLUMN, &self.id as &(dyn ToSql + Sync)),
+            (
+                CRED_ID_COLUMN,
+                self.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync),
+            ),
             (
                 VERIFICATION_ID_COLUMN,
                 verification_id as &(dyn ToSql + Sync),
@@ -254,16 +260,21 @@ impl Database {
         transaction.commit().await
     }
 
-    pub async fn remove_verification(&self, id: &str, platform: Platform) -> DbResult<()> {
+    pub async fn remove_verification(
+        &self,
+        cred_id: &CredentialHolderId,
+        platform: Platform,
+    ) -> DbResult<()> {
         let mut client = self.client.write().await;
         let transaction = client.transaction().await?;
 
         // Then delete the verification row.
         let statement = format!(
-            "DELETE FROM {VERIFICATIONS_TABLE} WHERE {ID_COLUMN} IN (SELECT {VERIFICATION_ID_COLUMN} FROM {} WHERE {ID_COLUMN} = $1) RETURNING {ID_COLUMN}",
+            "DELETE FROM {VERIFICATIONS_TABLE} WHERE {ID_COLUMN} IN (SELECT {VERIFICATION_ID_COLUMN} FROM {} WHERE {CRED_ID_COLUMN} = $1) RETURNING {ID_COLUMN}",
             platform.table_name()
         );
-        transaction.query_one(&statement, &[&id]).await?;
+        let cred_id = cred_id.public_key.as_bytes();
+        transaction.query_one(&statement, &[cred_id]).await?;
         transaction.commit().await
     }
 }
