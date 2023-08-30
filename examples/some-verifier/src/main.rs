@@ -195,8 +195,7 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)) // at most 100kB of data.
-        .layer(tower_http::cors::CorsLayer::permissive().allow_methods([http::Method::POST]));
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(1_000_000)); // at most 1000kB of data.
 
     let socket = app.listen_address;
     axum::Server::bind(&socket)

@@ -1,28 +1,27 @@
-use axum::extract::State;
-use concordium_rust_sdk::contract_client::CredentialInfo;
-use concordium_rust_sdk::web3id::did::Network;
+use anyhow::Context;
+use axum::{extract::State, routing::post, Json, Router};
+use clap::Parser;
+use concordium_rust_sdk::{
+    cis4::Cis4Contract,
+    contract_client::CredentialInfo,
+    types::{ContractAddress, Energy, WalletAccount},
+    v2::{self, BlockIdentifier},
+    web3id::did::Network,
+};
 use hmac::{Hmac, Mac};
 use http::{HeaderValue, StatusCode};
 use reqwest::Url;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use some_issuer::{issue_credential, IssueResponse, IssuerState};
-use std::fmt::{self, Display};
-use std::net::SocketAddr;
-use tower_http::cors::CorsLayer;
-use tower_http::services::ServeDir;
-
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use anyhow::Context;
-use axum::routing::post;
-use axum::{Json, Router};
-use clap::Parser;
-use concordium_rust_sdk::cis4::Cis4Contract;
-use concordium_rust_sdk::types::{ContractAddress, Energy, WalletAccount};
-use concordium_rust_sdk::v2::{self, BlockIdentifier};
+use std::{
+    fmt::{self, Display},
+    net::SocketAddr,
+    path::PathBuf,
+    sync::Arc,
+};
 use tonic::transport::ClientTlsConfig;
+use tower_http::{cors::CorsLayer, services::ServeDir};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -34,46 +33,46 @@ struct App {
         default_value = "http://localhost:20000",
         env = "TELEGRAM_ISSUER_NODE"
     )]
-    endpoint: v2::Endpoint,
+    endpoint:            v2::Endpoint,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "TELEGRAM_ISSUER_LOG_LEVEL"
     )]
-    log_level: tracing_subscriber::filter::LevelFilter,
+    log_level:           tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "TELEGRAM_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout: u64,
+    request_timeout:     u64,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "TELEGRAM_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry: ContractAddress,
+    registry:            ContractAddress,
     #[clap(
         long = "network",
         help = "The network of the issuer.",
         default_value = "testnet",
         env = "TELEGRAM_ISSUER_NETWORK"
     )]
-    network: Network,
+    network:             Network,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "TELEGRAM_ISSUER_WALLET"
     )]
-    wallet: PathBuf,
+    wallet:              PathBuf,
     #[clap(
         long = "issuer-key",
         help = "Path to the issuer's key, used to sign commitments.",
         env = "TELEGRAM_ISSUER_KEY"
     )]
-    issuer_key: PathBuf,
+    issuer_key:          PathBuf,
     #[clap(
         long = "max-register-energy",
         help = "The amount of energy to allow for execution of the register credential \
@@ -88,45 +87,45 @@ struct App {
         help = "Bot token for Telegram.",
         env = "TELEGRAM_BOT_TOKEN"
     )]
-    telegram_bot_token: String,
+    telegram_bot_token:  String,
     #[clap(
         long = "listen-address",
         help = "Socket addres for the Telegram issuer.",
         default_value = "0.0.0.0:8080",
         env = "TELEGRAM_ISSUER_LISTEN_ADDRESS"
     )]
-    listen_address: SocketAddr,
+    listen_address:      SocketAddr,
     #[clap(
         long = "url",
         help = "URL of the Telegram issuer.",
         default_value = "http://127.0.0.1:8080/",
         env = "TELEGRAM_ISSUER_URL"
     )]
-    url: Url,
+    url:                 Url,
     #[clap(
         long = "dapp-domain",
         help = "The domain of the dApp, used for CORS.",
         default_value = "http://127.0.0.1",
         env = "TELEGRAM_ISSUER_DAPP_URL"
     )]
-    dapp_domain: String,
+    dapp_domain:         String,
 }
 
 #[derive(Clone)]
 struct AppState {
-    issuer: IssuerState,
+    issuer:             IssuerState,
     telegram_bot_token: Arc<String>,
 }
 
 #[derive(Deserialize, Debug)]
 struct User {
-    id: u64,
+    id:         u64,
     first_name: String,
-    last_name: Option<String>,
-    username: Option<String>,
-    photo_url: Option<String>,
-    auth_date: u64,
-    hash: String,
+    last_name:  Option<String>,
+    username:   Option<String>,
+    photo_url:  Option<String>,
+    auth_date:  u64,
+    hash:       String,
 }
 
 type HmacSha256 = Hmac<Sha256>;
@@ -168,11 +167,12 @@ impl Display for User {
 }
 
 /// Request for issuance of Telegram credential.
-/// Telegram authentication happens in a single request that includes a user object.
+/// Telegram authentication happens in a single request that includes a user
+/// object.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct TelegramIssueRequest {
-    credential: CredentialInfo,
+    credential:    CredentialInfo,
     telegram_user: User,
 }
 
@@ -301,8 +301,15 @@ async fn main() -> anyhow::Result<()> {
     let router = Router::new()
         .route("/credential", post(issue_telegram_credential))
         .nest_service("/json-schemas", json_schema_service)
+        .with_state(state)
         .layer(cors)
-        .with_state(state);
+        .layer(tower_http::trace::TraceLayer::new_for_http().
+               make_span_with(tower_http::trace::DefaultMakeSpan::new()).
+               on_response(tower_http::trace::DefaultOnResponse::new()))
+        .layer(tower_http::timeout::TimeoutLayer::new(
+            std::time::Duration::from_millis(app.request_timeout),
+        ))
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)); // at most 100kB of data.
 
     tracing::info!("Starting server on {}...", app.listen_address);
 
