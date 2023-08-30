@@ -14,8 +14,6 @@
                     "description": "Credential subject identifier"
                 },
                 "attributes": {
-                    "title": "Attributes",
-                    "description": "Credential attributes",
                     "type": "object",
                     "properties": {
                         "degreeType": {
