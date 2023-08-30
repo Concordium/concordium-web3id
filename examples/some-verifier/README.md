@@ -95,8 +95,6 @@ The following configuration options are supported
           Address of the Discord registry smart contract. [env: SOME_VERIFIER_DISCORD_REGISTRY_ADDRESS=]
       --discord-bot-token <DISCORD_BOT_TOKEN>
           Discord bot token for looking up usernames. [env: SOME_VERIFIER_DISCORD_BOT_TOKEN=]
-      --telegram-bot-token <TELEGRAM_BOT_TOKEN>
-          Telegram bot token for looking up usernames. [env: SOME_VERIFIER_TELEGRAM_BOT_TOKEN=]
       --db <DB_CONFIG>
           Database connection string. [env: SOME_VERIFIER_DB_STRING=] [default: "host=localhost dbname=some-verifier user=postgres password=password port=5432"]
       --log-level <LOG_LEVEL>

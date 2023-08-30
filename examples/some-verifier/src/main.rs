@@ -70,12 +70,6 @@ struct App {
     )]
     discord_bot_token:  String,
     #[clap(
-        long = "telegram-bot-token",
-        help = "Telegram bot token for looking up usernames.",
-        env = "SOME_VERIFIER_TELEGRAM_BOT_TOKEN"
-    )]
-    telegram_bot_token: String,
-    #[clap(
         long = "db",
         default_value = "host=localhost dbname=some-verifier user=postgres password=password \
                          port=5432",
