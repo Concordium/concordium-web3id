@@ -324,7 +324,7 @@ async fn remove_verification(
     }
 
     // We know we have exactly 1 credential
-    let credential = proof.verifiable_credential.get(0).unwrap();
+    let credential = &proof.verifiable_credential[0];
     let (cred_id, platform) = match credential {
         CredentialProof::Web3Id {
             network,
