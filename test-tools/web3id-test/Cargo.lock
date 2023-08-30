@@ -578,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-rust-sdk"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -641,7 +641,7 @@ dependencies = [
 
 [[package]]
 name = "concordium_base"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "aes",
  "anyhow",
@@ -1480,7 +1480,7 @@ dependencies = [
 
 [[package]]
 name = "key_derivation"
-version = "1.2.0"
+version = "1.3.0"
 dependencies = [
  "concordium_base",
  "ed25519-dalek",
@@ -2648,6 +2648,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "signal-hook-registry"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8229b473baa5980ac72ef434c4415e70c4b5e71b423043adb4ba059f89c99a1"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "signature"
 version = "1.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2852,6 +2861,7 @@ dependencies = [
  "mio",
  "num_cpus",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys",
@@ -3301,7 +3311,7 @@ dependencies = [
 
 [[package]]
 name = "web3id-issuer"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -3309,6 +3319,7 @@ dependencies = [
  "chrono",
  "clap",
  "concordium-rust-sdk",
+ "futures",
  "rand 0.7.3",
  "serde",
  "serde_json",

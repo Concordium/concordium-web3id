@@ -1,15 +1,24 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useRef, useCallback } from 'react';
+import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
 import Switch from 'react-switch';
 import { WalletConnectionProps, useConnection, useConnect, useGrpcClient, TESTNET } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
 import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 import { AccountAddress, ConcordiumGRPCClient } from '@concordium/web-sdk';
+import { stringify } from 'json-bigint';
 import { version } from '../package.json';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { getCredentialEntry, registryMetadata } from './reading_from_blockchain';
-import { issueCredential, createNewIssuer, revokeCredential } from './writing_to_blockchain';
+import {
+    issueCredential,
+    createNewIssuer,
+    revokeCredential,
+    restoreCredential,
+    updateIssuerMetadata,
+    updateCredentialSchema,
+    updateCredentialMetadata,
+} from './writing_to_blockchain';
 import { requestSignature, requestIssuerKeys } from './api_calls_to_backend';
 
 import {
@@ -31,7 +40,7 @@ type RequestSignatureResponse = {
         signature: string;
         commitments: object;
     };
-    randomness: object;
+    randomness: Record<string, string>;
 };
 
 type RequestIssuerKeysResponse = {
@@ -49,7 +58,7 @@ type SchemaRef = {
 };
 
 interface Attribute {
-    [key: string]: string | number;
+    [key: string]: string | bigint;
 }
 
 function TestBox({ header, children, note }: TestBoxProps) {
@@ -81,19 +90,89 @@ async function addRevokationKey(
     }
 }
 
+type AttributeDetails = { tag: string; type: string; value: string | undefined; required: boolean };
+
+const WRONG_ATTRIBUTES: AttributeDetails[] = [
+    { tag: 'myWrongAttribute', type: 'string', value: 'myWrongValue', required: false },
+];
+
+function renderAddPrompt(details: AttributeDetails) {
+    if (details.required) {
+        return (
+            <div>
+                {' '}
+                Add <b className="text-warning">required</b> attribute <strong> {details.tag} </strong>{' '}
+            </div>
+        );
+    }
+    return (
+        <div>
+            {' '}
+            Add <strong> {details.tag} </strong>{' '}
+        </div>
+    );
+}
+
+async function extractFromSchema(url: string): Promise<AttributeDetails[]> {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Unable to get schema. Response code: ${response.status}`);
+    }
+    const json = await response.json();
+    const { properties, required } = json.properties.credentialSubject.properties.attributes;
+
+    const attributeSchemaValues: AttributeDetails[] = [];
+    Object.entries(properties).forEach(([key, obj]) => {
+        attributeSchemaValues.push({
+            tag: key,
+            type: (obj as { type: string }).type,
+            value: undefined,
+            required: (required as string[]).includes(key),
+        });
+    });
+    return attributeSchemaValues;
+}
+
+function parseAttributesFromForm(
+    attributeSchema: AttributeDetails[],
+    setParsingError: (msg: string) => void
+): Attribute {
+    const attributes: Attribute = {};
+    attributeSchema.forEach((obj) => {
+        if (obj.required && obj.value === undefined) {
+            console.warn(`Attribute ${obj.tag} is required but has not been set.`);
+        } else if (obj.value !== undefined) {
+            if (obj.type === 'string') {
+                attributes[obj.tag] = obj.value;
+            } else if (obj.type === 'number') {
+                attributes[obj.tag] = BigInt(obj.value);
+            } else {
+                setParsingError(
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                );
+                throw new Error(
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number are supported.`
+                );
+            }
+        }
+    });
+    return attributes;
+}
+
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
 
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
 
-    const [viewError, setViewError] = useState('');
+    const [viewErrorSmartContractState, setViewErrorSmartContractState] = useState('');
+    const [viewErrorAccountBalance, setViewErrorAccountBalance] = useState('');
     const [transactionError, setTransactionError] = useState('');
     const [userInputError2, setUserInputError2] = useState('');
 
-    const [auxiliaryData, setAuxiliaryData] = useState<number[]>([]);
+    const [auxiliaryData, setAuxiliaryData] = useState<number[]>([1, 2, 3]);
 
-    const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState(0);
+    const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState<number | undefined>(0);
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
 
@@ -101,9 +180,9 @@ export default function Main(props: WalletConnectionProps) {
     const [issuerKeys, setIssuerKeys] = useState<RequestIssuerKeysResponse>();
     const [parsingError, setParsingError] = useState('');
 
-    const [attributeSchema, setAttributeSchema] = useState<string[][]>([]);
+    const [attributeSchema, setAttributeSchema] = useState<AttributeDetails[]>([]);
 
-    const [reason, setReason] = useState('');
+    const [reason, setReason] = useState('ThisIsTheReason');
 
     const [accountBalance, setAccountBalance] = useState('');
 
@@ -111,15 +190,21 @@ export default function Main(props: WalletConnectionProps) {
     const [credentialRegistryStateError, setCredentialRegistryStateError] = useState('');
 
     const [txHash, setTxHash] = useState('');
-    const [publicKey, setPublicKey] = useState('');
+    const [publicKey, setPublicKey] = useState('8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82');
 
     const [credentialPublicKey, setCredentialPublicKey] = useState('');
 
     const [browserPublicKey, setBrowserPublicKey] = useState('');
 
     const [issuerMetaData, setIssuerMetaData] = useState(EXAMPLE_ISSUER_METADATA);
+    const [updatedIssuerMetaData, setUpdatedIssuerMetaData] = useState('');
+    const [updatedCredentialSchema, setUpdatedCredentialSchema] = useState('');
+
+    const [smartContractState, setSmartContractState] = useState('');
+    const [fetchingCredentialSchemaError, setFetchingCredentialSchemaError] = useState('');
 
     const [credentialMetaDataURL, setCredentialMetaDataURL] = useState(EXAMPLE_CREDENTIAL_METADATA);
+    const [updatedCredentialMetaDataURL, setUpdatedCredentialMetaDataURL] = useState('');
     const [credentialType, setCredentialType] = useState('myCredentialType');
     const [schemaCredential, setSchemaCredential] = useState<SchemaRef>({
         schema_ref: {
@@ -130,6 +215,15 @@ export default function Main(props: WalletConnectionProps) {
         },
     });
 
+    const [credentialSchemaFromContractInstance, setCredentialSchemaFromContractIndex] = useState<string | undefined>(
+        undefined
+    );
+    const [credentialTypeFromContractInstance, setCredentialTypeFromContractIndex] = useState<string | undefined>(
+        undefined
+    );
+    const [manualCredentialType, setManualCredentialType] = useState<string | undefined>(undefined);
+    const [manualCredentialSchema, setManualCredentialSchema] = useState<string | undefined>(undefined);
+
     const [revocationKeys, setRevocationKeys] = useState<string[]>([]);
     const [revocationKeyInput, setRevocationKeyInput] = useState(
         '8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82'
@@ -139,10 +233,6 @@ export default function Main(props: WalletConnectionProps) {
     const [validFromDate, setValidFromDate] = useState('2022-06-12T07:30');
     const [validUntilDate, setValidUntilDate] = useState('2025-06-12T07:30');
     const [credentialHasExpiryDate, setCredentialHasExpiryDate] = useState(true);
-
-    const schemaMetaDataURLRef = useRef(null);
-    const schemaCredentialURLRef = useRef(null);
-    const schemaIssuerURLRef = useRef(null);
 
     const handleValidFromDateChange = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
@@ -162,6 +252,21 @@ export default function Main(props: WalletConnectionProps) {
     const changeIssuerMetaDataURLHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setIssuerMetaData(target.value);
+    }, []);
+
+    const changeUpdatedIssuerMetaDataURLHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setUpdatedIssuerMetaData(target.value);
+    }, []);
+
+    const changeUpdatedCredentialSchemaURLHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setUpdatedCredentialSchema(target.value);
+    }, []);
+
+    const changeUpdatedCredentialMetaDataURLHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setUpdatedCredentialMetaDataURL(target.value);
     }, []);
 
     const changeAuxiliaryDataHandler = useCallback((event: ChangeEvent) => {
@@ -186,20 +291,6 @@ export default function Main(props: WalletConnectionProps) {
                 url: target.value,
             },
         });
-
-        fetch(target.value)
-            .then((response) => response.json())
-            .then((json) => {
-                const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                const attributeSchemaValues: string[][] = [];
-                Object.keys(properties).forEach((key) => {
-                    attributeSchemaValues.push([key, properties[key].type, '']);
-                });
-
-                setAttributeSchema(attributeSchemaValues);
-            })
-            .catch((e) => console.log(e));
     }, []);
 
     const changeCredentialMetaDataURLHandler = useCallback((event: ChangeEvent) => {
@@ -207,7 +298,7 @@ export default function Main(props: WalletConnectionProps) {
         setCredentialMetaDataURL(target.value);
     }, []);
 
-    const changeReasonRevokeHandler = useCallback((event: ChangeEvent) => {
+    const changeReasonHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setReason(target.value);
     }, []);
@@ -217,47 +308,98 @@ export default function Main(props: WalletConnectionProps) {
         setCredentialType(target.value);
     }, []);
 
+    const changeManualCredentialTypeHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setManualCredentialType(target.value);
+    }, []);
+
+    const changeManualCredentialSchemaHandler = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setManualCredentialSchema(target.value);
+    }, []);
+
     const changeCredentialRegistryContratIndexHandler = useCallback(
         async (client: ConcordiumGRPCClient | undefined, event: ChangeEvent) => {
             const target = event.target as HTMLTextAreaElement;
             setCredentialRegistryContratIndex(Number(target.value));
 
-            const registryMetadataReturnValue = JSON.parse(await registryMetadata(client, Number(target.value)));
+            registryMetadata(client, Number(target.value))
+                .then((value) => {
+                    setViewErrorSmartContractState('');
 
-            fetch(registryMetadataReturnValue.credential_schema.schema_ref.url)
-                .then((response) => response.json())
-                .then((json) => {
-                    const { properties } = json.properties.credentialSubject.properties.attributes;
+                    const registryMetadataReturnValue = JSON.parse(value);
+                    setSmartContractState(registryMetadataReturnValue);
 
-                    const attributeSchemaValues: string[][] = [];
-                    Object.keys(properties).forEach((key) => {
-                        attributeSchemaValues.push([key, properties[key].type, '']);
-                    });
+                    const schemaURL = registryMetadataReturnValue.credential_schema.schema_ref.url;
 
-                    setAttributeSchema(attributeSchemaValues);
+                    setCredentialSchemaFromContractIndex(schemaURL);
+                    setManualCredentialSchema(schemaURL);
+
+                    setCredentialTypeFromContractIndex(registryMetadataReturnValue.credential_type.credential_type);
+                    setManualCredentialType(registryMetadataReturnValue.credential_type.credential_type);
+
+                    extractFromSchema(schemaURL)
+                        .then((r) => {
+                            setFetchingCredentialSchemaError('');
+                            setAttributeSchema(r);
+                        })
+                        .catch((e) => {
+                            setAttributeSchema([]);
+                            setFetchingCredentialSchemaError(
+                                `Could not fetch credential schema from smart contract: ${(e as Error).message}`
+                            );
+                        });
                 })
-                .catch((e) => console.log(e));
+                .catch((e) => {
+                    setAttributeSchema([]);
+                    setSmartContractState('');
+                    setViewErrorSmartContractState((e as Error).message);
+                });
         },
         []
     );
 
-    const handleAttributeChange = useCallback((i: string, attributeSchemaValue: string[][], event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
+    const handleAttributeChange = useCallback(
+        (i: string, attributeSchemaValue: AttributeDetails[], event: ChangeEvent) => {
+            const target = event.target as HTMLTextAreaElement;
 
-        Object.keys(attributeSchemaValue).forEach((key) => {
-            if (attributeSchemaValue[Number(key)][0] === i) {
-                // eslint-disable-next-line no-param-reassign
-                attributeSchemaValue[Number(key)][2] = target.value;
-            }
-        });
-    }, []);
+            attributeSchemaValue.forEach((obj) => {
+                if (obj.tag === i) {
+                    // eslint-disable-next-line no-param-reassign
+                    obj.value = target.value;
+                }
+            });
+        },
+        []
+    );
+
+    // Refresh smartContractState periodically.
+    // eslint-disable-next-line consistent-return
+    useEffect(() => {
+        if (connection && credentialRegistryContratIndex) {
+            const interval = setInterval(async () => {
+                if (credentialRegistryContratIndex !== undefined) {
+                    registryMetadata(grpcClient, credentialRegistryContratIndex)
+                        .then((value) => {
+                            setSmartContractState(JSON.parse(value));
+                            setViewErrorSmartContractState('');
+                        })
+                        .catch((e) => {
+                            setAttributeSchema([]);
+                            setSmartContractState('');
+                            setViewErrorSmartContractState((e as Error).message);
+                        });
+                }
+            }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
+        }
+    }, [connection, credentialRegistryContratIndex]);
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
     useEffect(() => {
         if (connection && account) {
             const interval = setInterval(() => {
-                console.log('refreshing');
                 grpcClient
                     ?.getAccountInfo(new AccountAddress(account))
                     .then((value) => {
@@ -267,12 +409,12 @@ export default function Main(props: WalletConnectionProps) {
                                 value.accountCredentials[0].value.contents.credentialPublicKeys.keys[0].verifyKey
                             );
                         }
-                        setViewError('');
+                        setViewErrorAccountBalance('');
                     })
                     .catch((e) => {
                         setAccountBalance('');
                         setBrowserPublicKey('');
-                        setViewError((e as Error).message);
+                        setViewErrorAccountBalance((e as Error).message);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
             return () => clearInterval(interval);
@@ -290,39 +432,20 @@ export default function Main(props: WalletConnectionProps) {
                             value.accountCredentials[0].value.contents.credentialPublicKeys.keys[0].verifyKey
                         );
                     }
-                    setViewError('');
+                    setViewErrorAccountBalance('');
                 })
                 .catch((e) => {
-                    setViewError((e as Error).message);
+                    setViewErrorAccountBalance((e as Error).message);
                     setAccountBalance('');
                     setBrowserPublicKey('');
                 });
         }
-
-        const schemaMetaDataURL = schemaMetaDataURLRef.current as unknown as HTMLFormElement;
-        schemaMetaDataURL?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_METADATA);
-
-        const schemaCredentialURL = schemaCredentialURLRef.current as unknown as HTMLFormElement;
-        schemaCredentialURL?.setAttribute('placeholder', EXAMPLE_CREDENTIAL_SCHEMA);
-
-        const schemaIssuerURL = schemaIssuerURLRef.current as unknown as HTMLFormElement;
-        schemaIssuerURL?.setAttribute('placeholder', EXAMPLE_ISSUER_METADATA);
     }, [connection, account]);
 
     useEffect(() => {
-        fetch(EXAMPLE_CREDENTIAL_SCHEMA)
-            .then((response) => response.json())
-            .then((json) => {
-                const { properties } = json.properties.credentialSubject.properties.attributes;
-
-                const attributeSchemaValues: string[][] = [];
-                Object.keys(properties).forEach((key) => {
-                    attributeSchemaValues.push([key, properties[key].type, '']);
-                });
-
-                setAttributeSchema(attributeSchemaValues);
-            })
-            .catch((e) => console.log(e));
+        extractFromSchema(EXAMPLE_CREDENTIAL_SCHEMA)
+            .then(setAttributeSchema)
+            .catch((e) => console.error(e));
     }, []);
 
     return (
@@ -375,9 +498,9 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="seed"
+                                    id="seedTestCase1"
                                     type="text"
-                                    placeholder="myRandomSeedString"
+                                    value={seed}
                                     onChange={changeSeedHandler}
                                 />
                                 <br />
@@ -416,9 +539,9 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="issuerMetaDataURL"
+                                    id="issuerMetaDataURLTestCase2"
                                     type="text"
-                                    ref={schemaIssuerURLRef}
+                                    value={issuerMetaData}
                                     onChange={changeIssuerMetaDataURLHandler}
                                 />
                                 <br />
@@ -427,19 +550,19 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialType"
+                                    id="credentialTypeTestCase2"
                                     type="text"
-                                    placeholder="myCredentialType"
+                                    value={credentialType}
                                     onChange={changeCredentialTypeHandler}
                                 />
                                 <br />
-                                Add `Schema`:
+                                Add `CredentialSchema`:
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialSchemaURL"
+                                    id="credentialSchemaURLTestCase2"
                                     type="text"
-                                    ref={schemaCredentialURLRef}
+                                    value={schemaCredential.schema_ref.url}
                                     onChange={changeCredentialSchemaURLHandler}
                                 />
                                 {revocationKeys.length !== 0 && (
@@ -476,7 +599,6 @@ export default function Main(props: WalletConnectionProps) {
                                         <Col sm={10}>
                                             <InputGroup className="mb-3">
                                                 <Form.Control
-                                                    placeholder="RevocationKey"
                                                     value={revocationKeyInput}
                                                     onChange={(e) => setRevocationKeyInput(e.target.value)}
                                                 />
@@ -505,12 +627,24 @@ export default function Main(props: WalletConnectionProps) {
                                     onClick={() => {
                                         setTxHash('');
                                         setTransactionError('');
+
+                                        const schemaCredentialURL = schemaCredential.schema_ref.url;
+
+                                        const exampleCredentialSchema = {
+                                            schema_ref: {
+                                                hash: {
+                                                    None: [],
+                                                },
+                                                url: EXAMPLE_CREDENTIAL_SCHEMA,
+                                            },
+                                        };
+
                                         const tx = createNewIssuer(
                                             connection,
                                             account,
                                             issuerMetaData,
                                             issuerKeys?.verifyKey || '',
-                                            JSON.stringify(schemaCredential),
+                                            schemaCredentialURL === '' ? exampleCredentialSchema : schemaCredential,
                                             JSON.stringify(revocationKeys),
                                             credentialType
                                         );
@@ -525,26 +659,31 @@ export default function Main(props: WalletConnectionProps) {
                             <TestBox
                                 header="Step 3: Input Smart Contract Index"
                                 note="
-                                Expected result after inputing a value: The inex or
-                                an error message should appear in the above test unit.
-                                        "
+                                Expected result after inputting a value: The index should appear in the above test unit. In addition,
+                                an error message can appear either in the above test unit or on the right side if the credentialSchema
+                                cannot be fetched correctly from the given smart contract."
                             >
-                                Input smart contract index created in above step:
+                                Input smart contract index created in the above step:
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialRegistryContratIndex"
+                                    id="credentialRegistryContratIndexTestCase3"
                                     type="text"
-                                    placeholder="1111"
+                                    value={credentialRegistryContratIndex}
                                     onChange={(event) => {
                                         changeCredentialRegistryContratIndexHandler(grpcClient, event);
                                     }}
                                 />
-                                {credentialRegistryContratIndex !== 0 && (
+                                {credentialRegistryContratIndex !== undefined && (
                                     <div className="actionResultBox">
                                         <div> You will be using this registry contract index: </div>
                                         <br />
                                         <div>{credentialRegistryContratIndex}</div>
+                                    </div>
+                                )}
+                                {fetchingCredentialSchemaError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {fetchingCredentialSchemaError}.
                                     </div>
                                 )}
                             </TestBox>
@@ -560,16 +699,16 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item[0]}:
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item[0]}
-                                            name={item[0]}
+                                            id={`${item.tag}+TestCase4`}
+                                            name={item.tag}
                                             type="text"
-                                            placeholder={item[1] === 'string' ? 'myString' : '1234'}
+                                            placeholder={item.type === 'string' ? 'myString' : '1234'}
                                             onChange={(event) => {
-                                                handleAttributeChange(item[0], attributeSchema, event);
+                                                handleAttributeChange(item.tag, attributeSchema, event);
                                             }}
                                         />
                                         <br />
@@ -598,13 +737,13 @@ export default function Main(props: WalletConnectionProps) {
                                 </div>
                                 <br />
                                 <br />
-                                Add `valid_from`:
+                                Add `validFrom`:
                                 <br />
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_from"
-                                    name="valid_from"
+                                    id="validFromTestCase4"
+                                    name="validFrom"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
                                 />
@@ -612,13 +751,13 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 {credentialHasExpiryDate && (
                                     <>
-                                        Add`valid_until`:
+                                        Add`validUntil`:
                                         <br />
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_until"
-                                            name="valid_until"
+                                            id="validUntilTestCase4"
+                                            name="validUntil"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
                                         />
@@ -630,9 +769,9 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialMetaDataURL"
+                                    id="credentialMetaDataURLTestCase4"
                                     type="text"
-                                    ref={schemaMetaDataURLRef}
+                                    value={credentialMetaDataURL}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -640,9 +779,9 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="auxiliaryData"
+                                    id="auxiliaryDataTestCase4"
                                     type="text"
-                                    placeholder="[23,2,1,5,3,2]"
+                                    value={auxiliaryData.toString()}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -675,7 +814,11 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
                                         setParsingError('');
 
-                                        if (credentialRegistryContratIndex === 0) {
+                                        if (
+                                            credentialRegistryContratIndex === undefined ||
+                                            credentialSchemaFromContractInstance === undefined ||
+                                            credentialTypeFromContractInstance === undefined
+                                        ) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -686,115 +829,97 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        Object.keys(attributeSchema).forEach((key) => {
-                                            if (attributeSchema[Number(key)][2] === '') {
-                                                setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                            }
-
-                                            if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('string')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] =
-                                                    attributeSchema[Number(key)][2];
-                                            } else if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('number')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] = Number(
-                                                    attributeSchema[Number(key)][2]
-                                                );
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
-                                                );
-                                            }
-                                        });
+                                        const attributes: Attribute = parseAttributesFromForm(
+                                            attributeSchema,
+                                            setParsingError
+                                        );
 
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
+                                        const payload = {
+                                            $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                            type: [...types, credentialTypeFromContractInstance],
+                                            issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                            issuanceDate: new Date().toISOString(),
+                                            credentialSubject: { attributes },
+                                            credentialSchema: {
+                                                id: credentialSchemaFromContractInstance,
+                                                type: credentialTypeFromContractInstance,
+                                            },
+                                        };
+
+                                        console.debug('Adding web3Id credential to browser wallet:');
+                                        console.debug('MetadataUrl:');
+                                        console.debug(metadataUrl);
+                                        console.debug('Payload:');
+                                        console.debug(payload);
+                                        console.debug('');
+
                                         provider
-                                            .addWeb3IdCredential(
-                                                {
-                                                    type: types.push(credentialType),
-                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
-                                                    issuanceDate: new Date().toISOString(),
-                                                    credentialSubject: { attributes },
-                                                    credentialSchema: {
-                                                        id: schemaCredential.schema_ref.url,
-                                                        type: credentialType,
+                                            .addWeb3IdCredential(payload, metadataUrl, async (id) => {
+                                                const publicKeyOfCredential = id.replace('did:ccd:testnet:pkc:', '');
+
+                                                setCredentialPublicKey(publicKeyOfCredential);
+
+                                                const tx = issueCredential(
+                                                    connection,
+                                                    account,
+                                                    publicKeyOfCredential,
+                                                    credentialHasExpiryDate,
+                                                    validFromDate,
+                                                    validUntilDate,
+                                                    credentialMetaDataURL,
+                                                    isHolderRevocable,
+                                                    credentialRegistryContratIndex,
+                                                    auxiliaryData
+                                                );
+
+                                                tx.then(setTxHash).catch((err: Error) =>
+                                                    setTransactionError((err as Error).message)
+                                                );
+
+                                                const commitments = {
+                                                    attributes,
+                                                    holderId: publicKeyOfCredential,
+                                                    issuer: {
+                                                        index: credentialRegistryContratIndex,
+                                                        subindex: 0,
                                                     },
-                                                },
-                                                metadataUrl,
-                                                async (id) => {
-                                                    const publicKeyOfCredential = id.replace(
-                                                        'did:ccd:testnet:pkc:',
-                                                        ''
-                                                    );
+                                                };
 
-                                                    setCredentialPublicKey(publicKeyOfCredential);
+                                                console.debug('Requesting signature from backend:');
+                                                console.debug('Seed:');
+                                                console.debug(seed);
+                                                console.debug('Commitments:');
+                                                console.debug(commitments);
+                                                console.debug('');
 
-                                                    const tx = issueCredential(
-                                                        connection,
-                                                        account,
-                                                        publicKeyOfCredential,
-                                                        credentialHasExpiryDate,
-                                                        validFromDate,
-                                                        validUntilDate,
-                                                        credentialMetaDataURL,
-                                                        isHolderRevocable,
-                                                        credentialRegistryContratIndex,
-                                                        auxiliaryData
-                                                    );
+                                                const requestSignatureResponse = (await requestSignature(
+                                                    seed,
+                                                    stringify(commitments)
+                                                )) as RequestSignatureResponse;
 
-                                                    tx.then(setTxHash).catch((err: Error) =>
-                                                        setTransactionError((err as Error).message)
-                                                    );
+                                                const proofObject = {
+                                                    type: 'Ed25519Signature2020' as const,
+                                                    verificationMethod: id,
+                                                    proofPurpose: 'assertionMethod' as const,
+                                                    proofValue: requestSignatureResponse.signedCommitments.signature,
+                                                };
 
-                                                    const commitments = {
-                                                        attributes,
-                                                        holderId: publicKeyOfCredential,
-                                                        issuer: {
-                                                            index: credentialRegistryContratIndex,
-                                                            subindex: 0,
-                                                        },
-                                                    };
+                                                const { randomness } = requestSignatureResponse;
 
-                                                    const requestSignatureResponse = (await requestSignature(
-                                                        seed,
-                                                        JSON.stringify(commitments)
-                                                    )) as RequestSignatureResponse;
+                                                console.debug('Returning proof to wallet:');
+                                                console.debug('ProofObject:');
+                                                console.debug(proofObject);
+                                                console.debug('Randomness:');
+                                                console.debug(randomness);
+                                                console.debug('');
 
-                                                    const proofObject = {
-                                                        type: 'Ed25519Signature2020',
-                                                        verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod',
-                                                        proofValue:
-                                                            requestSignatureResponse.signedCommitments.signature,
-                                                    };
-
-                                                    return {
-                                                        proof: proofObject,
-                                                        randomness: requestSignatureResponse.randomness,
-                                                    };
-                                                }
-                                            )
+                                                return {
+                                                    proof: proofObject,
+                                                    randomness,
+                                                };
+                                            })
                                             .catch((e: Error) => {
                                                 console.error(e);
                                             });
@@ -828,9 +953,9 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="publicKey"
+                                    id="publicKeyTestCase5"
                                     type="text"
-                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    value={publicKey}
                                     onChange={changePublicKeyHandler}
                                 />
                                 <button
@@ -870,7 +995,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 6: Revoke credential by the issuer"
+                                header="Step 6: Revoke Credential By The Issuer"
                                 note="Expected result after pressing the button: The
                                 transaction hash or an error message should appear in the right column."
                             >
@@ -878,9 +1003,9 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="publicKey"
+                                    id="publicKeyTestCase6"
                                     type="text"
-                                    placeholder="37a2a8e52efad975dbf6580e7734e4f249eaa5ea8a763e934a8671cd7e446499"
+                                    value={publicKey}
                                     onChange={changePublicKeyHandler}
                                 />
                                 <br />
@@ -888,19 +1013,19 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="reason"
+                                    id="reasonTestCase6"
                                     type="text"
-                                    placeholder="ThisShouldBeRevoked"
-                                    onChange={changeReasonRevokeHandler}
+                                    value={reason}
+                                    onChange={changeReasonHandler}
                                 />
                                 <br />
                                 Add `AuxiliaryData`:
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="auxiliaryData"
+                                    id="auxiliaryDataTestCase6"
                                     type="text"
-                                    placeholder="[23,2,1,5,3,2]"
+                                    value={auxiliaryData.toString()}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <br />
@@ -927,13 +1052,180 @@ export default function Main(props: WalletConnectionProps) {
                                     Revoke Credential
                                 </button>
                             </TestBox>
+                            <TestBox
+                                header="Step 7: Restore Credential By The Issuer"
+                                note="Expected result after pressing the button: The
+                                transaction hash or an error message should appear in the right column."
+                            >
+                                Credential Public Key:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="publicKeyTestCase7"
+                                    type="text"
+                                    value={publicKey}
+                                    onChange={changePublicKeyHandler}
+                                />
+                                <br />
+                                Reason:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="reasonTestCase7"
+                                    type="text"
+                                    value={reason}
+                                    onChange={changeReasonHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        const tx = restoreCredential(
+                                            connection,
+                                            account,
+                                            publicKey,
+                                            credentialRegistryContratIndex,
+                                            reason
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Restore Credential
+                                </button>
+                            </TestBox>
+                            <TestBox
+                                header="Step 8: Update Issuer Metadata"
+                                note="Expected result after pressing the button: The
+                                transaction hash or an error message should appear in the right column."
+                            >
+                                Add `IssuerMetadata`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="issuerMetaDataURLTestCase8"
+                                    type="text"
+                                    value={updatedIssuerMetaData}
+                                    onChange={changeUpdatedIssuerMetaDataURLHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        const tx = updateIssuerMetadata(
+                                            connection,
+                                            account,
+                                            credentialRegistryContratIndex,
+                                            updatedIssuerMetaData
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Update Issuer Metadata
+                                </button>
+                            </TestBox>
+                            <TestBox
+                                header="Step 9: Update Credential Schema"
+                                note="Expected result after pressing the button: The
+                                transaction hash or an error message should appear in the right column."
+                            >
+                                {' '}
+                                Add `CredentialSchema`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialSchemaURLTestCase9"
+                                    type="text"
+                                    value={updatedCredentialSchema}
+                                    onChange={changeUpdatedCredentialSchemaURLHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        const tx = updateCredentialSchema(
+                                            connection,
+                                            account,
+                                            credentialRegistryContratIndex,
+                                            updatedCredentialSchema
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Update Credential Schema
+                                </button>
+                            </TestBox>
+                            <TestBox
+                                header="Step 10: Update Credential Metadata"
+                                note="Expected result after pressing the button: The
+                                transaction hash or an error message should appear in the right column."
+                            >
+                                Add `CredentialMetadata`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialMetaDataURLTestCase10"
+                                    type="text"
+                                    value={updatedCredentialMetaDataURL}
+                                    onChange={changeUpdatedCredentialMetaDataURLHandler}
+                                />
+                                <br />
+                                Credential Public Key:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="publicKeyTestCase10"
+                                    type="text"
+                                    value={publicKey}
+                                    onChange={changePublicKeyHandler}
+                                />
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={() => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        const tx = updateCredentialMetadata(
+                                            connection,
+                                            account,
+                                            credentialRegistryContratIndex,
+                                            updatedCredentialMetaDataURL,
+                                            publicKey
+                                        );
+
+                                        tx.then(setTxHash).catch((err: Error) =>
+                                            setTransactionError((err as Error).message)
+                                        );
+                                    }}
+                                >
+                                    Update Credential Metadata
+                                </button>
+                            </TestBox>
                             <br />
                             <br />
                             <div className="textCenter">Negative Test Scenarios</div>
                             <br />
                             <br />
                             <TestBox
-                                header="Step 7: Register a credential (Issuer registers credential with some delay)"
+                                header="Step 11: Register a credential (Issuer registers credential with some delay)"
                                 note="Expected result after pressing the two buttons: There should be two popups happening in the wallet
                                 (first action when pressing the first button to add the credential, second action when pressing the second button to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 
@@ -946,22 +1238,23 @@ export default function Main(props: WalletConnectionProps) {
                                 - The backend does successfully register the credential in the smart contract but does not wait until 
                                 the transaction is finalized and immediately returns the correct signature/randomness/proof on the commitments 
                                 to the front end.
-                                Step 8 allows you to simulate both scenarios reliably by not clicking the second button or
+                                This test case allows you to simulate both scenarios reliably by not clicking the second button or
                                 by clicking the second button at some point later (delayed). Your credential will be shown in the `Verifiable Credential` 
-                                section in the browser wallet after the `issueCredential` tx is finalized."
+                                section in the browser wallet after the `issueCredential` tx is finalized.
+                                Another test you can execute with this test case is how the wallet reacts when you add manually a `CredentialType` and/or `CredentialSchema` that is different to the one registered in the contract."
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item[0]}:
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item[0]}
-                                            name={item[0]}
+                                            id={`${item.tag}+TestCase11`}
+                                            name={item.tag}
                                             type="text"
-                                            placeholder={item[1] === 'string' ? 'myString' : '1234'}
+                                            placeholder={item.type === 'string' ? 'myString' : '1234'}
                                             onChange={(event) => {
-                                                handleAttributeChange(item[0], attributeSchema, event);
+                                                handleAttributeChange(item.tag, attributeSchema, event);
                                             }}
                                         />
                                         <br />
@@ -990,13 +1283,13 @@ export default function Main(props: WalletConnectionProps) {
                                 </div>
                                 <br />
                                 <br />
-                                Add `valid_from`:
+                                Add `validFrom`:
                                 <br />
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_from"
-                                    name="valid_from"
+                                    id="validFromTestCase11"
+                                    name="validFrom"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
                                 />
@@ -1004,13 +1297,13 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 {credentialHasExpiryDate && (
                                     <>
-                                        Add`valid_until`:
+                                        Add`validUntil`:
                                         <br />
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_until"
-                                            name="valid_until"
+                                            id="validUntilTestCase11"
+                                            name="validUntil"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
                                         />
@@ -1022,19 +1315,39 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialMetaDataURL"
+                                    id="credentialMetaDataURLTestCase11"
                                     type="text"
-                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json"
+                                    value={credentialMetaDataURL}
                                     onChange={changeCredentialMetaDataURLHandler}
+                                />
+                                <br />
+                                Add manually a `CredentialType`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="changeManualCredentialTypeTestCase11"
+                                    type="text"
+                                    value={manualCredentialType}
+                                    onChange={changeManualCredentialTypeHandler}
+                                />
+                                <br />
+                                Add manually a `CredentialSchema`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="changeManualCredentialSchemaTestCase11"
+                                    type="text"
+                                    value={manualCredentialSchema}
+                                    onChange={changeManualCredentialSchemaHandler}
                                 />
                                 <br />
                                 Add `AuxiliaryData`:
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="auxiliaryData"
+                                    id="auxiliaryDataTestCase11"
                                     type="text"
-                                    placeholder="[23,2,1,5,3,2]"
+                                    value={auxiliaryData.toString()}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -1063,7 +1376,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
                                         setParsingError('');
 
-                                        if (credentialRegistryContratIndex === 0) {
+                                        if (credentialRegistryContratIndex === undefined) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -1074,100 +1387,88 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
-
-                                        Object.keys(attributeSchema).forEach((key) => {
-                                            if (attributeSchema[Number(key)][2] === '') {
-                                                setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                            }
-
-                                            if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('string')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] =
-                                                    attributeSchema[Number(key)][2];
-                                            } else if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('number')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] = Number(
-                                                    attributeSchema[Number(key)][2]
-                                                );
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
-                                                );
-                                            }
-                                        });
-
+                                        const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
+                                        if (manualCredentialType === undefined) {
+                                            setTransactionError(`Set manualCredentialType`);
+                                            throw new Error(`Set manualCredentialType`);
+                                        }
+
+                                        if (manualCredentialSchema === undefined) {
+                                            setTransactionError(`Set manualCredentialSchema`);
+                                            throw new Error(`Set manualCredentialSchema`);
+                                        }
+
+                                        const payload = {
+                                            $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                            type: [...types, manualCredentialType],
+                                            issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                            issuanceDate: new Date().toISOString(),
+                                            credentialSubject: { attributes },
+                                            credentialSchema: {
+                                                id: manualCredentialSchema,
+                                                type: manualCredentialType,
+                                            },
+                                        };
+
+                                        console.debug('Adding web3Id credential to browser wallet:');
+                                        console.debug('MetadataUrl:');
+                                        console.debug(metadataUrl);
+                                        console.debug('Payload:');
+                                        console.debug(payload);
+                                        console.debug('');
+
                                         provider
-                                            .addWeb3IdCredential(
-                                                {
-                                                    type: types.push(credentialType),
-                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
-                                                    issuanceDate: new Date().toISOString(),
-                                                    credentialSubject: { attributes },
-                                                    credentialSchema: {
-                                                        id: schemaCredential.schema_ref.url,
-                                                        type: credentialType,
+                                            .addWeb3IdCredential(payload, metadataUrl, async (id) => {
+                                                const publicKeyOfCredential = id.replace('did:ccd:testnet:pkc:', '');
+
+                                                setCredentialPublicKey(publicKeyOfCredential);
+
+                                                // Issuer does not register credential here but instead when the next button is pressed.
+
+                                                const commitments = {
+                                                    attributes,
+                                                    holderId: publicKeyOfCredential,
+                                                    issuer: {
+                                                        index: credentialRegistryContratIndex,
+                                                        subindex: 0,
                                                     },
-                                                },
-                                                metadataUrl,
-                                                async (id) => {
-                                                    const publicKeyOfCredential = id.replace(
-                                                        'did:ccd:testnet:pkc:',
-                                                        ''
-                                                    );
+                                                };
 
-                                                    setCredentialPublicKey(publicKeyOfCredential);
+                                                console.debug('Requesting signature from backend:');
+                                                console.debug('Seed:');
+                                                console.debug(seed);
+                                                console.debug('Commitments:');
+                                                console.debug(commitments);
+                                                console.debug('');
 
-                                                    // Issuer does not register credential here but instead when the next button is pressed.
+                                                const requestSignatureResponse = (await requestSignature(
+                                                    seed,
+                                                    stringify(commitments)
+                                                )) as RequestSignatureResponse;
 
-                                                    const commitments = {
-                                                        attributes,
-                                                        holderId: publicKeyOfCredential,
-                                                        issuer: {
-                                                            index: credentialRegistryContratIndex,
-                                                            subindex: 0,
-                                                        },
-                                                    };
+                                                const proofObject = {
+                                                    type: 'Ed25519Signature2020' as const,
+                                                    verificationMethod: id,
+                                                    proofPurpose: 'assertionMethod' as const,
+                                                    proofValue: requestSignatureResponse.signedCommitments.signature,
+                                                };
 
-                                                    const requestSignatureResponse = (await requestSignature(
-                                                        seed,
-                                                        JSON.stringify(commitments)
-                                                    )) as RequestSignatureResponse;
+                                                const { randomness } = requestSignatureResponse;
 
-                                                    const proofObject = {
-                                                        type: 'Ed25519Signature2020',
-                                                        verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod',
-                                                        proofValue:
-                                                            requestSignatureResponse.signedCommitments.signature,
-                                                    };
+                                                console.debug('Returning proof to wallet:');
+                                                console.debug('ProofObject:');
+                                                console.debug(proofObject);
+                                                console.debug('Randomness:');
+                                                console.debug(randomness);
+                                                console.debug('');
 
-                                                    return {
-                                                        proof: proofObject,
-                                                        randomness: requestSignatureResponse.randomness,
-                                                    };
-                                                }
-                                            )
+                                                return {
+                                                    proof: proofObject,
+                                                    randomness,
+                                                };
+                                            })
                                             .catch((e: Error) => {
                                                 console.error(e);
                                             });
@@ -1187,7 +1488,7 @@ export default function Main(props: WalletConnectionProps) {
                                         setTxHash('');
                                         setTransactionError('');
 
-                                        if (credentialRegistryContratIndex === 0) {
+                                        if (credentialRegistryContratIndex === undefined) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -1226,7 +1527,7 @@ export default function Main(props: WalletConnectionProps) {
                                 )}
                             </TestBox>
                             <TestBox
-                                header="Step 8: Register a credential (Issuer fails to provide correct randomness/signature)"
+                                header="Step 12: Register a credential (Issuer fails to provide correct randomness/signature)"
                                 note="Expected result after pressing the button: There should be two popups happening in the wallet
                                 (first action to add the credential, second action to send the `issueCredential` tx to the smart contract).
                                 The transaction hash or an error message should appear in the right column and the 
@@ -1237,16 +1538,16 @@ export default function Main(props: WalletConnectionProps) {
                             >
                                 {attributeSchema.map((item) => (
                                     <div>
-                                        Add {item[0]}:
+                                        {renderAddPrompt(item)}
                                         <br />
                                         <input
                                             className="inputFieldStyle"
-                                            id={item[0]}
-                                            name={item[0]}
+                                            id={`${item.tag}+TestCase12`}
+                                            name={item.tag}
                                             type="text"
-                                            placeholder={item[1] === 'string' ? 'myString' : '1234'}
+                                            placeholder={item.type === 'string' ? 'myString' : '1234'}
                                             onChange={(event) => {
-                                                handleAttributeChange(item[0], attributeSchema, event);
+                                                handleAttributeChange(item.tag, attributeSchema, event);
                                             }}
                                         />
                                         <br />
@@ -1275,13 +1576,13 @@ export default function Main(props: WalletConnectionProps) {
                                 </div>
                                 <br />
                                 <br />
-                                Add `valid_from`:
+                                Add `validFrom`:
                                 <br />
                                 <br />
                                 <input
                                     type="datetime-local"
-                                    id="valid_from"
-                                    name="valid_from"
+                                    id="validFromTestCase12"
+                                    name="validFrom"
                                     value={validFromDate}
                                     onChange={handleValidFromDateChange}
                                 />
@@ -1289,13 +1590,13 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 {credentialHasExpiryDate && (
                                     <>
-                                        Add`valid_until`:
+                                        Add`validUntil`:
                                         <br />
                                         <br />
                                         <input
                                             type="datetime-local"
-                                            id="valid_until"
-                                            name="valid_until"
+                                            id="validUntilTestCase12"
+                                            name="validUntil"
                                             value={validUntilDate}
                                             onChange={handleValidUntilDateChange}
                                         />
@@ -1307,9 +1608,9 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="credentialMetaDataURL"
+                                    id="credentialMetaDataURLTestCase12"
                                     type="text"
-                                    placeholder="https://raw.githubusercontent.com/Concordium/concordium-web3id/credential-metadata-example/examples/json-schemas/metadata/credential-metadata.json"
+                                    value={credentialMetaDataURL}
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
@@ -1317,9 +1618,9 @@ export default function Main(props: WalletConnectionProps) {
                                 <br />
                                 <input
                                     className="inputFieldStyle"
-                                    id="auxiliaryData"
+                                    id="auxiliaryDataTestCase12"
                                     type="text"
-                                    placeholder="[23,2,1,5,3,2]"
+                                    value={auxiliaryData.toString()}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -1348,7 +1649,11 @@ export default function Main(props: WalletConnectionProps) {
                                         setCredentialPublicKey('');
                                         setParsingError('');
 
-                                        if (credentialRegistryContratIndex === 0) {
+                                        if (
+                                            credentialRegistryContratIndex === undefined ||
+                                            credentialSchemaFromContractInstance === undefined ||
+                                            credentialTypeFromContractInstance === undefined
+                                        ) {
                                             setTransactionError(`Set Smart Contract Index in Step 3`);
                                             throw new Error(`Set Smart Contract Index in Step 3`);
                                         }
@@ -1359,104 +1664,319 @@ export default function Main(props: WalletConnectionProps) {
                                             url: credentialMetaDataURL,
                                         };
 
-                                        const attributes: Attribute = {};
+                                        const attributes = parseAttributesFromForm(attributeSchema, setParsingError);
+                                        const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
-                                        Object.keys(attributeSchema).forEach((key) => {
-                                            if (attributeSchema[Number(key)][2] === '') {
-                                                setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                                throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} need to be set.`
-                                                );
-                                            }
+                                        const payload = {
+                                            $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                            type: [...types, credentialTypeFromContractInstance],
+                                            issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                            issuanceDate: new Date().toISOString(),
+                                            credentialSubject: { attributes },
+                                            credentialSchema: {
+                                                id: credentialSchemaFromContractInstance,
+                                                type: credentialTypeFromContractInstance,
+                                            },
+                                        };
 
-                                            if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('string')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] =
-                                                    attributeSchema[Number(key)][2];
-                                            } else if (
-                                                JSON.stringify(attributeSchema[Number(key)][1]) ===
-                                                JSON.stringify('number')
-                                            ) {
-                                                // eslint-disable-next-line prefer-destructuring
-                                                attributes[attributeSchema[Number(key)][0]] = Number(
-                                                    attributeSchema[Number(key)][2]
+                                        console.debug('Adding web3Id credential to browser wallet:');
+                                        console.debug('MetadataUrl:');
+                                        console.debug(metadataUrl);
+                                        console.debug('Payload:');
+                                        console.debug(payload);
+                                        console.debug('');
+
+                                        provider
+                                            .addWeb3IdCredential(payload, metadataUrl, async (id) => {
+                                                const publicKeyOfCredential = id.replace('did:ccd:testnet:pkc:', '');
+
+                                                setCredentialPublicKey(publicKeyOfCredential);
+
+                                                const tx = issueCredential(
+                                                    connection,
+                                                    account,
+                                                    publicKeyOfCredential,
+                                                    credentialHasExpiryDate,
+                                                    validFromDate,
+                                                    validUntilDate,
+                                                    credentialMetaDataURL,
+                                                    isHolderRevocable,
+                                                    credentialRegistryContratIndex,
+                                                    auxiliaryData
                                                 );
-                                            } else {
-                                                setParsingError(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
+
+                                                tx.then(setTxHash).catch((err: Error) =>
+                                                    setTransactionError((err as Error).message)
                                                 );
-                                                throw new Error(
-                                                    `Attribute ${attributeSchema[Number(key)][0]} has type ${
-                                                        attributeSchema[Number(key)][1]
-                                                    }. Only the types string/number are supported.`
-                                                );
-                                            }
-                                        });
+
+                                                const randomness = {
+                                                    Hello: '2d5bbf82232465715f23396f4ece8ccc40ad178b7262d01aad97c9de5380ae07',
+                                                    No: '0cc9acd652b6c29aaff42bcf8da242afee622262b0d3e37f17c57ac8d4ae42d9',
+                                                    Three: '1fad03391f7c8d72980e53a44e0782f58822eb74f06ff2c7e9e09e6b08f7ca73',
+                                                };
+
+                                                const proofObject = {
+                                                    type: 'Ed25519Signature2020' as const,
+                                                    verificationMethod: id,
+                                                    proofPurpose: 'assertionMethod' as const,
+                                                    proofValue:
+                                                        'e8c3944d6a9a19e74ad3ef028b04c0637756540306aba8842000f557cbfb7415187f907d26f20474081d4084fc8e5ff14167171f65fac76b06508ae46f55aa05',
+                                                };
+
+                                                return { proof: proofObject, randomness };
+                                            })
+                                            .catch((e: Error) => {
+                                                console.error(e);
+                                            });
+                                    }}
+                                >
+                                    Register Credential
+                                </button>
+                                {credentialPublicKey && (
+                                    <>
+                                        <br />
+                                        <br />
+                                        <div className="actionResultBox">
+                                            Credential Public Key:
+                                            <div>{credentialPublicKey}</div>
+                                        </div>
+                                    </>
+                                )}
+                                {parsingError && (
+                                    <div className="alert alert-danger" role="alert">
+                                        Error: {parsingError}.
+                                    </div>
+                                )}
+                            </TestBox>
+                            <TestBox
+                                header="Step 13: Register a credential (with wrong attributes)"
+                                note="Expected result after pressing the button: There should be one popup happening in the wallet
+                                    (first action to add the credential, second action to send the `issueCredential` tx should not appear because the flow has already thrown an error).
+                                    The browser wallet should not allow you to add such a credential.
+                                    Pressing the button without any user input will create an example with the provided placeholder value.
+                                    Your credential should NOT be shown in the `Verifiable Credential` 
+                                    section in the browser wallet."
+                            >
+                                {WRONG_ATTRIBUTES.map((item) => (
+                                    <div>
+                                        {renderAddPrompt(item)}
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id={`${item.tag}+TestCase13`}
+                                            name={item.tag}
+                                            type="text"
+                                            placeholder={item.type === 'string' ? 'myString' : '1234'}
+                                            onChange={(event) => {
+                                                handleAttributeChange(item.tag, WRONG_ATTRIBUTES, event);
+                                            }}
+                                        />
+                                        <br />
+                                        <br />
+                                    </div>
+                                ))}
+                                <br />
+                                <br />
+                                <div style={{ fontWeight: credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has expiry date
+                                </div>
+                                <Switch
+                                    onChange={() => {
+                                        setCredentialHasExpiryDate(!credentialHasExpiryDate);
+                                    }}
+                                    onColor="#308274"
+                                    offColor="#308274"
+                                    onHandleColor="#174039"
+                                    offHandleColor="#174039"
+                                    checked={!credentialHasExpiryDate}
+                                    checkedIcon={false}
+                                    uncheckedIcon={false}
+                                />
+                                <div style={{ fontWeight: !credentialHasExpiryDate ? 'bold' : 'normal' }}>
+                                    Credential has NO expiry date
+                                </div>
+                                <br />
+                                <br />
+                                Add `validFrom`:
+                                <br />
+                                <br />
+                                <input
+                                    type="datetime-local"
+                                    id="validFromTestCase13"
+                                    name="validFrom"
+                                    value={validFromDate}
+                                    onChange={handleValidFromDateChange}
+                                />
+                                <br />
+                                <br />
+                                {credentialHasExpiryDate && (
+                                    <>
+                                        Add`validUntil`:
+                                        <br />
+                                        <br />
+                                        <input
+                                            type="datetime-local"
+                                            id="validUntilTestCase13"
+                                            name="validUntil"
+                                            value={validUntilDate}
+                                            onChange={handleValidUntilDateChange}
+                                        />
+                                        <br />
+                                        <br />
+                                    </>
+                                )}
+                                Add `CredentialMetadata`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="credentialMetaDataURLTestCase13"
+                                    type="text"
+                                    value={credentialMetaDataURL}
+                                    onChange={changeCredentialMetaDataURLHandler}
+                                />
+                                <br />
+                                Add `AuxiliaryData`:
+                                <br />
+                                <input
+                                    className="inputFieldStyle"
+                                    id="auxiliaryDataTestCase13"
+                                    type="text"
+                                    value={auxiliaryData.toString()}
+                                    onChange={changeAuxiliaryDataHandler}
+                                />
+                                <div className="switch-wrapper">
+                                    <div style={{ fontWeight: isHolderRevocable ? 'bold' : 'normal' }}>
+                                        Holder can revoke credential
+                                    </div>
+                                    <Switch
+                                        onChange={() => {
+                                            setIsHolderRevocable(!isHolderRevocable);
+                                        }}
+                                        onColor="#308274"
+                                        offColor="#308274"
+                                        onHandleColor="#174039"
+                                        offHandleColor="#174039"
+                                        checked={!isHolderRevocable}
+                                        checkedIcon={false}
+                                        uncheckedIcon={false}
+                                    />
+                                    <div style={{ fontWeight: !isHolderRevocable ? 'bold' : 'normal' }}>
+                                        Holder can NOT revoke credential
+                                    </div>
+                                </div>
+                                <br />
+                                <button
+                                    className="btn btn-primary"
+                                    type="button"
+                                    onClick={async () => {
+                                        setTxHash('');
+                                        setTransactionError('');
+                                        setCredentialPublicKey('');
+                                        setParsingError('');
+
+                                        if (
+                                            credentialRegistryContratIndex === undefined ||
+                                            credentialSchemaFromContractInstance === undefined ||
+                                            credentialTypeFromContractInstance === undefined
+                                        ) {
+                                            setTransactionError(`Set Smart Contract Index in Step 3`);
+                                            throw new Error(`Set Smart Contract Index in Step 3`);
+                                        }
+
+                                        const provider = await detectConcordiumProvider();
+
+                                        const metadataUrl = {
+                                            url: credentialMetaDataURL,
+                                        };
+
+                                        const attributes = parseAttributesFromForm(WRONG_ATTRIBUTES, setParsingError);
 
                                         const types = Array.from(DEFAULT_CREDENTIAL_TYPES);
 
+                                        const payload = {
+                                            $schema: 'https://json-schema.org/draft/2020-12/schema',
+                                            type: [...types, credentialTypeFromContractInstance],
+                                            issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
+                                            issuanceDate: new Date().toISOString(),
+                                            credentialSubject: { attributes },
+                                            credentialSchema: {
+                                                id: credentialSchemaFromContractInstance,
+                                                type: credentialTypeFromContractInstance,
+                                            },
+                                        };
+
+                                        console.debug('Adding web3Id credential to browser wallet:');
+                                        console.debug('MetadataUrl:');
+                                        console.debug(metadataUrl);
+                                        console.debug('Payload:');
+                                        console.debug(payload);
+                                        console.debug('');
+
                                         provider
-                                            .addWeb3IdCredential(
-                                                {
-                                                    type: types.push(credentialType),
-                                                    issuer: `did:ccd:testnet:sci:${credentialRegistryContratIndex}:0/issuer`,
-                                                    issuanceDate: new Date().toISOString(),
-                                                    credentialSubject: { attributes },
-                                                    credentialSchema: {
-                                                        id: schemaCredential.schema_ref.url,
-                                                        type: credentialType,
+                                            .addWeb3IdCredential(payload, metadataUrl, async (id) => {
+                                                const publicKeyOfCredential = id.replace('did:ccd:testnet:pkc:', '');
+
+                                                setCredentialPublicKey(publicKeyOfCredential);
+
+                                                const tx = issueCredential(
+                                                    connection,
+                                                    account,
+                                                    publicKeyOfCredential,
+                                                    credentialHasExpiryDate,
+                                                    validFromDate,
+                                                    validUntilDate,
+                                                    credentialMetaDataURL,
+                                                    isHolderRevocable,
+                                                    credentialRegistryContratIndex,
+                                                    auxiliaryData
+                                                );
+
+                                                tx.then(setTxHash).catch((err: Error) =>
+                                                    setTransactionError((err as Error).message)
+                                                );
+
+                                                const commitments = {
+                                                    attributes,
+                                                    holderId: publicKeyOfCredential,
+                                                    issuer: {
+                                                        index: credentialRegistryContratIndex,
+                                                        subindex: 0,
                                                     },
-                                                },
-                                                metadataUrl,
-                                                async (id) => {
-                                                    const publicKeyOfCredential = id.replace(
-                                                        'did:ccd:testnet:pkc:',
-                                                        ''
-                                                    );
+                                                };
 
-                                                    setCredentialPublicKey(publicKeyOfCredential);
+                                                console.debug('Requesting signature from backend:');
+                                                console.debug('Seed:');
+                                                console.debug(seed);
+                                                console.debug('Commitments:');
+                                                console.debug(commitments);
+                                                console.debug('');
 
-                                                    const tx = issueCredential(
-                                                        connection,
-                                                        account,
-                                                        publicKeyOfCredential,
-                                                        credentialHasExpiryDate,
-                                                        validFromDate,
-                                                        validUntilDate,
-                                                        credentialMetaDataURL,
-                                                        isHolderRevocable,
-                                                        credentialRegistryContratIndex,
-                                                        auxiliaryData
-                                                    );
+                                                const requestSignatureResponse = (await requestSignature(
+                                                    seed,
+                                                    stringify(commitments)
+                                                )) as RequestSignatureResponse;
 
-                                                    tx.then(setTxHash).catch((err: Error) =>
-                                                        setTransactionError((err as Error).message)
-                                                    );
+                                                const proofObject = {
+                                                    type: 'Ed25519Signature2020' as const,
+                                                    verificationMethod: id,
+                                                    proofPurpose: 'assertionMethod' as const,
+                                                    proofValue: requestSignatureResponse.signedCommitments.signature,
+                                                };
 
-                                                    const randomness = {
-                                                        Hello: '2d5bbf82232465715f23396f4ece8ccc40ad178b7262d01aad97c9de5380ae07',
-                                                        No: '0cc9acd652b6c29aaff42bcf8da242afee622262b0d3e37f17c57ac8d4ae42d9',
-                                                        Three: '1fad03391f7c8d72980e53a44e0782f58822eb74f06ff2c7e9e09e6b08f7ca73',
-                                                    };
+                                                const { randomness } = requestSignatureResponse;
 
-                                                    const proofObject = {
-                                                        type: 'Ed25519Signature2020',
-                                                        verificationMethod: id,
-                                                        proofPurpose: 'assertionMethod',
-                                                        proofValue:
-                                                            'e8c3944d6a9a19e74ad3ef028b04c0637756540306aba8842000f557cbfb7415187f907d26f20474081d4084fc8e5ff14167171f65fac76b06508ae46f55aa05',
-                                                    };
+                                                console.debug('Returning proof to wallet:');
+                                                console.debug('ProofObject:');
+                                                console.debug(proofObject);
+                                                console.debug('Randomness:');
+                                                console.debug(randomness);
+                                                console.debug('');
 
-                                                    return { proof: proofObject, randomness };
-                                                }
-                                            )
+                                                return {
+                                                    proof: proofObject,
+                                                    randomness,
+                                                };
+                                            })
                                             .catch((e: Error) => {
                                                 console.error(e);
                                             });
@@ -1486,8 +2006,9 @@ export default function Main(props: WalletConnectionProps) {
                         <div className="sticky-top">
                             <br />
                             <h5>
-                                This column refreshes every few seconds to update your account balance. It also displays
-                                your connected account, your public key, transaction hashes, and error messages.
+                                This column refreshes every few seconds to update your account balance and the smart
+                                contract state. It also displays your connected account, your public key, transaction
+                                hashes, and error messages.
                             </h5>
                             <div className="label">Connected account:</div>
                             <div>
@@ -1523,9 +2044,14 @@ export default function Main(props: WalletConnectionProps) {
                                     Error: {transactionError}.
                                 </div>
                             )}
-                            {viewError && (
+                            {viewErrorAccountBalance && (
                                 <div className="alert alert-danger" role="alert">
-                                    Error: {viewError}.
+                                    Error: {viewErrorAccountBalance}.
+                                </div>
+                            )}
+                            {viewErrorSmartContractState && (
+                                <div className="alert alert-danger" role="alert">
+                                    Error: {viewErrorSmartContractState}.
                                 </div>
                             )}
                             {txHash && (
@@ -1538,6 +2064,12 @@ export default function Main(props: WalletConnectionProps) {
                                     {txHash}
                                 </a>
                             )}
+                            <br />
+                            <br />
+                            <br />
+                            <div className="label">Smart contract state:</div>
+                            <br />
+                            <pre className="largeText">{JSON.stringify(smartContractState, null, '\t')}</pre>
                         </div>
                     </div>
                 </div>
