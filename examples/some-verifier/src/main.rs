@@ -43,32 +43,32 @@ struct App {
         default_value = "http://localhost:20000",
         env = "SOME_VERIFIER_NODE"
     )]
-    endpoint:           v2::Endpoint,
+    endpoint:          v2::Endpoint,
     #[clap(
         long = "network",
         help = "Network to which the verifier is connected.",
         default_value = "testnet",
         env = "SOME_VERIFIER_NETWORK"
     )]
-    network:            Network,
+    network:           Network,
     #[clap(
         long = "telegram-registry",
         help = "Address of the Telegram registry smart contract.",
         env = "SOME_VERIFIER_TELEGRAM_REGISTRY_ADDRESS"
     )]
-    telegram_registry:  ContractAddress,
+    telegram_registry: ContractAddress,
     #[clap(
         long = "discord-registry",
         help = "Address of the Discord registry smart contract.",
         env = "SOME_VERIFIER_DISCORD_REGISTRY_ADDRESS"
     )]
-    discord_registry:   ContractAddress,
+    discord_registry:  ContractAddress,
     #[clap(
         long = "discord-bot-token",
         help = "Discord bot token for looking up usernames.",
         env = "SOME_VERIFIER_DISCORD_BOT_TOKEN"
     )]
-    discord_bot_token:  String,
+    discord_bot_token: String,
     #[clap(
         long = "db",
         default_value = "host=localhost dbname=some-verifier user=postgres password=password \
@@ -76,35 +76,35 @@ struct App {
         help = "Database connection string.",
         env = "SOME_VERIFIER_DB_STRING"
     )]
-    db_config:          tokio_postgres::Config,
+    db_config:         tokio_postgres::Config,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "SOME_VERIFIER_LOG_LEVEL"
     )]
-    log_level:          tracing_subscriber::filter::LevelFilter,
+    log_level:         tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout (both of request to the node and server requests) in milliseconds.",
         default_value = "5000",
         env = "SOME_VERIFIER_REQUEST_TIMEOUT"
     )]
-    request_timeout:    u64,
+    request_timeout:   u64,
     #[clap(
         long = "port",
         default_value = "0.0.0.0:80",
         help = "Address where the server will listen on.",
         env = "SOME_VERIFIER_LISTEN_ADDRESS"
     )]
-    listen_address:     std::net::SocketAddr,
+    listen_address:    std::net::SocketAddr,
     #[clap(
         long = "frontend",
         default_value = "./frontend/dist",
         help = "Path to the directory where frontend assets are located.",
         env = "SOME_VERIFIER_FRONTEND"
     )]
-    frontend_assets:    std::path::PathBuf,
+    frontend_assets:   std::path::PathBuf,
 }
 
 #[derive(Clone)]
@@ -208,7 +208,8 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(1_000_000)); // at most 1000kB of data.
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(1_000_000)) // at most 1000kB of data.
+        .layer(tower_http::compression::CompressionLayer::new());
 
     let socket = app.listen_address;
     axum::Server::bind(&socket)

@@ -23,7 +23,7 @@ futures = "0.3"
 axum-macros = "0.3"
 reqwest = { version = "0.11", features = ["json"] }
 some-verifier-lib = { version = "*", path = "../some-verifier-lib" }
-tower-http = { version = "0.4", features = ["trace", "limit", "cors", "timeout", "fs"] }
+tower-http = { version = "0.4", features = ["trace", "limit", "cors", "timeout", "fs", "compression-br", "compression-zstd"] }
 http = "0.2"
 tonic = { version = "0.8", features = ["tls-roots", "tls"] }
 thiserror = "1.0"
