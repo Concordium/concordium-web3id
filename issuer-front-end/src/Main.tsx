@@ -62,10 +62,11 @@ async function addRevokationKey(
 interface ConnectionProps {
     walletConnectionProps: WalletConnectionProps;
     isTestnet: boolean;
+    active: number;
 }
 
 export default function Main(props: ConnectionProps) {
-    const { walletConnectionProps, isTestnet } = props;
+    const { walletConnectionProps, isTestnet, active } = props;
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } =
         walletConnectionProps;
 
@@ -149,7 +150,7 @@ export default function Main(props: ConnectionProps) {
                     })
                     .catch((e) => {
                         setAccountBalance('');
-                        setViewErrorAccountBalance((e as Error).message);
+                        setViewErrorAccountBalance((e as Error).message.replaceAll('%20', ' '));
                         setAccountExistsOnNetwork(false);
                     });
             }, REFRESH_INTERVAL.asMilliseconds());
@@ -169,7 +170,7 @@ export default function Main(props: ConnectionProps) {
                     setViewErrorAccountBalance('');
                 })
                 .catch((e) => {
-                    setViewErrorAccountBalance((e as Error).message);
+                    setViewErrorAccountBalance((e as Error).message.replaceAll('%20', ' '));
                     setAccountBalance('');
                     setAccountExistsOnNetwork(false);
                 });
@@ -217,8 +218,8 @@ export default function Main(props: ConnectionProps) {
                             connected to this website.
                         </div>
                         <div className="alert alert-danger" role="alert">
-                            Alternatively, if you intend to use `{isTestnet ? 'mainnet' : 'testnet'}`, switch the
-                            network button at the top of this webpage.
+                            Alternatively, if you intend to use `{isTestnet ? 'mainnet' : 'testnet'}`, go back to step 1
+                            and switch the network button.
                         </div>
                     </>
                 )}
@@ -226,157 +227,8 @@ export default function Main(props: ConnectionProps) {
             {account && (
                 <div className="row">
                     {connection && account !== undefined && (
-                        <div className="col-lg-6">
-                            <TestBox
-                                header="Step 2: Create New Issuer"
-                                note="
-                                        Expected result after pressing the button and confirming in the wallet: The
-                                        transaction hash or an error message should appear in the right column.
-                                        Pressing the button without any user input will create an example tx with the provided placeholder values.
-                                        "
-                            >
-                                Add `IssuerKey`:
-                                <br />
-                                <input
-                                    className="inputFieldStyle"
-                                    id="issuerKey"
-                                    type="text"
-                                    value={issuerKey}
-                                    onChange={changeIssuerKeyHandler}
-                                />
-                                <br />
-                                <br />
-                                Add `IssuerMetadata`:
-                                <br />
-                                <input
-                                    className="inputFieldStyle"
-                                    id="issuerMetaDataURL"
-                                    type="text"
-                                    value={issuerMetaData}
-                                    onChange={changeIssuerMetaDataURLHandler}
-                                />
-                                <br />
-                                <br />
-                                Add `CredentialType`:
-                                <br />
-                                <input
-                                    className="inputFieldStyle"
-                                    id="credentialType"
-                                    type="text"
-                                    value={credentialType}
-                                    onChange={changeCredentialTypeHandler}
-                                />
-                                <br />
-                                Add `CredentialSchema`:
-                                <br />
-                                <input
-                                    className="inputFieldStyle"
-                                    id="credentialSchemaURL"
-                                    type="text"
-                                    value={schemaCredential.schema_ref.url}
-                                    onChange={changeCredentialSchemaURLHandler}
-                                />
-                                {revocationKeys.length !== 0 && (
-                                    <div className="actionResultBox">
-                                        <div>You have added the following `revocationKeys`:</div>
-                                        <div>
-                                            {revocationKeys?.map((element) => (
-                                                <li key={element}>{element}</li>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {userInputError2 !== '' && (
-                                    <div className="alert alert-danger" role="alert">
-                                        Error: {userInputError2}.
-                                    </div>
-                                )}
-                                <br />
-                                <Form
-                                    onSubmit={(e) => {
-                                        e.preventDefault();
-                                        setUserInputError2('');
-                                        addRevokationKey(
-                                            revocationKeys,
-                                            setRevocationKeys,
-                                            setRevocationKeyInput,
-                                            revocationKeyInput
-                                        ).catch((err: Error) => setUserInputError2((err as Error).message));
-                                    }}
-                                >
-                                    <div>Add `RevocationKeys`:</div>
-                                    <br />
-                                    <Row>
-                                        <Col sm={10}>
-                                            <InputGroup className="mb-3">
-                                                <Form.Control
-                                                    value={revocationKeyInput}
-                                                    onChange={(e) => setRevocationKeyInput(e.target.value)}
-                                                />
-                                                <Button type="submit" variant="outline-secondary">
-                                                    Add
-                                                </Button>
-                                            </InputGroup>
-                                        </Col>
-                                        <Col sm={1}>
-                                            <Button
-                                                variant="outline-secondary"
-                                                onClick={() => {
-                                                    setRevocationKeys([]);
-                                                    setRevocationKeyInput('');
-                                                    setUserInputError2('');
-                                                }}
-                                            >
-                                                Clear
-                                            </Button>
-                                        </Col>
-                                    </Row>
-                                </Form>
-                                <button
-                                    className="btn btn-primary"
-                                    type="button"
-                                    onClick={() => {
-                                        setTxHash('');
-                                        setTransactionError('');
-
-                                        const schemaCredentialURL = schemaCredential.schema_ref.url;
-
-                                        const exampleCredentialSchema = {
-                                            schema_ref: {
-                                                hash: {
-                                                    None: [],
-                                                },
-                                                url: EXAMPLE_CREDENTIAL_SCHEMA,
-                                            },
-                                        };
-
-                                        const tx = createNewIssuer(
-                                            connection,
-                                            account,
-                                            issuerMetaData,
-                                            issuerKey || '',
-                                            schemaCredentialURL === '' ? exampleCredentialSchema : schemaCredential,
-                                            JSON.stringify(revocationKeys),
-                                            credentialType
-                                        );
-                                        tx.then(setTxHash).catch((err: Error) =>
-                                            setTransactionError((err as Error).message)
-                                        );
-                                    }}
-                                >
-                                    Create New Issuer
-                                </button>
-                            </TestBox>
-                        </div>
-                    )}
-                    <div className="col-lg-6">
-                        <div className="sticky-top">
+                        <div>
                             <br />
-                            <h5>
-                                This column refreshes every few seconds to update your account balance and the smart
-                                contract state. It also displays your connected account, your public key, transaction
-                                hashes, and error messages.
-                            </h5>
                             <div className="label">Connected account:</div>
                             <div>
                                 <a
@@ -392,39 +244,179 @@ export default function Main(props: ConnectionProps) {
                             <div className="label">Your account balance:</div>
                             <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
                             <br />
-                            <div className="label">
-                                Error or Transaction status
-                                {txHash === '' ? ':' : ' (May take a moment to finalize):'}
-                            </div>
-                            <br />
-                            {!txHash && !transactionError && (
-                                <div className="actionResultBox" role="alert">
-                                    IMPORTANT: After pressing a button on the left side that should send a transaction,
-                                    the transaction hash or error returned by the wallet are displayed HERE.
-                                </div>
-                            )}
-                            {!txHash && transactionError && (
-                                <div className="alert alert-danger" role="alert">
-                                    Error: {transactionError}.
-                                </div>
-                            )}
                             {viewErrorAccountBalance && (
                                 <div className="alert alert-danger" role="alert">
                                     Error: {viewErrorAccountBalance}.
                                 </div>
                             )}
-                            {txHash && (
-                                <a
-                                    className="link"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    href={`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
+                            {active === 4 && (
+                                <TestBox
+                                    header=""
+                                    note="
+                                        Expected result after pressing the button and confirming in the wallet: The
+                                        transaction hash or an error message should appear in the right column.
+                                        Pressing the button without any user input will create an example tx with the provided placeholder values.
+                                        "
                                 >
-                                    {txHash}
-                                </a>
+                                    Add `IssuerKey`:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="issuerKey"
+                                        type="text"
+                                        value={issuerKey}
+                                        onChange={changeIssuerKeyHandler}
+                                    />
+                                    <br />
+                                    <br />
+                                    Add `IssuerMetadata`:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="issuerMetaDataURL"
+                                        type="text"
+                                        value={issuerMetaData}
+                                        onChange={changeIssuerMetaDataURLHandler}
+                                    />
+                                    <br />
+                                    <br />
+                                    Add `CredentialType`:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="credentialType"
+                                        type="text"
+                                        value={credentialType}
+                                        onChange={changeCredentialTypeHandler}
+                                    />
+                                    <br />
+                                    <br />
+                                    Add `CredentialSchema`:
+                                    <br />
+                                    <input
+                                        className="inputFieldStyle"
+                                        id="credentialSchemaURL"
+                                        type="text"
+                                        value={schemaCredential.schema_ref.url}
+                                        onChange={changeCredentialSchemaURLHandler}
+                                    />
+                                    <br />
+                                    <br />
+                                    {revocationKeys.length !== 0 && (
+                                        <div className="actionResultBox">
+                                            <div>You have added the following `revocationKeys`:</div>
+                                            <div>
+                                                {revocationKeys?.map((element) => (
+                                                    <li key={element}>{element}</li>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {userInputError2 !== '' && (
+                                        <div className="alert alert-danger" role="alert">
+                                            Error: {userInputError2}.
+                                        </div>
+                                    )}
+                                    <Form
+                                        onSubmit={(e) => {
+                                            e.preventDefault();
+                                            setUserInputError2('');
+                                            addRevokationKey(
+                                                revocationKeys,
+                                                setRevocationKeys,
+                                                setRevocationKeyInput,
+                                                revocationKeyInput
+                                            ).catch((err: Error) => setUserInputError2((err as Error).message));
+                                        }}
+                                    >
+                                        <div>Add `RevocationKeys`:</div>
+                                        <br />
+                                        <Row>
+                                            <Col sm={10}>
+                                                <InputGroup className="mb-3">
+                                                    <Form.Control
+                                                        value={revocationKeyInput}
+                                                        onChange={(e) => setRevocationKeyInput(e.target.value)}
+                                                    />
+                                                    <Button type="submit" variant="outline-secondary">
+                                                        Add
+                                                    </Button>
+                                                </InputGroup>
+                                            </Col>
+                                            <Col sm={1}>
+                                                <Button
+                                                    variant="outline-secondary"
+                                                    onClick={() => {
+                                                        setRevocationKeys([]);
+                                                        setRevocationKeyInput('');
+                                                        setUserInputError2('');
+                                                    }}
+                                                >
+                                                    Clear
+                                                </Button>
+                                            </Col>
+                                        </Row>
+                                    </Form>
+                                    <button
+                                        className="btn btn-primary"
+                                        type="button"
+                                        onClick={() => {
+                                            setTxHash('');
+                                            setTransactionError('');
+
+                                            const schemaCredentialURL = schemaCredential.schema_ref.url;
+
+                                            const exampleCredentialSchema = {
+                                                schema_ref: {
+                                                    hash: {
+                                                        None: [],
+                                                    },
+                                                    url: EXAMPLE_CREDENTIAL_SCHEMA,
+                                                },
+                                            };
+
+                                            const tx = createNewIssuer(
+                                                connection,
+                                                account,
+                                                issuerMetaData,
+                                                issuerKey || '',
+                                                schemaCredentialURL === '' ? exampleCredentialSchema : schemaCredential,
+                                                JSON.stringify(revocationKeys),
+                                                credentialType
+                                            );
+                                            tx.then(setTxHash).catch((err: Error) =>
+                                                setTransactionError((err as Error).message)
+                                            );
+                                        }}
+                                    >
+                                        Create New Issuer
+                                    </button>
+                                    <br />
+                                    <br />
+                                    <div className="label">
+                                        Error or Transaction status
+                                        {txHash === '' ? ':' : ' (May take a moment to finalize):'}
+                                    </div>
+                                    <br />
+                                    {!txHash && transactionError && (
+                                        <div className="alert alert-danger" role="alert">
+                                            Error: {transactionError}.
+                                        </div>
+                                    )}
+                                    {txHash && (
+                                        <a
+                                            className="link"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            href={`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
+                                        >
+                                            {txHash}
+                                        </a>
+                                    )}
+                                </TestBox>
                             )}
                         </div>
-                    </div>
+                    )}
                 </div>
             )}
         </main>

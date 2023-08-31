@@ -50,7 +50,6 @@ export default function Root() {
         } else {
             newActiveValue = activeValue;
         }
-        console.log(newActiveValue)
         updateProgress(newActiveValue);
 
         setActiveHook(newActiveValue);
@@ -70,13 +69,18 @@ export default function Root() {
 
     const previousText = `<<<<<<`;
     const nextText = `>>>>>>`;
+
+    const stepHeaders = ['Select Network', 'Connect Wallet', 'Create MetaData Files', 'Deploy Issuer Smart Contract'];
+
     return (
         <div>
             <main className="textCenter">
                 <br />
-                <div className="version">Version: {version}</div>
                 {isTestnet === undefined && <h1>Web3Id Issuer Front End</h1>}
                 {isTestnet !== undefined && <h1>Web3Id Issuer Front End {isTestnet ? '(Testnet)' : '(Mainnet)'}</h1>}
+                <h3>
+                    Step {active}: {stepHeaders[active - 1]}
+                </h3>
                 <br />
                 <div id="progress">
                     <div id="progress-bar" />
@@ -87,6 +91,7 @@ export default function Root() {
                         <li className="step">4</li>
                     </ul>
                 </div>
+
                 {active === 1 && (
                     <>
                         <div className="switch-wrapper">
@@ -108,10 +113,10 @@ export default function Root() {
                         <br />
                     </>
                 )}
-                {active === 2 && isTestnet !== undefined && (
+                {(active === 2 || active === 3 || active === 4) && isTestnet !== undefined && (
                     <>
                         <WithWalletConnector network={isTestnet ? TESTNET : MAINNET}>
-                            {(props) => <Main walletConnectionProps={props} isTestnet={isTestnet} />}
+                            {(props) => <Main active={active} walletConnectionProps={props} isTestnet={isTestnet} />}
                         </WithWalletConnector>
                         <br />
                     </>
@@ -134,7 +139,21 @@ export default function Root() {
                 >
                     {nextText}
                 </button>
+                <div>
+                    <br />
+                    Version: {version} |{' '}
+                    <a
+                        href="https://developer.concordium.software/en/mainnet/net/guides/create-proofs.html"
+                        target="_blank"
+                        rel="noreferrer"
+                    >
+                        Learn more about web3ID here
+                    </a>
+                    <br />
+                </div>
             </main>
+            <br />
+            <br />
         </div>
     );
 }
