@@ -9,35 +9,131 @@ import { version } from '../package.json';
  * Connect to wallet, setup application state context, and render children when the wallet API is ready for use.
  */
 export default function Root() {
-    const [isTestnet, setIsTestnet] = useState(true);
+    const [isTestnet, setIsTestnet] = useState<boolean | undefined>(undefined);
+    const [active, setActive] = useState(1);
 
+    const updateProgress = (activeValue: number) => {
+        const progressBar = document.getElementById('progress-bar');
+        const progressNext = document.getElementById('progress-next') as HTMLTextAreaElement;
+        const progressPrev = document.getElementById('progress-prev') as HTMLTextAreaElement;
+        const steps = document.querySelectorAll('.step');
+
+        // toggle active class on list items
+        steps.forEach((step, i) => {
+            if (i < activeValue) {
+                step.classList.add('active');
+            } else {
+                step.classList.remove('active');
+            }
+        });
+        if (progressBar !== null && progressPrev !== null && progressNext !== null) {
+            // set progress bar width
+            progressBar.style.width = `${((activeValue - 1) / (steps.length - 1)) * 100}%`;
+            // enable disable prev and next buttons
+            if (activeValue === 1) {
+                progressPrev.disabled = true;
+            } else if (activeValue === steps.length) {
+                progressNext.disabled = true;
+            } else {
+                progressPrev.disabled = false;
+                progressNext.disabled = false;
+            }
+        }
+    };
+
+    const next = (activeValue: number, setActiveHook: (arg0: number) => void) => {
+        const steps = document.querySelectorAll('.step');
+
+        let newActiveValue = 1;
+        if (activeValue + 1 <= steps.length) {
+            newActiveValue = activeValue + 1;
+        } else {
+            newActiveValue = activeValue;
+        }
+        console.log(newActiveValue)
+        updateProgress(newActiveValue);
+
+        setActiveHook(newActiveValue);
+    };
+
+    const previous = (activeValue: number, setActiveHook: (arg0: number) => void) => {
+        let newActiveValue = 1;
+        if (activeValue - 1 >= 1) {
+            newActiveValue = activeValue - 1;
+        } else {
+            newActiveValue = 1;
+        }
+        updateProgress(newActiveValue);
+
+        setActiveHook(newActiveValue);
+    };
+
+    const previousText = `<<<<<<`;
+    const nextText = `>>>>>>`;
     return (
         <div>
             <main className="textCenter">
                 <br />
                 <div className="version">Version: {version}</div>
-                <h1>Web3Id Issuer Front End {isTestnet ? 'Testnet' : 'Mainnet'}</h1>
+                {isTestnet === undefined && <h1>Web3Id Issuer Front End</h1>}
+                {isTestnet !== undefined && <h1>Web3Id Issuer Front End {isTestnet ? '(Testnet)' : '(Mainnet)'}</h1>}
                 <br />
-                <div className="switch-wrapper">
-                    <div>Testnet</div>
-                    <Switch
-                        onChange={() => {
-                            setIsTestnet(!isTestnet);
-                        }}
-                        onColor="#308274"
-                        offColor="#308274"
-                        onHandleColor="#174039"
-                        offHandleColor="#174039"
-                        checked={!isTestnet}
-                        checkedIcon={false}
-                        uncheckedIcon={false}
-                    />
-                    <div>Mainnet</div>
+                <div id="progress">
+                    <div id="progress-bar" />
+                    <ul id="progress-num">
+                        <li className="step active">1</li>
+                        <li className="step">2</li>
+                        <li className="step">3</li>
+                        <li className="step">4</li>
+                    </ul>
                 </div>
+                {active === 1 && (
+                    <>
+                        <div className="switch-wrapper">
+                            <div>Testnet</div>
+                            <Switch
+                                onChange={() => {
+                                    setIsTestnet(!isTestnet);
+                                }}
+                                onColor="#308274"
+                                offColor="#308274"
+                                onHandleColor="#174039"
+                                offHandleColor="#174039"
+                                checked={!isTestnet}
+                                checkedIcon={false}
+                                uncheckedIcon={false}
+                            />
+                            <div>Mainnet</div>
+                        </div>
+                        <br />
+                    </>
+                )}
+                {active === 2 && isTestnet !== undefined && (
+                    <>
+                        <WithWalletConnector network={isTestnet ? TESTNET : MAINNET}>
+                            {(props) => <Main walletConnectionProps={props} isTestnet={isTestnet} />}
+                        </WithWalletConnector>
+                        <br />
+                    </>
+                )}
                 <br />
-                <WithWalletConnector network={isTestnet ? TESTNET : MAINNET}>
-                    {(props) => <Main walletConnectionProps={props} isTestnet={isTestnet} />}
-                </WithWalletConnector>
+                <br />
+                <button
+                    className="btn btn-primary"
+                    id="progress-prev"
+                    type="button"
+                    onClick={() => previous(active, setActive)}
+                >
+                    {previousText}
+                </button>
+                <button
+                    className="btn btn-primary"
+                    id="progress-next"
+                    type="button"
+                    onClick={() => next(active, setActive)}
+                >
+                    {nextText}
+                </button>
             </main>
         </div>
     );
