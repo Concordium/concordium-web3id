@@ -88,7 +88,7 @@ function attributeInputPlaceHolder(details: AttributeDetails): string {
     if (details.type === 'date-time') {
         return '2023-08-30T06:22:46Z';
     }
-    if (details.type === 'number') {
+    if (details.type === 'number' || details.type === 'integer') {
         return '1234';
     }
     return 'myString';
@@ -181,7 +181,7 @@ function parseAttributesFromForm(
         } else if (obj.value !== undefined) {
             if (obj.type === 'string') {
                 attributes[obj.tag] = obj.value;
-            } else if (obj.type === 'number') {
+            } else if (obj.type === 'number' || obj.type == 'integer') {
                 attributes[obj.tag] = BigInt(obj.value);
             } else if (obj.type === 'date-time') {
                 const date = new Date(obj.value.trim());
@@ -193,10 +193,10 @@ function parseAttributesFromForm(
                 attributes[obj.tag] = date;
             } else {
                 setParsingError(
-                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number and date-time are supported.`
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number/integer and date-time are supported.`
                 );
                 throw new Error(
-                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number and date-time are supported.`
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number/integer and date-time are supported.`
                 );
             }
         }
