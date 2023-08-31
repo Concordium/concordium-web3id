@@ -9,7 +9,8 @@ import {
     MAINNET,
 } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
-import { AccountAddress } from '@concordium/web-sdk';
+import { AccountAddress, TransactionKindString, TransactionSummaryType } from '@concordium/web-sdk';
+import { TailSpin } from 'react-loader-spinner';
 import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { createNewIssuer } from './writing_to_blockchain';
@@ -73,6 +74,11 @@ export default function Main(props: ConnectionProps) {
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
 
+    const [smartContractIndex, setSmartContractIndex] = useState('');
+    const [smartContractIndexError, setSmartContractIndexError] = useState('');
+    const [viewErrorModuleReference, setViewErrorModuleReference] = useState('');
+    const [waitingForTransactionToFinialize, setWaitingForTransactionToFinialize] = useState(false);
+
     const [viewErrorAccountBalance, setViewErrorAccountBalance] = useState('');
     const [transactionError, setTransactionError] = useState('');
     const [userInputError2, setUserInputError2] = useState('');
@@ -133,6 +139,41 @@ export default function Main(props: ConnectionProps) {
         const target = event.target as HTMLTextAreaElement;
         setCredentialType(target.value);
     }, []);
+
+    // Refresh smartContractIndex periodically.
+    // eslint-disable-next-line consistent-return
+    useEffect(() => {
+        if (connection && client && account && txHash !== '') {
+            const interval = setInterval(() => {
+                console.log('refreshing_smartContractIndex');
+                client
+                    .getBlockItemStatus(txHash)
+                    .then((report) => {
+                        if (report !== undefined) {
+                            setViewErrorModuleReference('');
+                            if (report.status === 'finalized') {
+                                setWaitingForTransactionToFinialize(false);
+                                if (
+                                    report.outcome.summary.type === TransactionSummaryType.AccountTransaction &&
+                                    report.outcome.summary.transactionType === TransactionKindString.InitContract
+                                ) {
+                                    setSmartContractIndexError('');
+                                    setSmartContractIndex(
+                                        report.outcome.summary.contractInitialized.address.index.toString()
+                                    );
+                                } else {
+                                    setSmartContractIndexError('Contract initialization failed');
+                                }
+                            }
+                        }
+                    })
+                    .catch((e) => {
+                        setViewErrorModuleReference((e as Error).message);
+                    });
+            }, REFRESH_INTERVAL.asMilliseconds());
+            return () => clearInterval(interval);
+        }
+    }, [connection, account, client, txHash]);
 
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
@@ -231,14 +272,18 @@ export default function Main(props: ConnectionProps) {
                             <br />
                             <div className="label">Connected account:</div>
                             <div>
-                                <a
-                                    className="link"
-                                    href={`https://testnet.ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    {account}
-                                </a>
+                                <div>
+                                    <a
+                                        className="link"
+                                        href={`https://${
+                                            isTestnet ? `testnet.` : ``
+                                        }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        {account}
+                                    </a>
+                                </div>
                             </div>
                             <br />
                             <div className="label">Your account balance:</div>
@@ -250,14 +295,7 @@ export default function Main(props: ConnectionProps) {
                                 </div>
                             )}
                             {active === 4 && (
-                                <TestBox
-                                    header=""
-                                    note="
-                                        Expected result after pressing the button and confirming in the wallet: The
-                                        transaction hash or an error message should appear in the right column.
-                                        Pressing the button without any user input will create an example tx with the provided placeholder values.
-                                        "
-                                >
+                                <TestBox header="" note="">
                                     Add `IssuerKey`:
                                     <br />
                                     <input
@@ -303,14 +341,18 @@ export default function Main(props: ConnectionProps) {
                                     <br />
                                     <br />
                                     {revocationKeys.length !== 0 && (
-                                        <div className="actionResultBox">
-                                            <div>You have added the following `revocationKeys`:</div>
-                                            <div>
-                                                {revocationKeys?.map((element) => (
-                                                    <li key={element}>{element}</li>
-                                                ))}
+                                        <>
+                                            <div className="actionResultBox">
+                                                <div>You have added the following `revocationKeys`:</div>
+                                                <div>
+                                                    {revocationKeys?.map((element) => (
+                                                        <li key={element}>{element}</li>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
+                                            <br />
+                                            <br />
+                                        </>
                                     )}
                                     {userInputError2 !== '' && (
                                         <div className="alert alert-danger" role="alert">
@@ -363,6 +405,8 @@ export default function Main(props: ConnectionProps) {
                                         onClick={() => {
                                             setTxHash('');
                                             setTransactionError('');
+                                            setSmartContractIndex('');
+                                            setWaitingForTransactionToFinialize(true);
 
                                             const schemaCredentialURL = schemaCredential.schema_ref.url;
 
@@ -393,25 +437,58 @@ export default function Main(props: ConnectionProps) {
                                     </button>
                                     <br />
                                     <br />
-                                    <div className="label">
-                                        Error or Transaction status
-                                        {txHash === '' ? ':' : ' (May take a moment to finalize):'}
-                                    </div>
-                                    <br />
                                     {!txHash && transactionError && (
                                         <div className="alert alert-danger" role="alert">
                                             Error: {transactionError}.
                                         </div>
                                     )}
+                                    {smartContractIndexError !== '' && (
+                                        <div className="alert alert-danger" role="alert">
+                                            Error: {smartContractIndexError}.
+                                        </div>
+                                    )}
+                                    {viewErrorModuleReference && (
+                                        <div className="alert alert-danger" role="alert">
+                                            Error: {viewErrorModuleReference}.
+                                        </div>
+                                    )}
                                     {txHash && (
-                                        <a
-                                            className="link"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            href={`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
-                                        >
-                                            {txHash}
-                                        </a>
+                                        <div>
+                                            <div>Transaction hash:</div>
+                                            <a
+                                                className="link"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                href={`https://${
+                                                    isTestnet ? `testnet.` : ``
+                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
+                                            >
+                                                {txHash}
+                                            </a>
+                                        </div>
+                                    )}
+                                    <br />
+                                    <br />
+                                    {waitingForTransactionToFinialize === true && (
+                                        <div className="containerTwoItems">
+                                            <TailSpin
+                                                height="30"
+                                                width="30"
+                                                color="#308274"
+                                                ariaLabel="tail-spin-loading"
+                                                radius="1"
+                                                wrapperStyle={{}}
+                                                wrapperClass=""
+                                                visible
+                                            />
+                                            <div>Waiting for transaction to finalize</div>
+                                        </div>
+                                    )}
+                                    {smartContractIndex !== '' && (
+                                        <div className="actionResultBox">
+                                            Smart Contract Index:
+                                            <div>{smartContractIndex}</div>
+                                        </div>
                                     )}
                                 </TestBox>
                             )}

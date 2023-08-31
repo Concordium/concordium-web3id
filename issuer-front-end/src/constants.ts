@@ -1,7 +1,7 @@
 import { BrowserWalletConnector, ephemeralConnectorType } from '@concordium/react-components';
 import moment from 'moment';
 
-export const EXAMPLE_CREDENTIAL_SCHEMA = `https://raw.githubusercontent.com/Concordium/concordium-web3id/ac803895b1ffaa50888cfc6667331f6ebb0b889e/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json`;
+export const EXAMPLE_CREDENTIAL_SCHEMA = `https://gist.githubusercontent.com/DOBEN/bfe30ecea16f7a3ea1b87aa40902b9ac/raw/a8ab51fca489d04710fb19fb7122bb283dba719a/gistfile1.txt`;
 
 export const EXAMPLE_CREDENTIAL_METADATA = `https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json`;
 

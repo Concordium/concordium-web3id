@@ -152,3 +152,11 @@ label,
     margin: 7px 0px 7px 0px;
     padding: 10px 20px;
 }
+
+.containerTwoItems {
+    display: flex;
+    column-gap: 20px;
+    align-items: center;
+    justify-content: center;
+    align-items: center; 
+}
