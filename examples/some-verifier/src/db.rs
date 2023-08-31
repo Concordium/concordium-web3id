@@ -177,6 +177,8 @@ impl Database {
             }
         });
 
+        client.batch_execute(include_str!("../resources/schema.sql")).await?;
+
         Ok(Self {
             client: RwLock::new(client),
         })

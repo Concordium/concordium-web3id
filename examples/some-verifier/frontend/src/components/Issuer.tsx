@@ -116,7 +116,7 @@ function Issuer({
           <span className="text-info">Transaction sent, please wait...</span>
         ) : (
           <TelegramLoginButton
-            botName="concordium_bot"
+            botName="ConcordiaTestBot"
             dataOnauth={onTelegramAuth}
             cornerRadius={3}
           />

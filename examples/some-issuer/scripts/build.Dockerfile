@@ -12,6 +12,8 @@ RUN apt-get update && \
     apt-get -y install \
       ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+COPY --from=build /build/examples/some-issuer/templates/ /templates
+COPY --from=build /build/examples/some-issuer/json-schemas/ /json-schemas
 COPY --from=build /build/examples/some-issuer/target/release/discord /usr/local/bin/
 COPY --from=build /build/examples/some-issuer/target/release/telegram /usr/local/bin/
 

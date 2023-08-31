@@ -1,16 +1,16 @@
 {
-  "discordClientId": "1127954266213056635",
+  "discordClientId": "1146539164586745906",
   "issuers": {
     "telegram": {
-      "url": "http://127.0.0.1:8080",
+      "url": "https://telegram-web3id.testnet.concordium.com",
       "chain": "testnet",
-      "index": "5924",
+      "index": "6260",
       "subindex": "0"
     },
     "discord": {
-      "url": "http://127.0.0.1:8081",
+      "url": "https://discord-web3id.testnet.concordium.com",
       "chain": "testnet",
-      "index": "5968",
+      "index": "6259",
       "subindex": "0"
     }
   }
