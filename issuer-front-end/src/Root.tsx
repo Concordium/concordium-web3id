@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-import { TESTNET, MAINNET, WithWalletConnector } from '@concordium/react-components';
+import { TESTNET, MAINNET, WithWalletConnector, WalletConnectionProps } from '@concordium/react-components';
 import Switch from 'react-switch';
 import Main from './Main';
 import { version } from '../package.json';
@@ -11,6 +11,7 @@ import { version } from '../package.json';
 export default function Root() {
     const [isTestnet, setIsTestnet] = useState<boolean | undefined>(undefined);
     const [active, setActive] = useState(1);
+    const [isConnected, setIsConnected] = useState<boolean>(false);
 
     const updateProgress = (activeValue: number) => {
         const progressBar = document.getElementById('progress-bar');
@@ -29,6 +30,11 @@ export default function Root() {
         if (progressBar !== null && progressPrev !== null && progressNext !== null) {
             // set progress bar width
             progressBar.style.width = `${((activeValue - 1) / (steps.length - 1)) * 100}%`;
+
+            if (activeValue === 2 && isConnected === false) {
+                progressNext.disabled = true;
+            }
+
             // enable disable prev and next buttons
             if (activeValue === 1) {
                 progressPrev.disabled = true;
@@ -72,6 +78,15 @@ export default function Root() {
 
     const stepHeaders = ['Select Network', 'Connect Wallet', 'Create MetaData Files', 'Deploy Issuer Smart Contract'];
 
+    // Refresh accountInfo periodically.
+    // eslint-disable-next-line consistent-return
+    useEffect(() => {
+        const progressNext = document.getElementById('progress-next') as HTMLTextAreaElement;
+        const progressPrev = document.getElementById('progress-prev') as HTMLTextAreaElement;
+        progressNext.disabled = true;
+        progressPrev.disabled = true;
+    }, []);
+
     return (
         <div>
             <main className="textCenter">
@@ -98,6 +113,11 @@ export default function Root() {
                             <div>Testnet</div>
                             <Switch
                                 onChange={() => {
+                                    const progressNext = document.getElementById(
+                                        'progress-next'
+                                    ) as HTMLTextAreaElement;
+                                    progressNext.disabled = false;
+
                                     setIsTestnet(!isTestnet);
                                 }}
                                 onColor="#308274"
@@ -116,7 +136,14 @@ export default function Root() {
                 {(active === 2 || active === 3 || active === 4) && isTestnet !== undefined && (
                     <>
                         <WithWalletConnector network={isTestnet ? TESTNET : MAINNET}>
-                            {(props) => <Main active={active} walletConnectionProps={props} isTestnet={isTestnet} />}
+                            {(props: WalletConnectionProps) => {
+                                const { connectedAccounts } = props;
+                                setIsConnected(connectedAccounts.size > 0);
+                                const progressNext = document.getElementById('progress-next') as HTMLTextAreaElement;
+                                progressNext.disabled = !(connectedAccounts.size > 0);
+
+                                return <Main active={active} walletConnectionProps={props} isTestnet={isTestnet} />;
+                            }}
                         </WithWalletConnector>
                         <br />
                     </>
