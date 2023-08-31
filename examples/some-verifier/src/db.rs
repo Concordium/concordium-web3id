@@ -1,7 +1,9 @@
 use concordium_rust_sdk::id::constants::ArCurve;
 use concordium_rust_sdk::web3id::{CredentialHolderId, Presentation, Web3IdAttribute};
+use futures::try_join;
 use itertools::Itertools;
 use some_verifier_lib::{FullName, Platform};
+use std::fmt::Write;
 use tokio::sync::RwLock;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Row};
@@ -101,6 +103,15 @@ pub struct VerificationsEntry {
     pub discord: Option<PlatformEntry>,
     pub presentation: serde_json::Value,
     pub full_name: Option<FullName>,
+}
+
+impl VerificationsEntry {
+    fn platform_entry(&self, platform: Platform) -> Option<&PlatformEntry> {
+        match platform {
+            Platform::Telegram => self.telegram.as_ref(),
+            Platform::Discord => self.discord.as_ref(),
+        }
+    }
 }
 
 pub struct Database {
@@ -211,8 +222,8 @@ impl Database {
             .fold(
                 (String::new(), String::new()),
                 |(mut columns, mut joins), (column, join)| {
-                    columns.push_str(&format!(", {}", column));
-                    joins.push_str(&format!(" {}", join));
+                    write!(columns, ", {column}").expect("can write to String");
+                    write!(joins, " {join}").expect("can write to String");
                     (columns, joins)
                 },
             );
@@ -242,13 +253,45 @@ impl Database {
         let mut client = self.client.write().await;
         let transaction = client.transaction().await?;
 
-        let statement = format!(
+        // Clear pre-existing verifications with overlapping credentials;
+        let (usings, wheres, cred_ids) = Platform::SUPPORTED_PLATFORMS
+            .into_iter()
+            .filter_map(|p| entry.platform_entry(p).map(|e| (p, e)))
+            .enumerate()
+            .fold(
+                (String::new(), String::new(), Vec::new()),
+                |(mut usings, mut wheres, mut cred_ids), (i, (platform, entry))| {
+                    write!(usings, ", {}", platform.table_name()).expect("can write to String");
+                    write!(
+                        wheres,
+                        " OR ({0}.{VERIFICATION_ID_COLUMN}={VERIFICATIONS_TABLE}.{ID_COLUMN} AND {0}.{CRED_ID_COLUMN}=${1})",
+                        platform.table_name(),
+                        i + 1
+                    )
+                    .expect("can write to String");
+                    cred_ids.push(entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync));
+                    (usings, wheres, cred_ids)
+                },
+            );
+
+        // Remove leading ','
+        let usings = usings.split_once(',').map(|(_, res)| res).unwrap_or("");
+        // Remove leading "OR"
+        let wheres = wheres.split_once(" OR").map(|(_, res)| res).unwrap_or("");
+
+        let delete_statement =
+            format!("DELETE FROM {VERIFICATIONS_TABLE} USING{usings} WHERE{wheres}");
+        let delete = transaction.execute(&delete_statement, &cred_ids);
+
+        let insert_statement = format!(
             "INSERT INTO {VERIFICATIONS_TABLE} ({}) VALUES ({}) RETURNING id",
             columns.join(", "),
             (1..=columns.len()).format_with(", ", |i, f| f(&format_args!("${i}")))
         );
+        let insert = transaction.query_one(&insert_statement, &values);
 
-        let verification_id: i64 = transaction.query_one(&statement, &values).await?.get(0);
+        // Run delete and insert, retrieve new verification id
+        let verification_id: i64 = try_join!(delete, insert)?.1.get(0);
 
         if let Some(telegram) = &entry.telegram {
             add_platform_entry(&transaction, Platform::Telegram, telegram, verification_id).await?;
