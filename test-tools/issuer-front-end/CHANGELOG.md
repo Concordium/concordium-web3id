@@ -3,6 +3,7 @@
 ## 1.0.9
 
 - Change to use a hexString for the auxiliary data.
+- Support 'integer' type in the schema.
 
 ## 1.0.8
 
