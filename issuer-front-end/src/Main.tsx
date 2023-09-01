@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+/* eslint-disable no-param-reassign */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
 import {
     WalletConnectionProps,
@@ -15,12 +16,47 @@ import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { createNewIssuer } from './writing_to_blockchain';
 
-import { EXAMPLE_CREDENTIAL_SCHEMA, BROWSER_WALLET, REFRESH_INTERVAL, EXAMPLE_ISSUER_METADATA } from './constants';
+import {
+    EXAMPLE_CREDENTIAL_SCHEMA,
+    BROWSER_WALLET,
+    REFRESH_INTERVAL,
+    EXAMPLE_ISSUER_METADATA,
+    EXAMPLE_CREDENTIAL_SCHEMA_OBJECT,
+    EXAMPLE_ISSUER_METADATA_OBJECT,
+    EXAMPLE_CREDENTIAL_METADATA_OBJECT,
+} from './constants';
 
 type TestBoxProps = PropsWithChildren<{
     header: string;
     note: string;
 }>;
+
+type CredentialSchema = {
+    name: string;
+    description: string;
+    type: string;
+    properties: {
+        credentialSubject: {
+            type: string;
+            properties: {
+                id: {
+                    title: string;
+                    type: string;
+                    description: string;
+                };
+                attributes: {
+                    title: string;
+                    description: string;
+                    type: string;
+                    properties: object[];
+                    required: string[];
+                };
+            };
+            required: string[];
+        };
+    };
+    required: string[];
+};
 
 type SchemaRef = {
     schema_ref: {
@@ -60,6 +96,64 @@ async function addRevokationKey(
     }
 }
 
+async function addAttribute(
+    attributes: object[],
+    setAttributes: (value: object[]) => void,
+    attributeTitle: string | undefined,
+    attributeDescription: string | undefined,
+    isRequired: boolean,
+    type: string | undefined,
+    credentialSchema: CredentialSchema
+) {
+    if (attributeTitle === undefined) {
+        throw new Error(`AttributeTitle needs to be set`);
+    }
+
+    if (attributeDescription === undefined) {
+        throw new Error(`AttributeDescription needs to be set`);
+    }
+
+    if (type === undefined) {
+        throw new Error(`Type needs to be set`);
+    }
+
+    // TODO: check for no duplication keys
+    // if (attributes.includes(attributeTitle)) {
+    //     throw new Error(`Duplicate attribute key: ${attributeTitle}`);
+    // }
+
+    let newAttribute;
+
+    if (type === 'dateTime') {
+        console.log('TODO: dateTime');
+        newAttribute = {
+            attributeTitleWithoutSpaces: {
+                title: attributeTitle,
+                type,
+                description: attributeDescription,
+            },
+        };
+    } else {
+        newAttribute = {};
+
+        newAttribute[attributeTitle.replace(' ', '')] = {
+            title: attributeTitle,
+            type,
+            description: attributeDescription,
+        };
+    }
+
+    credentialSchema.properties.credentialSubject.properties.attributes.properties = [...attributes, newAttribute];
+
+    if (isRequired) {
+        credentialSchema.properties.credentialSubject.properties.attributes.required.push(
+            attributeTitle.replace(' ', '')
+        );
+    }
+
+    setAttributes([...attributes, newAttribute]);
+}
+
 interface ConnectionProps {
     walletConnectionProps: WalletConnectionProps;
     isTestnet: boolean;
@@ -74,10 +168,40 @@ export default function Main(props: ConnectionProps) {
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
     const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
 
-    const [smartContractIndex, setSmartContractIndex] = useState('');
+    const [credentialSchema, setCredentialSchema] = useState(EXAMPLE_CREDENTIAL_SCHEMA_OBJECT);
+    const [credentialMetadata, setCredentialMetadata] = useState(EXAMPLE_CREDENTIAL_METADATA_OBJECT);
+    const [issuerMetadata, setIssuerMetadata] = useState(EXAMPLE_ISSUER_METADATA_OBJECT);
+    const [attributes, setAttributes] = useState<object[]>([]);
+
+    const [credentialName, setCredentialName] = useState('Education certificate');
+    const [credentialDescription, setCredentialDescription] = useState(
+        'Simple representation of an education certificate.'
+    );
+
+    const [backgroundColor, setBackgroundColor] = useState('#92a8d1');
+    const [logo, setLogo] = useState('https://avatars.githubusercontent.com/u/39614219?s=200&v=4');
+    const [title, setTitle] = useState('Example Title');
+
+    const [iconURL, setIconURL] = useState('https://concordium.com/wp-content/uploads/2022/07/Concordium-1.png');
+    const [URL, setURL] = useState('https://concordium.com');
+    const [issuerDescription, setIssuerDescription] = useState('A public-layer 1, science-backed blockchain');
+    const [issuerName, setIssuerName] = useState('Concordium');
+
+    const [attributeTitle, setAttributeTitle] = useState<string | undefined>(undefined);
+    const [attributeDescription, setAttributeDescription] = useState<string | undefined>(undefined);
+
+    const [attributeType, setAttributeType] = useState<string>();
+    const [required, setRequired] = useState(false);
+
+    const [showCredentialSchema, setShowCredentialSchema] = useState(false);
+    const [showCredentialMetadata, setShowCredentialMetadata] = useState(false);
+    const [showIssuerMetadata, setShowIssuerMetadata] = useState(false);
+
     const [smartContractIndexError, setSmartContractIndexError] = useState('');
     const [viewErrorModuleReference, setViewErrorModuleReference] = useState('');
     const [waitingForTransactionToFinialize, setWaitingForTransactionToFinialize] = useState(false);
+
+    const [smartContractIndex, setSmartContractIndex] = useState('');
 
     const [viewErrorAccountBalance, setViewErrorAccountBalance] = useState('');
     const [transactionError, setTransactionError] = useState('');
@@ -111,9 +235,114 @@ export default function Main(props: ConnectionProps) {
         '8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82'
     );
 
+    const changeDropDownHandler = () => {
+        const e = document.getElementById('write') as HTMLSelectElement;
+        const sel = e.selectedIndex;
+        const { value } = e.options[sel];
+        setAttributeType(value);
+    };
+
+    const changeAttributeDescription = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setAttributeDescription(target.value);
+    }, []);
+
+    const changeAttributeTitle = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setAttributeTitle(target.value);
+    }, []);
+
     const changeIssuerMetaDataURLHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setIssuerMetaData(target.value);
+    }, []);
+
+    const changeCheckBox = useCallback((requiredValue: boolean, event: ChangeEvent) => {
+        const target = event.target as HTMLInputElement;
+        target.checked = !requiredValue;
+
+        setRequired(!requiredValue);
+    }, []);
+
+    const changeCredentialDescription = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setCredentialDescription(target.value);
+
+        const newCredentialSchema = credentialSchema;
+        newCredentialSchema.description = target.value;
+        setCredentialSchema(newCredentialSchema);
+    }, []);
+
+    const changeCredentialName = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setCredentialName(target.value);
+
+        const newCredentialSchema = credentialSchema;
+        newCredentialSchema.name = target.value;
+        setCredentialSchema(newCredentialSchema);
+    }, []);
+
+    const changeBackgroundColor = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setBackgroundColor(target.value);
+
+        const newCredentialMetadata = credentialMetadata;
+        newCredentialMetadata.backgroundColor = target.value;
+        setCredentialMetadata(newCredentialMetadata);
+    }, []);
+
+    const changeTitle = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setTitle(target.value);
+
+        const newCredentialMetadata = credentialMetadata;
+        newCredentialMetadata.title = target.value;
+        setCredentialMetadata(newCredentialMetadata);
+    }, []);
+
+    const changeLogoURL = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setLogo(target.value);
+
+        const newCredentialMetadata = credentialMetadata;
+        newCredentialMetadata.logo.url = target.value;
+        setCredentialMetadata(newCredentialMetadata);
+    }, []);
+
+    const changeIconURL = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setIconURL(target.value);
+
+        const newIssuerMetadata = issuerMetadata;
+        newIssuerMetadata.icon.url = target.value;
+        setIssuerMetadata(newIssuerMetadata);
+    }, []);
+
+    const changeURL = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setURL(target.value);
+
+        const newIssuerMetadata = issuerMetadata;
+        newIssuerMetadata.url = target.value;
+        setIssuerMetadata(newIssuerMetadata);
+    }, []);
+
+    const changeIssuerDescription = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setIssuerDescription(target.value);
+
+        const newIssuerMetadata = issuerMetadata;
+        newIssuerMetadata.description = target.value;
+        setIssuerMetadata(newIssuerMetadata);
+    }, []);
+
+    const changeIssuerName = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setIssuerName(target.value);
+
+        const newIssuerMetadata = issuerMetadata;
+        newIssuerMetadata.name = target.value;
+        setIssuerMetadata(newIssuerMetadata);
     }, []);
 
     const changeIssuerKeyHandler = useCallback((event: ChangeEvent) => {
@@ -293,6 +522,264 @@ export default function Main(props: ConnectionProps) {
                                 <div className="alert alert-danger" role="alert">
                                     Error: {viewErrorAccountBalance}.
                                 </div>
+                            )}
+                            {active === 3 && (
+                                <>
+                                    <TestBox header="" note="">
+                                        Add `CredentialName`:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="issuerKey"
+                                            type="text"
+                                            value={credentialName}
+                                            onChange={changeCredentialName}
+                                        />
+                                        <br />
+                                        <br />
+                                        Add `CredentialDescription`:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="credentialDescription"
+                                            type="text"
+                                            value={credentialDescription}
+                                            onChange={changeCredentialDescription}
+                                        />
+                                        <br />
+                                        <br />
+                                        <TestBox header="" note="">
+                                            Add `AttributeTitle`:
+                                            <br />
+                                            <input
+                                                className="inputFieldStyle"
+                                                id="attributeTitle"
+                                                type="text"
+                                                value={attributeTitle}
+                                                onChange={changeAttributeTitle}
+                                            />
+                                            <br />
+                                            <br />
+                                            Add `AttributeDescription`:
+                                            <br />
+                                            <input
+                                                className="inputFieldStyle"
+                                                id="attributeDescription"
+                                                type="text"
+                                                value={attributeDescription}
+                                                onChange={changeAttributeDescription}
+                                            />
+                                            <label className="field">
+                                                Select Type:
+                                                <br />
+                                                <br />
+                                                <select name="write" id="write" onChange={changeDropDownHandler}>
+                                                    <option value="choose" disabled selected>
+                                                        Choose
+                                                    </option>
+                                                    <option value="integer">Integer</option>
+                                                    <option value="string">String</option>
+                                                    <option value="date-time">DateTime</option>
+                                                </select>
+                                            </label>
+                                            <br />
+                                            <br />
+                                            <div>
+                                                <input
+                                                    type="checkbox"
+                                                    id="checkBox"
+                                                    name="checkBox"
+                                                    onChange={(event) => changeCheckBox(required, event)}
+                                                />
+                                                <label htmlFor="checkBox"> Is Type Required</label>
+                                            </div>
+                                            <br />
+                                            <br />
+                                            <button
+                                                className="btn btn-primary"
+                                                type="button"
+                                                onClick={() => {
+                                                    setUserInputError2('');
+                                                    addAttribute(
+                                                        attributes,
+                                                        setAttributes,
+                                                        attributeTitle,
+                                                        attributeDescription,
+                                                        required,
+                                                        attributeType,
+                                                        credentialSchema
+                                                    ).catch((err: Error) => setUserInputError2((err as Error).message));
+                                                }}
+                                            >
+                                                Add Attribute
+                                            </button>
+                                            <button
+                                                className="btn btn-primary"
+                                                type="button"
+                                                onClick={() => {
+                                                    setAttributes([]);
+                                                    setAttributeTitle('');
+                                                    setAttributeDescription('');
+                                                    setAttributeType(undefined);
+                                                    setUserInputError2('');
+                                                }}
+                                            >
+                                                Clear All Attributes
+                                            </button>
+                                            <br />
+                                            {attributes.length !== 0 && (
+                                                <>
+                                                    <div className="actionResultBox">
+                                                        <div>You have added the following `attributes`:</div>
+                                                        <div>
+                                                            <pre className="largeText">
+                                                                {JSON.stringify(attributes, null, '\t')}
+                                                            </pre>
+                                                        </div>
+                                                    </div>
+                                                    <br />
+                                                    <br />
+                                                </>
+                                            )}
+                                            {userInputError2 !== '' && (
+                                                <div className="alert alert-danger" role="alert">
+                                                    Error: {userInputError2}.
+                                                </div>
+                                            )}
+                                        </TestBox>
+                                        <br />
+                                        <br />
+                                        <button
+                                            className="btn btn-primary"
+                                            type="button"
+                                            onClick={() => {
+                                                setShowCredentialSchema(true);
+                                                setTxHash('');
+                                                setTransactionError('');
+                                                setSmartContractIndex('');
+                                                setWaitingForTransactionToFinialize(true);
+                                            }}
+                                        >
+                                            Create CredentialSchema
+                                        </button>
+                                        {showCredentialSchema && (
+                                            <pre className="largeText">
+                                                {JSON.stringify(credentialSchema, null, '\t')}
+                                            </pre>
+                                        )}
+                                    </TestBox>
+                                    <TestBox header="" note="">
+                                        Add `Title`:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="title"
+                                            type="text"
+                                            value={title}
+                                            onChange={changeTitle}
+                                        />
+                                        <br />
+                                        <br />
+                                        Add `LogoURL`:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="logoURL"
+                                            type="text"
+                                            value={logo}
+                                            onChange={changeLogoURL}
+                                        />{' '}
+                                        <br />
+                                        <br />
+                                        Add `BackGroundColor`:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="backgroundColor"
+                                            type="text"
+                                            value={backgroundColor}
+                                            onChange={changeBackgroundColor}
+                                        />
+                                        <button
+                                            className="btn btn-primary"
+                                            type="button"
+                                            onClick={() => {
+                                                setShowCredentialMetadata(true);
+                                                setTxHash('');
+                                                setTransactionError('');
+                                                setSmartContractIndex('');
+                                                setWaitingForTransactionToFinialize(true);
+                                            }}
+                                        >
+                                            Create CredentialMetadata
+                                        </button>
+                                        {showCredentialMetadata && (
+                                            <pre className="largeText">
+                                                {JSON.stringify(credentialMetadata, null, '\t')}
+                                            </pre>
+                                        )}
+                                    </TestBox>
+                                    <TestBox header="" note="">
+                                        Add `IssuerName`:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="issuerName"
+                                            type="text"
+                                            value={issuerName}
+                                            onChange={changeIssuerName}
+                                        />
+                                        <br />
+                                        <br />
+                                        Add `IssuerDescription`:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="issuerDescription"
+                                            type="text"
+                                            value={issuerDescription}
+                                            onChange={changeIssuerDescription}
+                                        />
+                                        Add `URL`:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="URL"
+                                            type="text"
+                                            value={URL}
+                                            onChange={changeURL}
+                                        />
+                                        <br />
+                                        <br />
+                                        Add `IconURL`:
+                                        <br />
+                                        <input
+                                            className="inputFieldStyle"
+                                            id="iconURL"
+                                            type="text"
+                                            value={iconURL}
+                                            onChange={changeIconURL}
+                                        />
+                                        <button
+                                            className="btn btn-primary"
+                                            type="button"
+                                            onClick={() => {
+                                                setShowIssuerMetadata(true);
+                                                setTxHash('');
+                                                setTransactionError('');
+                                                setSmartContractIndex('');
+                                                setWaitingForTransactionToFinialize(true);
+                                            }}
+                                        >
+                                            Create IssuerMetadata
+                                        </button>
+                                        {showIssuerMetadata && (
+                                            <pre className="largeText">
+                                                {JSON.stringify(issuerMetadata, null, '\t')}
+                                            </pre>
+                                        )}
+                                    </TestBox>
+                                </>
                             )}
                             {active === 4 && (
                                 <TestBox header="" note="">

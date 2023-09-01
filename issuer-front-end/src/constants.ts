@@ -16,6 +16,51 @@ export function getBackendApi(): string {
     return window.location.origin;
 }
 
+export const EXAMPLE_ISSUER_METADATA_OBJECT = {
+    name: 'Concordium',
+    icon: {
+        url: 'https://concordium.com/wp-content/uploads/2022/07/Concordium-1.png',
+        hash: '',
+    },
+    description: 'A public-layer 1, science-backed blockchain',
+    url: 'https://concordium.com',
+};
+
+export const EXAMPLE_CREDENTIAL_METADATA_OBJECT = {
+    title: 'Example Title',
+    logo: {
+        url: 'https://avatars.githubusercontent.com/u/39614219?s=200&v=4',
+    },
+    backgroundColor: '#92a8d1',
+};
+
+export const EXAMPLE_CREDENTIAL_SCHEMA_OBJECT = {
+    name: 'Education certificate',
+    description: 'Simple representation of an education certificate.',
+    type: 'object',
+    properties: {
+        credentialSubject: {
+            type: 'object',
+            properties: {
+                id: {
+                    title: 'Credential subject id',
+                    type: 'string',
+                    description: 'Credential subject identifier',
+                },
+                attributes: {
+                    title: 'Attributes',
+                    description: 'Credential attributes',
+                    type: 'object',
+                    properties: {},
+                    required: [],
+                },
+            },
+            required: ['id', 'attributes'],
+        },
+    },
+    required: ['credentialSubject'],
+};
+
 export const REFRESH_INTERVAL = moment.duration(4, 'seconds');
 
 export const BROWSER_WALLET = ephemeralConnectorType(BrowserWalletConnector.create);

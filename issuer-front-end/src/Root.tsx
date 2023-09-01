@@ -126,20 +126,18 @@ export default function Root() {
 
                 {active === 1 && (
                     <>
-                        <div className="switch-wrapper">
-                            <label className="field">
-                                Select Network:
-                                <br />
-                                <br />
-                                <select name="write" id="write" onChange={changeDropDownHandler}>
-                                    <option value="choose" disabled selected>
-                                        Choose
-                                    </option>
-                                    <option value="Testnet">Testnet</option>
-                                    <option value="Mainnet">Mainnet</option>
-                                </select>
-                            </label>
-                        </div>
+                        <label className="field">
+                            Select Network:
+                            <br />
+                            <br />
+                            <select name="write" id="write" onChange={changeDropDownHandler}>
+                                <option value="choose" disabled selected>
+                                    Choose
+                                </option>
+                                <option value="Testnet">Testnet</option>
+                                <option value="Mainnet">Mainnet</option>
+                            </select>
+                        </label>
                         <br />
                     </>
                 )}
