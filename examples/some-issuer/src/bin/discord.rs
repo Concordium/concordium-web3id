@@ -23,10 +23,14 @@ use http::{HeaderValue, StatusCode};
 use rand::Rng;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use some_issuer::{issue_credential, IssueResponse, IssuerState};
+use some_issuer::{set_shutdown, IssueResponse, IssuerState};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
+
+const DISCORD_API_ENDPOINT: &str = "https://discord.com/api/v10";
+
+const OAUTH_TEMPLATE: &str = include_str!("../../templates/discord-oauth.hbs");
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -125,8 +129,8 @@ struct App {
 #[derive(Clone)]
 struct AppState {
     issuer:                IssuerState,
-    discord_client_id:     Arc<String>,
-    discord_client_secret: Arc<String>,
+    discord_client_id:     Arc<str>,
+    discord_client_secret: Arc<str>,
     http_client:           reqwest::Client,
     handlebars:            Arc<Handlebars<'static>>,
     discord_redirect_uri:  Arc<Url>,
@@ -162,9 +166,9 @@ struct AccessTokenResponse {
     scope:        String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct Oauth2RedirectParams {
-    code: String,
+    pub(crate) code: String,
 }
 
 #[derive(Serialize)]
@@ -175,51 +179,17 @@ struct OauthTemplateParams<'a> {
 }
 
 /// Handles OAuth2 redirects and inserts an id in the session.
+#[tracing::instrument(level = "debug", skip(state))]
 async fn handle_oauth_redirect(
     State(state): State<AppState>,
     Query(params): Query<Oauth2RedirectParams>,
     session: WritableSession,
 ) -> Result<Html<String>, StatusCode> {
-    async fn respond(
-        state: AppState,
-        code: String,
-        mut session: WritableSession,
-    ) -> anyhow::Result<Html<String>> {
-        let user = get_user(&state, &code)
-            .await
-            .context("Error getting Discord user.")?;
-
-        // Discord added the option to get unique usernames. If the discriminator is
-        // "0", it indicates that the user has a unique username.
-        let username = if user.discriminator == "0" {
-            user.username
-        } else {
-            format!("{}#{}", user.username, user.discriminator)
-        };
-
-        session
-            .insert("discord_id", &user.id)
-            .expect("user ids can be serialized");
-        session
-            .insert("discord_username", &username)
-            .expect("username can be serialized");
-
-        let params = OauthTemplateParams {
-            id:          &user.id,
-            username:    &username,
-            dapp_domain: &state.dapp_domain,
-        };
-
-        let output = state
-            .handlebars
-            .render("oauth", &params)
-            .expect("the oauth template can be rendered with a User struct");
-
-        Ok(Html(output))
-    }
-
-    match respond(state, params.code, session).await {
-        Ok(response) => Ok(response),
+    match state
+        .make_oauth_redirect_response(params.code, session)
+        .await
+    {
+        Ok(response) => Ok(Html(response)),
         Err(err) => {
             tracing::warn!("Unsuccessful OAuth2 redirect: {err}");
             Err(StatusCode::BAD_REQUEST)
@@ -227,6 +197,7 @@ async fn handle_oauth_redirect(
     }
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(holder_id = %request.credential.holder_id))]
 async fn issue_discord_credential(
     State(state): State<AppState>,
     session: ReadableSession,
@@ -248,53 +219,99 @@ async fn issue_discord_credential(
         }
     };
 
-    issue_credential(state.issuer, request.credential, user_id, username).await
+    state
+        .issuer
+        .issue_credential(&request.credential, user_id, username)
+        .await
 }
 
-/// Exchanges an OAuth2 `code` for a User.
-async fn get_user(state: &AppState, code: &str) -> anyhow::Result<User> {
-    const API_ENDPOINT: &'static str = "https://discord.com/api/v10";
-    let data = AccessTokenRequestData {
-        client_id: &*state.discord_client_id,
-        client_secret: &*state.discord_client_secret,
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: state.discord_redirect_uri.as_str(),
-    };
+impl AppState {
+    /// Exchanges an OAuth2 `code` for a User.
+    pub(crate) async fn get_user(&self, code: &str) -> anyhow::Result<User> {
+        let data = AccessTokenRequestData {
+            client_id: &self.discord_client_id,
+            client_secret: &self.discord_client_secret,
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: self.discord_redirect_uri.as_str(),
+        };
 
-    let response = state
-        .http_client
-        .post(format!("{API_ENDPOINT}/oauth2/token"))
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .body(serde_urlencoded::to_string(data).unwrap())
-        .send()
-        .await?;
-    anyhow::ensure!(
-        response.status().is_success(),
-        "user authetication failed: {}",
-        response.text().await?
-    );
+        let response = self
+            .http_client
+            .post(format!("{DISCORD_API_ENDPOINT}/oauth2/token"))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(serde_urlencoded::to_string(data)?)
+            .send()
+            .await?;
+        anyhow::ensure!(
+            response.status().is_success(),
+            "user authetication failed: {}",
+            response.text().await?
+        );
 
-    let response: AccessTokenResponse = serde_json::from_slice(&response.bytes().await?)?;
-    anyhow::ensure!(
-        response.token_type == "Bearer",
-        "expected Bearer token, got '{}'",
-        response.token_type
-    );
-    anyhow::ensure!(
-        response.scope == "identify",
-        "expected 'idenitfy' scope, got '{}'",
-        response.scope
-    );
+        let response: AccessTokenResponse = response.json().await?;
+        anyhow::ensure!(
+            response.token_type == "Bearer",
+            "expected Bearer token, got '{}'",
+            response.token_type
+        );
+        anyhow::ensure!(
+            response.scope == "identify",
+            "expected 'idenitfy' scope, got '{}'",
+            response.scope
+        );
 
-    let response = state
-        .http_client
-        .get(format!("{API_ENDPOINT}/users/@me"))
-        .bearer_auth(response.access_token)
-        .send()
-        .await?;
+        let response = self
+            .http_client
+            .get(format!("{DISCORD_API_ENDPOINT}/users/@me"))
+            .bearer_auth(response.access_token)
+            .send()
+            .await?;
+        anyhow::ensure!(
+            response.status().is_success(),
+            "Unable to get user information."
+        );
+        let user = response.json().await?;
+        Ok(user)
+    }
 
-    Ok(serde_json::from_slice(&response.bytes().await?)?)
+    pub(crate) async fn make_oauth_redirect_response(
+        &self,
+        code: String,
+        mut session: WritableSession,
+    ) -> anyhow::Result<String> {
+        let user = self
+            .get_user(&code)
+            .await
+            .context("Error getting Discord user.")?;
+
+        // Discord added the option to get unique usernames. If the discriminator is
+        // "0", it indicates that the user has a unique username.
+        let username = if user.discriminator == "0" {
+            user.username
+        } else {
+            format!("{}#{}", user.username, user.discriminator)
+        };
+
+        session
+            .insert("discord_id", &user.id)
+            .context("Cannot serialize user id.")?;
+        session
+            .insert("discord_username", &username)
+            .context("Cannot serialize username.")?;
+
+        let params = OauthTemplateParams {
+            id:          &user.id,
+            username:    &username,
+            dapp_domain: &self.dapp_domain,
+        };
+
+        let output = self
+            .handlebars
+            .render("oauth", &params)
+            .context("Unable to render oauth template with a User.")?;
+        Ok(output)
+    }
 }
 
 #[tokio::main]
@@ -303,9 +320,12 @@ async fn main() -> anyhow::Result<()> {
 
     {
         use tracing_subscriber::prelude::*;
+        let log_filter = tracing_subscriber::filter::Targets::new()
+            .with_target(module_path!(), app.log_level)
+            .with_target("tower_http", app.log_level);
         tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer())
-            .with(app.log_level)
+            .with(log_filter)
             .init();
     }
 
@@ -321,7 +341,7 @@ async fn main() -> anyhow::Result<()> {
     } else {
         app.endpoint
     }
-    .connect_timeout(std::time::Duration::from_secs(10))
+    .connect_timeout(std::time::Duration::from_secs(5))
     .timeout(std::time::Duration::from_millis(app.request_timeout));
 
     tracing::info!("Connecting to node...");
@@ -353,35 +373,41 @@ async fn main() -> anyhow::Result<()> {
         .await?
         .response;
 
-    let contract_client = Cis4Contract::create(node_client, app.registry).await?;
+    let mut contract_client = Cis4Contract::create(node_client, app.registry).await?;
 
     let http_client = reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(5))
         .timeout(Duration::from_millis(app.request_timeout))
         .build()?;
 
     let mut handlebars = Handlebars::new();
-    handlebars.register_template_file("oauth", "./templates/discord-oauth.hbs")?;
+    handlebars.register_template_string("oauth", OAUTH_TEMPLATE)?;
 
     let metadata_url = app.url.join("json-schemas/credential-metadata.json")?;
-    let credential_schema_url = app.url.join("json-schemas/JsonSchema2023-discord.json")?;
+
+    let registry_metadata = contract_client
+        .registry_metadata(BlockIdentifier::LastFinal)
+        .await
+        .context("Unable to get registry metadata")?;
 
     let issuer = IssuerState {
         crypto_params: Arc::new(crypto_params),
         contract_client,
+        credential_type: registry_metadata.credential_type,
         network: app.network,
         issuer: Arc::new(issuer_account),
         issuer_key: Arc::new(issuer_key),
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
         max_register_energy: app.max_register_energy,
         metadata_url: Arc::new(metadata_url),
-        credential_schema_url: Arc::new(credential_schema_url),
+        credential_schema_url: registry_metadata.credential_schema.schema_ref.url().into(),
     };
 
     let discord_redirect_uri = app.url.join("discord-oauth2")?;
     let state = AppState {
         issuer,
-        discord_client_id: Arc::new(app.discord_client_id),
-        discord_client_secret: Arc::new(app.discord_client_secret),
+        discord_client_id: app.discord_client_id.into(),
+        discord_client_secret: app.discord_client_secret.into(),
         http_client,
         discord_redirect_uri: Arc::new(discord_redirect_uri),
         handlebars: Arc::new(handlebars),
@@ -393,7 +419,9 @@ async fn main() -> anyhow::Result<()> {
     rand::thread_rng().fill(&mut session_secret);
     let session_layer = SessionLayer::new(session_store, &session_secret)
         .with_persistence_policy(axum_sessions::PersistencePolicy::ChangedOnly)
-        .with_same_site_policy(axum_sessions::SameSite::None);
+        .with_same_site_policy(axum_sessions::SameSite::None)
+        .with_http_only(true)
+        .with_secure(true); // TODO: Test to make sure it also works locally.
 
     let cors = CorsLayer::new()
         .allow_methods([http::Method::GET, http::Method::POST])
@@ -425,8 +453,12 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting server on {}...", app.listen_address);
 
+    // Start handling of shutdown signals now, before starting the server.
+    let shutdown_signal = set_shutdown()?;
+
     axum::Server::bind(&app.listen_address)
         .serve(router.into_make_service())
+        .with_graceful_shutdown(shutdown_signal)
         .await
         .context("Unable to start server.")
 }
