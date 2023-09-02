@@ -1,16 +1,16 @@
-use std::sync::Arc;
-use std::time::Duration;
-
 use anyhow::Context;
 use clap::Parser;
 use concordium_rust_sdk::contract_client::CredentialStatus;
 use reqwest::Url;
 use some_verifier_lib::{Platform, Verification};
-use teloxide::dispatching::UpdateHandler;
-use teloxide::types::{InlineKeyboardButton, MessageKind, ParseMode, ReplyMarkup, User};
-use teloxide::utils::markdown;
-use teloxide::RequestError;
-use teloxide::{prelude::*, utils::command::BotCommands};
+use std::{sync::Arc, time::Duration};
+use teloxide::{
+    dispatching::UpdateHandler,
+    prelude::*,
+    types::{InlineKeyboardButton, MessageKind, ParseMode, ReplyMarkup, User},
+    utils::{command::BotCommands, markdown},
+    RequestError,
+};
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -21,14 +21,14 @@ struct App {
         help = "Telegram bot API token.",
         env = "TELEGRAM_BOT_TOKEN"
     )]
-    bot_token: String,
+    bot_token:       String,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "TELEGRAM_BOT_LOG_LEVEL"
     )]
-    log_level: tracing_subscriber::filter::LevelFilter,
+    log_level:       tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
@@ -42,7 +42,7 @@ struct App {
         help = "URL of the SoMe verifier.",
         env = "TELEGRAM_BOT_VERIFIER_URL"
     )]
-    verifier_url: Url,
+    verifier_url:    Url,
 }
 
 #[derive(BotCommands, Clone)]
@@ -64,7 +64,7 @@ enum Command {
 #[derive(Clone)]
 struct BotConfig {
     verifier_url: Arc<Url>,
-    client: reqwest::Client,
+    client:       reqwest::Client,
 }
 
 #[tokio::main]
@@ -73,9 +73,12 @@ async fn main() -> anyhow::Result<()> {
 
     {
         use tracing_subscriber::prelude::*;
+        let log_filter = tracing_subscriber::filter::Targets::new()
+            .with_target(module_path!(), app.log_level)
+            .with_target("teloxide", app.log_level);
         tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer())
-            .with(app.log_level)
+            .with(log_filter)
             .init();
     }
 
@@ -87,6 +90,8 @@ async fn main() -> anyhow::Result<()> {
         .build()
         .context("Failed to start HTTP server.")?;
 
+    // The bot creates a new network client (to talk to the Telegram API) with a
+    // connect timeout of 5s and request timeout of 17s.
     let bot = Bot::new(app.bot_token);
     let cfg = BotConfig {
         verifier_url: Arc::new(app.verifier_url),
@@ -121,6 +126,7 @@ fn schema() -> UpdateHandler<RequestError> {
 }
 
 /// Handlers for the `/help` and `/start` commands.
+#[tracing::instrument(level = "debug", skip_all)]
 async fn help(bot: Bot, msg: Message) -> ResponseResult<()> {
     bot.send_message(msg.chat.id, Command::descriptions().to_string())
         .await?;
@@ -128,7 +134,9 @@ async fn help(bot: Bot, msg: Message) -> ResponseResult<()> {
 }
 
 /// Handler for the `/verify` command.
+#[tracing::instrument(level = "debug", skip_all)]
 async fn verify(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
+    tracing::debug!("Handling verify for msg {msg:?}");
     let dapp_url = cfg.verifier_url.as_ref().clone();
     let verify_button = ReplyMarkup::inline_kb([[InlineKeyboardButton::url("Verify", dapp_url)]]);
     bot.send_message(msg.chat.id, "Please verify with your wallet.")
@@ -138,7 +146,9 @@ async fn verify(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
     Ok(())
 }
 
-/// Handler for the `/check` command. This must be used in reply to another message.
+/// Handler for the `/check` command. This must be used in reply to another
+/// message.
+#[tracing::instrument(level = "debug", skip_all)]
 async fn check(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
     if let Some(target_msg) = msg.reply_to_message() {
         if let Some(target_user) = target_msg.from() {
@@ -155,7 +165,8 @@ async fn check(cfg: BotConfig, bot: Bot, msg: Message) -> ResponseResult<()> {
     Ok(())
 }
 
-/// Checks the verification status of a given user and sends a message with the result.
+/// Checks the verification status of a given user and sends a message with the
+/// result.
 async fn check_user(
     cfg: BotConfig,
     bot: Bot,
@@ -221,9 +232,18 @@ async fn check_user(
                 .reply_to_message_id(msg.id)
                 .await?;
         }
-        Err(err) => tracing::error!("{err}"),
+        Err(err) => {
+            tracing::error!("Error accessing the verifier: {err}");
+            // In this case the verifier service is unavailable, so we tell the user that
+            // their request was received, but we could not handle it.
+            bot.send_message(
+                msg.chat.id,
+                "_Sorry\\. Unable to check verification\\. Try again later\\._",
+            )
+            .parse_mode(ParseMode::MarkdownV2)
+            .await?;
+        }
     }
-
     Ok(())
 }
 
@@ -254,9 +274,7 @@ async fn other(bot: Bot, msg: Message) -> ResponseResult<()> {
 async fn get_verification(cfg: BotConfig, id: UserId) -> anyhow::Result<Verification> {
     let url = cfg
         .verifier_url
-        .join("verifications/telegram/")
-        .expect("URLs can be joined with a string path")
-        .join(&id.to_string())
-        .expect("URLs can be joined with a UserId");
+        .join("verifications/telegram/")?
+        .join(&id.to_string())?;
     Ok(cfg.client.get(url).send().await?.json().await?)
 }
