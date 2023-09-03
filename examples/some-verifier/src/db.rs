@@ -254,33 +254,29 @@ impl Database {
         let transaction = client.transaction().await?;
 
         // Clear pre-existing verifications with overlapping credentials;
-        let (usings, wheres, cred_ids) = Platform::SUPPORTED_PLATFORMS
-            .into_iter()
-            .filter_map(|p| entry.platform_entry(p).map(|e| (p, e)))
-            .enumerate()
-            .fold(
-                (String::new(), String::new(), Vec::new()),
-                |(mut usings, mut wheres, mut cred_ids), (i, (platform, entry))| {
-                    write!(usings, ", {}", platform.table_name()).expect("can write to String");
-                    write!(
-                        wheres,
-                        " OR ({0}.{VERIFICATION_ID_COLUMN}={VERIFICATIONS_TABLE}.{ID_COLUMN} AND {0}.{CRED_ID_COLUMN}=${1})",
-                        platform.table_name(),
-                        i + 1
-                    )
-                    .expect("can write to String");
-                    cred_ids.push(entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync));
-                    (usings, wheres, cred_ids)
-                },
-            );
+        let mut usings = Vec::new();
+        let mut wheres = Vec::new();
+        let mut cred_ids = Vec::new();
+        let mut arg_num = 0;
+        for platform in Platform::SUPPORTED_PLATFORMS {
+            let Some(entry) = entry.platform_entry(platform) else {
+                continue;
+            };
+            arg_num += 1;
+            let table_name = platform.table_name();
+            usings.push(table_name);
+            wheres.push(format!(
+                "({table_name}.{VERIFICATION_ID_COLUMN}={VERIFICATIONS_TABLE}.{ID_COLUMN} AND \
+                 {table_name}.{CRED_ID_COLUMN}=${arg_num})"
+            ));
+            cred_ids.push(entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync));
+        }
 
-        // Remove leading ','
-        let usings = usings.split_once(',').map(|(_, res)| res).unwrap_or("");
-        // Remove leading "OR"
-        let wheres = wheres.split_once(" OR").map(|(_, res)| res).unwrap_or("");
+        let usings = usings.join(", ");
+        let wheres = wheres.join(" OR ");
 
         let delete_statement =
-            format!("DELETE FROM {VERIFICATIONS_TABLE} USING{usings} WHERE{wheres}");
+            format!("DELETE FROM {VERIFICATIONS_TABLE} USING {usings} WHERE {wheres}");
         transaction.execute(&delete_statement, &cred_ids).await?;
 
         let insert_statement = format!(
