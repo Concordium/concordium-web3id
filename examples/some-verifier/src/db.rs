@@ -3,6 +3,7 @@ use concordium_rust_sdk::{
     web3id::{CredentialHolderId, Presentation, Web3IdAttribute},
 };
 use some_verifier_lib::{FullName, Platform};
+use std::fmt::Write;
 use tokio::sync::RwLock;
 use tokio_postgres::{types::ToSql, NoTls, Row};
 
@@ -111,6 +112,15 @@ pub struct VerificationsEntry {
     pub full_name:    Option<FullName>,
 }
 
+impl VerificationsEntry {
+    fn platform_entry(&self, platform: Platform) -> Option<&PlatformEntry> {
+        match platform {
+            Platform::Telegram => self.telegram.as_ref(),
+            Platform::Discord => self.discord.as_ref(),
+        }
+    }
+}
+
 pub struct Database {
     // TODO: This RwLock is not the best design.
     // There would ideally be a connection pool.
@@ -192,8 +202,8 @@ impl Database {
             .fold(
                 (String::new(), String::new()),
                 |(mut columns, mut joins), (column, join)| {
-                    columns.push_str(&format!(", {}", column));
-                    joins.push_str(&format!(" {}", join));
+                    write!(columns, ", {column}").expect("can write to String");
+                    write!(joins, " {join}").expect("can write to String");
                     (columns, joins)
                 },
             );
@@ -221,7 +231,33 @@ impl Database {
         let mut client = self.client.write().await;
         let transaction = client.transaction().await?;
 
-        let statement = entry.insert_statement();
+        // Clear pre-existing verifications with overlapping credentials;
+        let mut usings = Vec::new();
+        let mut wheres = Vec::new();
+        let mut cred_ids = Vec::new();
+        let mut arg_num = 0;
+        for platform in Platform::SUPPORTED_PLATFORMS {
+            let Some(entry) = entry.platform_entry(platform) else {
+                continue;
+            };
+            arg_num += 1;
+            let table_name = platform.table_name();
+            usings.push(table_name);
+            wheres.push(format!(
+                "({table_name}.{VERIFICATION_ID_COLUMN}={VERIFICATIONS_TABLE}.{ID_COLUMN} AND \
+                 {table_name}.{CRED_ID_COLUMN}=${arg_num})"
+            ));
+            cred_ids.push(entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync));
+        }
+
+        let usings = usings.join(", ");
+        let wheres = wheres.join(" OR ");
+
+        let delete_statement =
+            format!("DELETE FROM {VERIFICATIONS_TABLE} USING {usings} WHERE {wheres}");
+        transaction.execute(&delete_statement, &cred_ids).await?;
+
+        let insert_statement = entry.insert_statement();
 
         let values: [&(dyn ToSql + Sync); 3] = [
             &entry.full_name.as_ref().map(|n| &n.first_name),
@@ -229,8 +265,9 @@ impl Database {
             &entry.presentation,
         ];
 
+        // Run an insert, retrieve new verification id
         let verification_id: i64 = transaction
-            .query_one(&statement, &values)
+            .query_one(&insert_statement, &values)
             .await?
             .try_get(0)?;
 
@@ -244,11 +281,12 @@ impl Database {
         transaction.commit().await
     }
 
+    /// Remove the verification. Return if anything was removed.
     pub async fn remove_verification(
         &self,
         cred_id: &CredentialHolderId,
         platform: Platform,
-    ) -> DbResult<()> {
+    ) -> DbResult<bool> {
         let mut client = self.client.write().await;
         let transaction = client.transaction().await?;
 
@@ -259,8 +297,10 @@ impl Database {
             platform.table_name()
         );
         let cred_id = cred_id.public_key.as_bytes();
-        transaction.query_one(&statement, &[cred_id]).await?;
-        transaction.commit().await
+        // The column VERIFICATION_ID_COLUMN is unique so at most one will be returned
+        let r = transaction.query_opt(&statement, &[cred_id]).await?;
+        transaction.commit().await?;
+        Ok(r.is_some())
     }
 }
 

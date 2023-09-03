@@ -329,18 +329,27 @@ async fn remove_verification(
 
     let platform = state.get_platform_for_contract(contract)?;
 
-    if let Err(err) = state
+    match state
         .database
         .remove_verification(credential, platform)
         .await
     {
-        tracing::warn!("Error removing entries for {credential}: {err}");
-        return Err(Error::DatabaseError(err));
+        Ok(removed) => {
+            if removed {
+                tracing::debug!("Successfully removed verification for {credential}.");
+                Ok(StatusCode::OK)
+            } else {
+                tracing::debug!(
+                    "Request to remove a verification with a non-existing credential id."
+                );
+                Ok(StatusCode::BAD_REQUEST)
+            }
+        }
+        Err(err) => {
+            tracing::warn!("Error removing entries for {credential}: {err}");
+            return Err(Error::DatabaseError(err));
+        }
     }
-
-    tracing::debug!("Successfully removed verification for {credential}.");
-
-    Ok(StatusCode::OK)
 }
 
 /// Verify the request. In particular this checks
