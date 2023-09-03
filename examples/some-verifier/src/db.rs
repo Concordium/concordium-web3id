@@ -7,14 +7,14 @@ use std::fmt::Write;
 use tokio::sync::RwLock;
 use tokio_postgres::{types::ToSql, NoTls, Row};
 
-const VERIFICATIONS_TABLE: &'static str = "verifications";
-const PRESENTATION_COLUMN: &'static str = "presentation";
-const FIRST_NAME_COLUMN: &'static str = "first_name";
-const LAST_NAME_COLUMN: &'static str = "last_name";
-const ID_COLUMN: &'static str = "id";
-const CRED_ID_COLUMN: &'static str = "cred_id";
-const VERIFICATION_ID_COLUMN: &'static str = "verification_id";
-const USERNAME_COLUMN: &'static str = "username";
+const VERIFICATIONS_TABLE: &str = "verifications";
+const PRESENTATION_COLUMN: &str = "presentation";
+const FIRST_NAME_COLUMN: &str = "first_name";
+const LAST_NAME_COLUMN: &str = "last_name";
+const ID_COLUMN: &str = "id";
+const CRED_ID_COLUMN: &str = "cred_id";
+const VERIFICATION_ID_COLUMN: &str = "verification_id";
+const USERNAME_COLUMN: &str = "username";
 
 /// A trait that is implemented for the Platform enum to give some utility
 /// functons. This is a trait because of orphan rules. It is only implemented

@@ -128,7 +128,7 @@ impl AppState {
         match address {
             addr if addr == &self.telegram_registry => Ok(Platform::Telegram),
             addr if addr == &self.discord_registry => Ok(Platform::Discord),
-            _ => return Err(Error::InvalidIssuer),
+            _ => Err(Error::InvalidIssuer),
         }
     }
 }
@@ -246,7 +246,7 @@ enum Error {
     #[error("A statement was from the wrong issuer.")]
     InvalidIssuer,
     #[error("The database returned an error: {0}")]
-    DatabaseError(#[from] tokio_postgres::Error),
+    Database(#[from] tokio_postgres::Error),
 }
 
 impl axum::response::IntoResponse for Error {
@@ -258,7 +258,7 @@ impl axum::response::IntoResponse for Error {
                 StatusCode::NOT_FOUND,
                 Json(format!("One or more credentials were not found: {e}")),
             ),
-            Error::DatabaseError(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(format!("{e}"))),
+            Error::Database(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(format!("{e}"))),
             error => (StatusCode::BAD_REQUEST, Json(format!("{}", error))),
         };
         r.into_response()
@@ -297,7 +297,7 @@ async fn add_verification(
         // TODO: duplicate/overlapping entries
         Err(err) => {
             tracing::warn!("Error inserting entries: {err}");
-            return Err(Error::DatabaseError(err));
+            return Err(Error::Database(err));
         }
     }
 
@@ -347,7 +347,7 @@ async fn remove_verification(
         }
         Err(err) => {
             tracing::warn!("Error removing entries for {credential}: {err}");
-            return Err(Error::DatabaseError(err));
+            Err(Error::Database(err))
         }
     }
 }
@@ -376,14 +376,14 @@ impl AppState {
         hasher.update(iso_time.as_bytes());
         let hash = hasher.finalize();
 
-        if &proof.presentation_context[..] != &hash[..] {
+        if proof.presentation_context[..] != hash[..] {
             return Err(Error::InvalidChallenge);
         }
 
         let public_data = web3id::get_public_data(
             &mut self.node_client,
             self.network,
-            &proof,
+            proof,
             BlockIdentifier::LastFinal,
         )
         .await?;
@@ -555,7 +555,7 @@ async fn get_verification(
     }
 }
 
-const DISCORD_API_ENDPOINT: &'static str = "https://discord.com/api/v10";
+const DISCORD_API_ENDPOINT: &str = "https://discord.com/api/v10";
 
 #[derive(Deserialize)]
 struct DiscordUser {
