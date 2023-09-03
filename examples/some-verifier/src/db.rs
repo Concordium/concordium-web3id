@@ -281,17 +281,15 @@ impl Database {
 
         let delete_statement =
             format!("DELETE FROM {VERIFICATIONS_TABLE} USING{usings} WHERE{wheres}");
-        let delete = transaction.execute(&delete_statement, &cred_ids);
+        transaction.execute(&delete_statement, &cred_ids).await?;
 
         let insert_statement = format!(
             "INSERT INTO {VERIFICATIONS_TABLE} ({}) VALUES ({}) RETURNING id",
             columns.join(", "),
             (1..=columns.len()).format_with(", ", |i, f| f(&format_args!("${i}")))
         );
-        let insert = transaction.query_one(&insert_statement, &values);
-
-        // Run delete and insert, retrieve new verification id
-        let verification_id: i64 = try_join!(delete, insert)?.1.get(0);
+        // Run an insert, retrieve new verification id
+        let verification_id: i64 = transaction.query_one(&insert_statement, &values).await?.try_get(0)?;
 
         if let Some(telegram) = &entry.telegram {
             add_platform_entry(&transaction, Platform::Telegram, telegram, verification_id).await?;
