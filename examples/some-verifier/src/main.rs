@@ -18,8 +18,8 @@ use concordium_rust_sdk::{
     types::{ContractAddress, CryptographicParameters},
     v2::{self, BlockIdentifier},
     web3id::{
-        self, did::Network, CredentialLookupError, CredentialProof, Presentation,
-        PresentationVerificationError, Web3IdAttribute,
+        self, did::Network, CredentialLookupError, CredentialProof, CredentialStatement,
+        Presentation, PresentationVerificationError, Web3IdAttribute,
     },
 };
 use db::{PlatformEntry, VerificationsEntry};
@@ -121,6 +121,8 @@ struct AppState {
     crypto_params:     Arc<CryptographicParameters>,
 }
 
+// TODO: Proper shutdown.
+
 impl AppState {
     fn get_platform_for_contract(&self, address: &ContractAddress) -> Result<Platform, Error> {
         match address {
@@ -212,8 +214,10 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::compression::CompressionLayer::new());
 
     let socket = app.listen_address;
+    let shutdown_signal = set_shutdown()?;
     axum::Server::bind(&socket)
         .serve(router.into_make_service())
+        .with_graceful_shutdown(shutdown_signal)
         .await?;
 
     Ok(())
@@ -272,11 +276,9 @@ async fn add_verification(
     State(mut state): State<AppState>,
     request: Result<Json<Request>, JsonRejection>,
 ) -> Result<StatusCode, Error> {
-    tracing::info!("Request to verify.");
-
     let Json(request) = request?;
-    verify_request(&mut state, &request).await?;
-
+    let _ = state.verify_request(&request).await?;
+    // Check the statements and add them to the database
     let Request { proof, .. } = request;
 
     // Check the statements and add them to the database
@@ -287,7 +289,7 @@ async fn add_verification(
 
     let mut entry = VerificationsEntry::from_presentation(&proof);
     for proof in &proof.verifiable_credential {
-        proof_to_verifications_entry(state.clone(), proof, &mut entry)?;
+        state.proof_to_verifications_entry(proof, &mut entry)?;
     }
 
     match state.database.add_verification(entry).await {
@@ -309,191 +311,195 @@ async fn remove_verification(
     State(mut state): State<AppState>,
     request: Result<Json<Request>, JsonRejection>,
 ) -> Result<StatusCode, Error> {
-    tracing::info!("Request to remove verification.");
-
     let Json(request) = request?;
-    verify_request(&mut state, &request).await?;
-
-    let Request { proof, .. } = request;
+    let creds_with_metadata = state.verify_request(&request).await?;
 
     // Check the statements and add them to the database
-    let num_creds = proof.verifiable_credential.len();
-    if num_creds != 1 {
-        return Err(Error::NotSingleStatement(num_creds));
-    }
-
-    // We know we have exactly 1 credential
-    let credential = &proof.verifiable_credential[0];
-    let (cred_id, platform) = match credential {
-        CredentialProof::Web3Id {
-            network,
-            contract,
-            holder,
-            ..
-        } => {
-            if network != &state.network {
-                return Err(Error::InvalidIssuer);
-            }
-            let platform = state.get_platform_for_contract(contract)?;
-
-            (holder, platform)
-        }
-        _ => return Err(Error::InvalidStatement),
+    let Some((credential, &[])) = creds_with_metadata.credential_statements.split_first() else {
+        return Err(Error::NotSingleStatement(creds_with_metadata.credential_statements.len()));
     };
 
-    if let Err(err) = state.database.remove_verification(cred_id, platform).await {
-        tracing::warn!("Error removing entries: {err}");
+    let CredentialStatement::Web3Id {
+            contract,
+            credential,
+            ..
+    } = credential else {
+        return Err(Error::InvalidStatement);
+    };
+
+    let platform = state.get_platform_for_contract(contract)?;
+
+    if let Err(err) = state
+        .database
+        .remove_verification(credential, platform)
+        .await
+    {
+        tracing::warn!("Error removing entries for {credential}: {err}");
         return Err(Error::DatabaseError(err));
     }
 
-    tracing::info!("Successfully removed verification.");
+    tracing::debug!("Successfully removed verification for {credential}.");
 
     Ok(StatusCode::OK)
 }
 
-async fn verify_request(state: &mut AppState, request: &Request) -> Result<(), Error> {
-    let Request { proof, timestamp } = request;
+/// Verify the request. In particular this checks
+/// - all credentials mentioned in the request exist, and are active (in
+///   particular they have not expired)
+/// - all credentials are on the required network
+/// - cryptographic proofs are valid
+/// - the timestamp in the request is no more than 10min from present.
+impl AppState {
+    async fn verify_request(
+        &mut self,
+        request: &Request,
+    ) -> Result<web3id::Request<ArCurve, Web3IdAttribute>, Error> {
+        let Request { proof, timestamp } = request;
 
-    let delta = Utc::now().signed_duration_since(*timestamp);
-    if delta.num_hours().abs() > 24 {
-        return Err(Error::InvalidTimestamp);
+        let delta = Utc::now().signed_duration_since(*timestamp);
+        if delta.num_minutes().abs() > 10 {
+            return Err(Error::InvalidTimestamp);
+        }
+
+        // Check that the challenge is the hash of the supplied timestamp
+        let iso_time = timestamp.to_rfc3339_opts(SecondsFormat::Millis, true);
+        let mut hasher = Sha256::new();
+        hasher.update(iso_time.as_bytes());
+        let hash = hasher.finalize();
+
+        if &proof.presentation_context[..] != &hash[..] {
+            return Err(Error::InvalidChallenge);
+        }
+
+        let public_data = web3id::get_public_data(
+            &mut self.node_client,
+            self.network,
+            &proof,
+            BlockIdentifier::LastFinal,
+        )
+        .await?;
+
+        // Check that all credentials are active at the time of the query
+        if !public_data
+            .iter()
+            .all(|cm| matches!(cm.status, CredentialStatus::Active))
+        {
+            return Err(Error::InactiveCredentials);
+        }
+        // And then verify the cryptographic proofs
+        let request = proof.verify(&self.crypto_params, public_data.iter().map(|cm| &cm.inputs))?;
+
+        Ok(request)
     }
-
-    let bi = state
-        .node_client
-        .get_block_info(BlockIdentifier::LastFinal)
-        .await
-        .map_err(|e| Error::CredentialLookup(e.into()))?;
-    let public_data =
-        web3id::get_public_data(&mut state.node_client, state.network, &proof, bi.block_hash)
-            .await?;
-
-    // Check that all credentials are active at the time of the query
-    if !public_data
-        .iter()
-        .all(|cm| matches!(cm.status, CredentialStatus::Active))
-    {
-        return Err(Error::InactiveCredentials);
-    }
-    // And then verify the cryptographic proofs
-    let request = proof.verify(
-        &state.crypto_params,
-        public_data.iter().map(|cm| &cm.inputs),
-    )?;
-
-    // Check that the challenge is the hash of the supplied timestamp
-    let iso_time = timestamp.to_rfc3339_opts(SecondsFormat::Millis, true);
-    let mut hasher = Sha256::new();
-    hasher.update(iso_time.as_bytes());
-    let hash = hasher.finalize();
-
-    if &request.challenge[..] != &hash[..] {
-        return Err(Error::InvalidChallenge);
-    }
-
-    Ok(())
 }
 
-fn proof_to_verifications_entry(
-    state: AppState,
-    proof: &CredentialProof<ArCurve, Web3IdAttribute>,
-    entry: &mut VerificationsEntry,
-) -> Result<(), Error> {
-    match proof {
-        // Platform verification (Telegram, Discord, etc.)
-        CredentialProof::Web3Id {
-            network,
-            contract,
-            proofs,
-            holder,
-            ..
-        } => {
-            if network != &state.network {
-                return Err(Error::InvalidIssuer);
-            }
-
-            let (id, username) = match &proofs[..] {
-                [(
-                    _,
-                    AtomicProof::RevealAttribute {
-                        attribute: Web3IdAttribute::String(AttributeKind(id)),
-                        ..
-                    },
-                ), (
-                    _,
-                    AtomicProof::RevealAttribute {
-                        attribute: Web3IdAttribute::String(AttributeKind(username)),
-                        ..
-                    },
-                )] => (id.clone(), username.clone()),
-                _ => {
-                    return Err(Error::InvalidStatement);
-                }
-            };
-
-            let platform_entry = PlatformEntry {
-                id,
-                cred_id: *holder,
-                username,
-            };
-            match state.get_platform_for_contract(contract) {
-                Ok(Platform::Telegram) => entry.telegram = Some(platform_entry),
-                Ok(Platform::Discord) => entry.discord = Some(platform_entry),
-                Err(e) => return Err(e),
-            };
-
-            Ok(())
-        }
-        // Full name
-        CredentialProof::Account {
-            network, proofs, ..
-        } => {
-            if network != &state.network {
-                return Err(Error::InvalidIssuer);
-            }
-
-            // There should be exactly a first and last name
-            if !proofs.len() == 2 {
-                return Err(Error::InvalidStatement);
-            }
-
-            let mut first_name = None;
-            let mut last_name = None;
-            for (statement, proof) in proofs {
-                let name = match proof {
-                    AtomicProof::RevealAttribute {
-                        attribute: Web3IdAttribute::String(AttributeKind(name)),
-                        ..
-                    } => name,
-                    _ => return Err(Error::InvalidStatement),
+impl AppState {
+    pub(crate) fn proof_to_verifications_entry(
+        &self,
+        proof: &CredentialProof<ArCurve, Web3IdAttribute>,
+        entry: &mut VerificationsEntry,
+    ) -> Result<(), Error> {
+        match proof {
+            // Platform verification (Telegram, Discord, etc.)
+            CredentialProof::Web3Id {
+                contract,
+                proofs,
+                holder,
+                ..
+            } => {
+                let (id, username) = match &proofs[..] {
+                    [(
+                        _,
+                        AtomicProof::RevealAttribute {
+                            attribute: Web3IdAttribute::String(AttributeKind(id)),
+                            ..
+                        },
+                    ), (
+                        _,
+                        AtomicProof::RevealAttribute {
+                            attribute: Web3IdAttribute::String(AttributeKind(username)),
+                            ..
+                        },
+                    )] => (id.clone(), username.clone()),
+                    _ => {
+                        return Err(Error::InvalidStatement);
+                    }
                 };
-                match statement {
-                    AtomicStatement::RevealAttribute {
-                        statement: RevealAttributeStatement { attribute_tag },
-                    } => {
-                        if attribute_tag.0 == attributes::FIRST_NAME.0 {
-                            first_name = Some(name.clone());
-                        } else if attribute_tag.0 == attributes::LAST_NAME.0 {
-                            last_name = Some(name.clone());
-                        } else {
+
+                let platform_entry = PlatformEntry {
+                    id,
+                    cred_id: *holder,
+                    username,
+                };
+                match self.get_platform_for_contract(contract)? {
+                    Platform::Telegram => {
+                        // Make sure we have two distinct statements.
+                        if entry.telegram.replace(platform_entry).is_some() {
                             return Err(Error::InvalidStatement);
                         }
                     }
-                    _ => return Err(Error::InvalidStatement),
-                }
-            }
-            entry.full_name = first_name.and_then(|first_name| {
-                last_name.map(|last_name| FullName {
-                    first_name,
-                    last_name,
-                })
-            });
+                    Platform::Discord => {
+                        if entry.discord.replace(platform_entry).is_some() {
+                            return Err(Error::InvalidStatement);
+                        }
+                    }
+                };
 
-            Ok(())
+                Ok(())
+            }
+            // Full name
+            CredentialProof::Account { proofs, .. } => {
+                // There should be exactly a first and last name
+                if !proofs.len() == 2 {
+                    return Err(Error::InvalidStatement);
+                }
+
+                let mut first_name = None;
+                let mut last_name = None;
+                for (statement, proof) in proofs {
+                    let AtomicProof::RevealAttribute {
+                            attribute: Web3IdAttribute::String(AttributeKind(name)),
+                            ..
+                    } = proof else {
+                        return Err(Error::InvalidStatement);
+                    };
+                    let AtomicStatement::RevealAttribute {
+                            statement: RevealAttributeStatement { attribute_tag },
+                    } = statement else {
+                        return Err(Error::InvalidStatement);
+                    };
+                    if attribute_tag.0 == attributes::FIRST_NAME.0 {
+                        first_name = Some(name.clone());
+                    } else if attribute_tag.0 == attributes::LAST_NAME.0 {
+                        last_name = Some(name.clone());
+                    } else {
+                        return Err(Error::InvalidStatement);
+                    }
+                }
+                let Some(first_name) = first_name else {
+                    return Err(Error::InvalidStatement);
+                };
+                let Some(last_name) = last_name else {
+                    return Err(Error::InvalidStatement);
+                };
+                if entry
+                    .full_name
+                    .replace(FullName {
+                        first_name,
+                        last_name,
+                    })
+                    .is_some()
+                {
+                    return Err(Error::InvalidStatement);
+                }
+
+                Ok(())
+            }
         }
     }
 }
 
+#[tracing::instrument(level = "info", skip_all)]
 async fn get_verification(
     State(state): State<AppState>,
     Path((platform, id)): Path<(Platform, String)>,
@@ -549,6 +555,7 @@ struct DiscordUser {
 }
 
 /// Looks up the username of the given account.
+#[tracing::instrument(level = "debug", skip_all, fields(username = account.username, user_id = account.id))]
 async fn get_username(state: &AppState, account: &DbAccount) -> anyhow::Result<String> {
     match account.platform {
         Platform::Telegram => Ok(account.username.clone()),
@@ -574,6 +581,7 @@ async fn get_username(state: &AppState, account: &DbAccount) -> anyhow::Result<S
     }
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(username = account.username, user_id = account.id), ret)]
 async fn get_credential_status(
     state: &AppState,
     account: &DbAccount,
@@ -598,4 +606,43 @@ async fn get_credential_status(
         .credential_status(cred_id, BlockIdentifier::LastFinal)
         .await
         .context("Failed to get credential status")
+}
+
+/// Construct a future for shutdown signals (for unix: SIGINT and SIGTERM) (for
+/// windows: ctrl c and ctrl break). The signal handler is set when the future
+/// is polled and until then the default signal handler.
+fn set_shutdown() -> anyhow::Result<impl futures::Future<Output = ()>> {
+    use futures::FutureExt;
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix as unix_signal;
+
+        let mut terminate_stream = unix_signal::signal(unix_signal::SignalKind::terminate())?;
+        let mut interrupt_stream = unix_signal::signal(unix_signal::SignalKind::interrupt())?;
+
+        Ok(async move {
+            futures::future::select(
+                Box::pin(terminate_stream.recv()),
+                Box::pin(interrupt_stream.recv()),
+            )
+            .map(|_| ())
+            .await
+        })
+    }
+    #[cfg(windows)]
+    {
+        use tokio::signal::windows as windows_signal;
+
+        let mut ctrl_break_stream = windows_signal::ctrl_break()?;
+        let mut ctrl_c_stream = windows_signal::ctrl_c()?;
+
+        Ok(async move {
+            futures::future::select(
+                Box::pin(ctrl_break_stream.recv()),
+                Box::pin(ctrl_c_stream.recv()),
+            )
+            .map(|_| ())
+            .await
+        })
+    }
 }

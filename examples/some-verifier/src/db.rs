@@ -1,10 +1,10 @@
-use concordium_rust_sdk::id::constants::ArCurve;
-use concordium_rust_sdk::web3id::{CredentialHolderId, Presentation, Web3IdAttribute};
-use itertools::Itertools;
+use concordium_rust_sdk::{
+    id::constants::ArCurve,
+    web3id::{CredentialHolderId, Presentation, Web3IdAttribute},
+};
 use some_verifier_lib::{FullName, Platform};
 use tokio::sync::RwLock;
-use tokio_postgres::types::ToSql;
-use tokio_postgres::{NoTls, Row};
+use tokio_postgres::{types::ToSql, NoTls, Row};
 
 const VERIFICATIONS_TABLE: &'static str = "verifications";
 const PRESENTATION_COLUMN: &'static str = "presentation";
@@ -15,7 +15,9 @@ const CRED_ID_COLUMN: &'static str = "cred_id";
 const VERIFICATION_ID_COLUMN: &'static str = "verification_id";
 const USERNAME_COLUMN: &'static str = "username";
 
-/// A trait that is implemented for the Platform enum to give some utility functons.
+/// A trait that is implemented for the Platform enum to give some utility
+/// functons. This is a trait because of orphan rules. It is only implemented
+/// for a single type.
 trait DbName {
     /// The name of the corresponding table.
     fn table_name(&self) -> &'static str;
@@ -23,6 +25,7 @@ trait DbName {
     fn username_alias(&self) -> String;
     /// The id alias used when joined with other platforms
     fn id_alias(&self) -> String;
+    fn insert_statement(&self) -> String;
 }
 
 impl DbName for Platform {
@@ -33,12 +36,16 @@ impl DbName for Platform {
         }
     }
 
-    fn username_alias(&self) -> String {
-        format!("{}_{USERNAME_COLUMN}", self.table_name())
-    }
+    fn username_alias(&self) -> String { format!("{}_{USERNAME_COLUMN}", self.table_name()) }
 
-    fn id_alias(&self) -> String {
-        format!("{}_{ID_COLUMN}", self.table_name())
+    fn id_alias(&self) -> String { format!("{}_{ID_COLUMN}", self.table_name()) }
+
+    fn insert_statement(&self) -> String {
+        format!(
+            "INSERT INTO {} ({ID_COLUMN}, {CRED_ID_COLUMN}, {VERIFICATION_ID_COLUMN}, \
+             {USERNAME_COLUMN}) VALUES ($1, $2, $3, $4)",
+            self.table_name()
+        )
     }
 }
 
@@ -84,85 +91,54 @@ fn verification_from_row(row: Row) -> DbVerification {
 #[derive(Debug)]
 pub struct DbAccount {
     pub platform: Platform,
-    pub id: String,
+    pub id:       String,
     pub username: String,
 }
 
 /// The output from querying a line in the verifications table.
 pub struct DbVerification {
-    pub accounts: Vec<DbAccount>,
-    pub full_name: Option<FullName>,
+    pub accounts:     Vec<DbAccount>,
+    pub full_name:    Option<FullName>,
     pub presentation: Presentation<ArCurve, Web3IdAttribute>,
 }
 
-/// Initializer for verification entries, including the entries of the platform tables.
+/// Initializer for verification entries, including the entries of the platform
+/// tables.
 pub struct VerificationsEntry {
-    pub telegram: Option<PlatformEntry>,
-    pub discord: Option<PlatformEntry>,
+    pub telegram:     Option<PlatformEntry>,
+    pub discord:      Option<PlatformEntry>,
     pub presentation: serde_json::Value,
-    pub full_name: Option<FullName>,
+    pub full_name:    Option<FullName>,
 }
 
 pub struct Database {
+    // TODO: This RwLock is not the best design.
+    // There would ideally be a connection pool.
     client: RwLock<tokio_postgres::Client>,
 }
 
 impl VerificationsEntry {
     pub fn from_presentation(proof: &Presentation<ArCurve, Web3IdAttribute>) -> Self {
         Self {
-            telegram: None,
-            discord: None,
+            telegram:     None,
+            discord:      None,
             presentation: serde_json::to_value(proof).expect("Presentations can be serialized"),
-            full_name: None,
+            full_name:    None,
         }
     }
 
-    fn columns(&self) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
-        [
-            (
-                FIRST_NAME_COLUMN,
-                self.full_name
-                    .as_ref()
-                    .map(|n| &n.first_name as &(dyn ToSql + Sync)),
-            ),
-            (
-                LAST_NAME_COLUMN,
-                self.full_name
-                    .as_ref()
-                    .map(|n| &n.last_name as &(dyn ToSql + Sync)),
-            ),
-            (PRESENTATION_COLUMN, Some(&self.presentation)),
-        ]
-        .into_iter()
-        .filter_map(|(name, val)| val.map(|v| (name, v)))
+    fn insert_statement(&self) -> String {
+        format!(
+            "INSERT INTO {VERIFICATIONS_TABLE} ({FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN}, \
+             {PRESENTATION_COLUMN}) VALUES ($1, $2, $3) RETURNING id"
+        )
     }
 }
 
 pub struct PlatformEntry {
-    pub id: String,
-    pub cred_id: CredentialHolderId,
+    pub id:       String,
+    pub cred_id:  CredentialHolderId,
     pub username: String,
-}
-
-impl PlatformEntry {
-    fn columns<'a>(
-        &'a self,
-        verification_id: &'a i64,
-    ) -> impl Iterator<Item = (&'static str, &(dyn ToSql + Sync))> {
-        [
-            (ID_COLUMN, &self.id as &(dyn ToSql + Sync)),
-            (
-                CRED_ID_COLUMN,
-                self.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync),
-            ),
-            (
-                VERIFICATION_ID_COLUMN,
-                verification_id as &(dyn ToSql + Sync),
-            ),
-            (USERNAME_COLUMN, &self.username),
-        ]
-        .into_iter()
-    }
 }
 
 pub type DbResult<T> = Result<T, tokio_postgres::Error>;
@@ -177,7 +153,9 @@ impl Database {
             }
         });
 
-        client.batch_execute(include_str!("../resources/schema.sql")).await?;
+        client
+            .batch_execute(include_str!("../resources/schema.sql"))
+            .await?;
 
         Ok(Self {
             client: RwLock::new(client),
@@ -194,7 +172,8 @@ impl Database {
         let mut statement =
             format!("SELECT {PRESENTATION_COLUMN}, {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN}");
 
-        // Additional columns to select and joins to perform built from the supported platforms.
+        // Additional columns to select and joins to perform built from the supported
+        // platforms.
         let (columns, joins) = Platform::SUPPORTED_PLATFORMS
             .into_iter()
             .map(|platform| {
@@ -239,18 +218,21 @@ impl Database {
     }
 
     pub async fn add_verification(&self, entry: VerificationsEntry) -> DbResult<()> {
-        let (columns, values): (Vec<_>, Vec<_>) = entry.columns().unzip();
-
         let mut client = self.client.write().await;
         let transaction = client.transaction().await?;
 
-        let statement = format!(
-            "INSERT INTO {VERIFICATIONS_TABLE} ({}) VALUES ({}) RETURNING id",
-            columns.join(", "),
-            (1..=columns.len()).format_with(", ", |i, f| f(&format_args!("${i}")))
-        );
+        let statement = entry.insert_statement();
 
-        let verification_id: i64 = transaction.query_one(&statement, &values).await?.get(0);
+        let values: [&(dyn ToSql + Sync); 3] = [
+            &entry.full_name.as_ref().map(|n| &n.first_name),
+            &entry.full_name.as_ref().map(|n| &n.last_name),
+            &entry.presentation,
+        ];
+
+        let verification_id: i64 = transaction
+            .query_one(&statement, &values)
+            .await?
+            .try_get(0)?;
 
         if let Some(telegram) = &entry.telegram {
             add_platform_entry(&transaction, Platform::Telegram, telegram, verification_id).await?;
@@ -272,7 +254,8 @@ impl Database {
 
         // Then delete the verification row.
         let statement = format!(
-            "DELETE FROM {VERIFICATIONS_TABLE} WHERE {ID_COLUMN} IN (SELECT {VERIFICATION_ID_COLUMN} FROM {} WHERE {CRED_ID_COLUMN} = $1) RETURNING {ID_COLUMN}",
+            "DELETE FROM {VERIFICATIONS_TABLE} WHERE {ID_COLUMN} IN (SELECT \
+             {VERIFICATION_ID_COLUMN} FROM {} WHERE {CRED_ID_COLUMN} = $1) RETURNING {ID_COLUMN}",
             platform.table_name()
         );
         let cred_id = cred_id.public_key.as_bytes();
@@ -287,15 +270,15 @@ async fn add_platform_entry(
     entry: &PlatformEntry,
     verification_id: i64,
 ) -> DbResult<()> {
-    let (columns, values): (Vec<_>, Vec<_>) = entry.columns(&verification_id).unzip();
+    let statement = platform.insert_statement();
 
-    let statement = format!(
-        "INSERT INTO {} ({}) VALUES ({})",
-        platform.table_name(),
-        columns.join(", "),
-        (1..=columns.len()).format_with(", ", |i, f| f(&format_args!("${i}")))
-    );
+    let values = [
+        &entry.id as &(dyn ToSql + Sync),
+        entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync),
+        &verification_id as &(dyn ToSql + Sync),
+        &entry.username,
+    ];
 
-    transaction.execute(&statement, &values).await?;
+    transaction.execute(statement.as_str(), &values).await?;
     Ok(())
 }
