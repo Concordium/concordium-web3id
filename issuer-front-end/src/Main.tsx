@@ -48,7 +48,7 @@ type CredentialSchema = {
                     title: string;
                     description: string;
                     type: string;
-                    properties: object[];
+                    properties: object;
                     required: string[];
                 };
             };
@@ -117,26 +117,34 @@ async function addAttribute(
         throw new Error(`Type needs to be set`);
     }
 
-    // TODO: check for no duplication keys
-    // if (attributes.includes(attributeTitle)) {
-    //     throw new Error(`Duplicate attribute key: ${attributeTitle}`);
-    // }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    attributes.forEach((value: any) => {
+        if (value[attributeTitle.replaceAll(' ', '')] !== undefined) {
+            throw new Error(`Duplicate attribute key: "${attributeTitle}"`);
+        }
+    });
 
-    let newAttribute;
-
-    if (type === 'dateTime') {
-        console.log('TODO: dateTime');
-        newAttribute = {
-            attributeTitleWithoutSpaces: {
-                title: attributeTitle,
-                type,
-                description: attributeDescription,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const newAttribute: any = {};
+    if (type === 'date-time') {
+        newAttribute[attributeTitle.replaceAll(' ', '')] = {
+            title: attributeTitle,
+            type: 'object',
+            description: attributeDescription,
+            properties: {
+                type: {
+                    type: 'string',
+                    const: 'date-time',
+                },
+                timestamp: {
+                    type: 'string',
+                    format: 'date-time',
+                },
             },
+            required: ['type', 'timestamp'],
         };
     } else {
-        newAttribute = {};
-
-        newAttribute[attributeTitle.replace(' ', '')] = {
+        newAttribute[attributeTitle.replaceAll(' ', '')] = {
             title: attributeTitle,
             type,
             description: attributeDescription,
@@ -147,7 +155,7 @@ async function addAttribute(
 
     if (isRequired) {
         credentialSchema.properties.credentialSubject.properties.attributes.required.push(
-            attributeTitle.replace(' ', '')
+            attributeTitle.replaceAll(' ', '')
         );
     }
 
@@ -504,9 +512,8 @@ export default function Main(props: ConnectionProps) {
                                 <div>
                                     <a
                                         className="link"
-                                        href={`https://${
-                                            isTestnet ? `testnet.` : ``
-                                        }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                                        href={`https://${isTestnet ? `testnet.` : ``
+                                            }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
                                         target="_blank"
                                         rel="noreferrer"
                                     >
@@ -657,7 +664,6 @@ export default function Main(props: ConnectionProps) {
                                                 setTxHash('');
                                                 setTransactionError('');
                                                 setSmartContractIndex('');
-                                                setWaitingForTransactionToFinialize(true);
                                             }}
                                         >
                                             Create CredentialSchema
@@ -708,7 +714,6 @@ export default function Main(props: ConnectionProps) {
                                                 setTxHash('');
                                                 setTransactionError('');
                                                 setSmartContractIndex('');
-                                                setWaitingForTransactionToFinialize(true);
                                             }}
                                         >
                                             Create CredentialMetadata
@@ -768,7 +773,6 @@ export default function Main(props: ConnectionProps) {
                                                 setTxHash('');
                                                 setTransactionError('');
                                                 setSmartContractIndex('');
-                                                setWaitingForTransactionToFinialize(true);
                                             }}
                                         >
                                             Create IssuerMetadata
@@ -946,9 +950,8 @@ export default function Main(props: ConnectionProps) {
                                                 className="link"
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                href={`https://${
-                                                    isTestnet ? `testnet.` : ``
-                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
+                                                href={`https://${isTestnet ? `testnet.` : ``
+                                                    }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
                                             >
                                                 {txHash}
                                             </a>
