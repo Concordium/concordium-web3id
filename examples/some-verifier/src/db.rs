@@ -236,34 +236,29 @@ impl Database {
         let transaction = client.transaction().await?;
 
         // Clear pre-existing verifications with overlapping credentials;
-        let mut usings = Vec::new();
-        let mut wheres = Vec::new();
-        let mut cred_ids = Vec::new();
-        let mut arg_num = 0;
         for platform in Platform::SUPPORTED_PLATFORMS {
             let Some(entry) = entry.platform_entry(platform) else {
                 continue;
             };
-            arg_num += 1;
             let table_name = platform.table_name();
-            usings.push(table_name);
-            wheres.push(format!(
-                "({table_name}.{VERIFICATION_ID_COLUMN}={VERIFICATIONS_TABLE}.{ID_COLUMN} AND \
-                 {table_name}.{CRED_ID_COLUMN}=${arg_num})"
-            ));
+            let delete_statement = format!(
+                "DELETE FROM {VERIFICATIONS_TABLE} WHERE {VERIFICATIONS_TABLE}.{ID_COLUMN} IN \
+                 (SELECT {table_name}.{VERIFICATION_ID_COLUMN} FROM {table_name} WHERE \
+                 {table_name}.{CRED_ID_COLUMN} = $1)"
+            );
             tracing::debug!(
-                "Will delete credential with id {} from the database.",
+                "Will attempt to remove credential with id {} ({table_name}) from the database.",
                 entry.cred_id
             );
-            cred_ids.push(entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync));
+            let rows = transaction
+                .execute(&delete_statement, &[
+                    entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync)
+                ])
+                .await?;
+            if rows > 0 {
+                tracing::debug!("Deleted {rows} rows from {VERIFICATIONS_TABLE}");
+            }
         }
-
-        let usings = usings.join(", ");
-        let wheres = wheres.join(" OR ");
-
-        let delete_statement =
-            format!("DELETE FROM {VERIFICATIONS_TABLE} USING {usings} WHERE {wheres}");
-        transaction.execute(&delete_statement, &cred_ids).await?;
 
         let insert_statement = entry.insert_statement();
 
