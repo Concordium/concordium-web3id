@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
 import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
+import { saveAs } from 'file-saver';
 import {
     WalletConnectionProps,
     useConnection,
@@ -512,8 +513,9 @@ export default function Main(props: ConnectionProps) {
                                 <div>
                                     <a
                                         className="link"
-                                        href={`https://${isTestnet ? `testnet.` : ``
-                                            }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                                        href={`https://${
+                                            isTestnet ? `testnet.` : ``
+                                        }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
                                         target="_blank"
                                         rel="noreferrer"
                                     >
@@ -533,7 +535,7 @@ export default function Main(props: ConnectionProps) {
                             {active === 3 && (
                                 <>
                                     <TestBox header="" note="">
-                                        Add `CredentialName`:
+                                        Add <strong>CredentialName</strong>:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -544,7 +546,7 @@ export default function Main(props: ConnectionProps) {
                                         />
                                         <br />
                                         <br />
-                                        Add `CredentialDescription`:
+                                        Add <strong>CredentialDescription</strong>:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -556,7 +558,7 @@ export default function Main(props: ConnectionProps) {
                                         <br />
                                         <br />
                                         <TestBox header="" note="">
-                                            Add `AttributeTitle`:
+                                            Add <strong>AttributeTitle</strong>:
                                             <br />
                                             <input
                                                 className="inputFieldStyle"
@@ -567,7 +569,7 @@ export default function Main(props: ConnectionProps) {
                                             />
                                             <br />
                                             <br />
-                                            Add `AttributeDescription`:
+                                            Add <strong>AttributeDescription</strong>:
                                             <br />
                                             <input
                                                 className="inputFieldStyle"
@@ -661,12 +663,26 @@ export default function Main(props: ConnectionProps) {
                                             type="button"
                                             onClick={() => {
                                                 setShowCredentialSchema(true);
-                                                setTxHash('');
-                                                setTransactionError('');
-                                                setSmartContractIndex('');
                                             }}
                                         >
                                             Create CredentialSchema
+                                        </button>
+                                        <button
+                                            className="btn btn-primary"
+                                            type="button"
+                                            onClick={() => {
+                                                setShowCredentialSchema(true);
+
+                                                const fileName = 'credentialSchema.json';
+
+                                                const fileToSave = new Blob([JSON.stringify(credentialSchema)], {
+                                                    type: 'application/json',
+                                                });
+
+                                                saveAs(fileToSave, fileName);
+                                            }}
+                                        >
+                                            Download CredentialSchema
                                         </button>
                                         {showCredentialSchema && (
                                             <pre className="largeText">
@@ -675,7 +691,7 @@ export default function Main(props: ConnectionProps) {
                                         )}
                                     </TestBox>
                                     <TestBox header="" note="">
-                                        Add `Title`:
+                                        Add <strong>Title</strong>:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -686,7 +702,7 @@ export default function Main(props: ConnectionProps) {
                                         />
                                         <br />
                                         <br />
-                                        Add `LogoURL`:
+                                        Add <strong>LogoURL</strong>:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -697,7 +713,7 @@ export default function Main(props: ConnectionProps) {
                                         />{' '}
                                         <br />
                                         <br />
-                                        Add `BackGroundColor`:
+                                        Add <strong>BackGroundColor</strong>:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -711,12 +727,26 @@ export default function Main(props: ConnectionProps) {
                                             type="button"
                                             onClick={() => {
                                                 setShowCredentialMetadata(true);
-                                                setTxHash('');
-                                                setTransactionError('');
-                                                setSmartContractIndex('');
                                             }}
                                         >
                                             Create CredentialMetadata
+                                        </button>
+                                        <button
+                                            className="btn btn-primary"
+                                            type="button"
+                                            onClick={() => {
+                                                setShowCredentialMetadata(true);
+
+                                                const fileName = 'credentialMetadata.json';
+
+                                                const fileToSave = new Blob([JSON.stringify(credentialMetadata)], {
+                                                    type: 'application/json',
+                                                });
+
+                                                saveAs(fileToSave, fileName);
+                                            }}
+                                        >
+                                            Download CredentialMetadata
                                         </button>
                                         {showCredentialMetadata && (
                                             <pre className="largeText">
@@ -725,7 +755,7 @@ export default function Main(props: ConnectionProps) {
                                         )}
                                     </TestBox>
                                     <TestBox header="" note="">
-                                        Add `IssuerName`:
+                                        Add <strong>IssuerName</strong>:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -736,7 +766,7 @@ export default function Main(props: ConnectionProps) {
                                         />
                                         <br />
                                         <br />
-                                        Add `IssuerDescription`:
+                                        Add <strong>IssuerDescription</strong>:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -745,7 +775,7 @@ export default function Main(props: ConnectionProps) {
                                             value={issuerDescription}
                                             onChange={changeIssuerDescription}
                                         />
-                                        Add `URL`:
+                                        Add <strong>URL</strong>:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -756,7 +786,7 @@ export default function Main(props: ConnectionProps) {
                                         />
                                         <br />
                                         <br />
-                                        Add `IconURL`:
+                                        Add <strong>IconURL</strong>:
                                         <br />
                                         <input
                                             className="inputFieldStyle"
@@ -770,12 +800,26 @@ export default function Main(props: ConnectionProps) {
                                             type="button"
                                             onClick={() => {
                                                 setShowIssuerMetadata(true);
-                                                setTxHash('');
-                                                setTransactionError('');
-                                                setSmartContractIndex('');
                                             }}
                                         >
                                             Create IssuerMetadata
+                                        </button>
+                                        <button
+                                            className="btn btn-primary"
+                                            type="button"
+                                            onClick={() => {
+                                                setShowIssuerMetadata(true);
+
+                                                const fileName = 'issuerMetadata.json';
+
+                                                const fileToSave = new Blob([JSON.stringify(issuerMetadata)], {
+                                                    type: 'application/json',
+                                                });
+
+                                                saveAs(fileToSave, fileName);
+                                            }}
+                                        >
+                                            Download IssuerMetadata
                                         </button>
                                         {showIssuerMetadata && (
                                             <pre className="largeText">
@@ -787,7 +831,7 @@ export default function Main(props: ConnectionProps) {
                             )}
                             {active === 4 && (
                                 <TestBox header="" note="">
-                                    Add `IssuerKey`:
+                                    Add <strong>IssuerKey</strong>:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -798,7 +842,7 @@ export default function Main(props: ConnectionProps) {
                                     />
                                     <br />
                                     <br />
-                                    Add `IssuerMetadata`:
+                                    Add <strong>IssuerMetadata</strong>:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -809,7 +853,7 @@ export default function Main(props: ConnectionProps) {
                                     />
                                     <br />
                                     <br />
-                                    Add `CredentialType`:
+                                    Add <strong>CredentialType</strong>:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -820,7 +864,7 @@ export default function Main(props: ConnectionProps) {
                                     />
                                     <br />
                                     <br />
-                                    Add `CredentialSchema`:
+                                    Add <strong>CredentialSchema</strong>:
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -862,7 +906,9 @@ export default function Main(props: ConnectionProps) {
                                             ).catch((err: Error) => setUserInputError2((err as Error).message));
                                         }}
                                     >
-                                        <div>Add `RevocationKeys`:</div>
+                                        <div>
+                                            Add <strong>RevocationKeys</strong>:
+                                        </div>
                                         <br />
                                         <Row>
                                             <Col sm={10}>
@@ -950,8 +996,9 @@ export default function Main(props: ConnectionProps) {
                                                 className="link"
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                href={`https://${isTestnet ? `testnet.` : ``
-                                                    }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
+                                                href={`https://${
+                                                    isTestnet ? `testnet.` : ``
+                                                }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
                                             >
                                                 {txHash}
                                             </a>

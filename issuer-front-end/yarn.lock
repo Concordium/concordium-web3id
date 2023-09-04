@@ -1159,6 +1159,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/file-saver@npm:^2.0.5":
+  version: 2.0.5
+  resolution: "@types/file-saver@npm:2.0.5"
+  checksum: a31d6ee2abf99598647139f8f35b37b6e1bacf6c7ddf05c66651b9b0e6e53381aa0e8ed13f37faa6e496e0eb1da87c97e6c70fd589d5b83b0c95c57cb64ce92a
+  languageName: node
+  linkType: hard
+
 "@types/json-bigint@npm:^1.0.1":
   version: 1.0.1
   resolution: "@types/json-bigint@npm:1.0.1"
@@ -4095,6 +4102,13 @@ cors@latest:
   languageName: node
   linkType: hard
 
+"file-saver@npm:^2.0.5":
+  version: 2.0.5
+  resolution: "file-saver@npm:2.0.5"
+  checksum: c62d96e5cebc58b4bdf3ae8a60d5cf9607ad82f75f798c33a4ee63435ac2203002584d5256a2a780eda7feb5e19dc3b6351c2212e58b3f529e63d265a7cc79f7
+  languageName: node
+  linkType: hard
+
 "file-uri-to-path@npm:1.0.0":
   version: 1.0.0
   resolution: "file-uri-to-path@npm:1.0.0"
@@ -5373,6 +5387,7 @@ cors@latest:
     "@concordium/wallet-connectors": ^0.3.1
     "@concordium/web-sdk": ^6.1.1
     "@craftamap/esbuild-plugin-html": ^0.4.0
+    "@types/file-saver": ^2.0.5
     "@types/json-bigint": ^1.0.1
     "@types/node": ^18.7.23
     "@types/react": ^18.0.9
@@ -5392,6 +5407,7 @@ cors@latest:
     eslint-plugin-prettier: ^4.0.0
     eslint-plugin-react: ^7.29.4
     eslint-plugin-react-hooks: ^4.4.0
+    file-saver: ^2.0.5
     fs: ^0.0.1-security
     json-bigint: ^1.0.0
     live-server: =1.2.1
