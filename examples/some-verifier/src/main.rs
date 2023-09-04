@@ -138,9 +138,11 @@ async fn main() -> anyhow::Result<()> {
     let app = App::parse();
 
     {
-        let log_filter =
-            tracing_subscriber::filter::Targets::new().with_target(module_path!(), app.log_level);
         use tracing_subscriber::prelude::*;
+        let log_filter = tracing_subscriber::filter::Targets::new()
+            .with_target(module_path!(), app.log_level)
+            .with_target("tower_http", app.log_level);
+
         tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer())
             .with(log_filter)
@@ -245,21 +247,30 @@ enum Error {
     InvalidStatement,
     #[error("A statement was from the wrong issuer.")]
     InvalidIssuer,
+    #[error("Attempt to add duplicate users: {0}")]
+    DuplicateUserIds(anyhow::Error),
     #[error("The database returned an error: {0}")]
-    Database(#[from] tokio_postgres::Error),
+    Database(anyhow::Error),
 }
 
 impl axum::response::IntoResponse for Error {
     fn into_response(self) -> axum::response::Response {
-        tracing::warn!("{}", self);
-
         let r = match self {
-            Error::CredentialLookup(e) => (
-                StatusCode::NOT_FOUND,
-                Json(format!("One or more credentials were not found: {e}")),
-            ),
-            Error::Database(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(format!("{e}"))),
-            error => (StatusCode::BAD_REQUEST, Json(format!("{}", error))),
+            Error::CredentialLookup(e) => {
+                tracing::debug!("Failed to look up credential: {e}");
+                (
+                    StatusCode::NOT_FOUND,
+                    Json(format!("One or more credentials were not found: {e}")),
+                )
+            }
+            Error::Database(e) => {
+                tracing::error!("Internal error: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(format!("{e}")))
+            }
+            error => {
+                tracing::debug!("Bad request: {error}");
+                (StatusCode::BAD_REQUEST, Json(format!("{}", error)))
+            }
         };
         r.into_response()
     }
@@ -293,17 +304,18 @@ async fn add_verification(
     }
 
     match state.database.add_verification(entry).await {
-        Ok(()) => {}
-        // TODO: duplicate/overlapping entries
+        Ok(None) => {
+            tracing::info!("Successfully added new verification.");
+            Ok(StatusCode::CREATED)
+        }
+        Ok(Some(user_id)) => Err(Error::DuplicateUserIds(anyhow::anyhow!(
+            "Duplicate user id: {user_id}."
+        ))),
         Err(err) => {
             tracing::warn!("Error inserting entries: {err}");
-            return Err(Error::Database(err));
+            Err(Error::Database(err.into()))
         }
     }
-
-    tracing::info!("Successfully verified.");
-
-    Ok(StatusCode::CREATED)
 }
 
 #[tracing::instrument(level = "info", skip_all)]
@@ -347,7 +359,7 @@ async fn remove_verification(
         }
         Err(err) => {
             tracing::warn!("Error removing entries for {credential}: {err}");
-            Err(Error::Database(err))
+            Err(Error::Database(err.into()))
         }
     }
 }

@@ -43,8 +43,9 @@ impl DbName for Platform {
 
     fn insert_statement(&self) -> String {
         format!(
-            "INSERT INTO {} ({ID_COLUMN}, {CRED_ID_COLUMN}, {VERIFICATION_ID_COLUMN}, \
-             {USERNAME_COLUMN}) VALUES ($1, $2, $3, $4)",
+            "INSERT INTO {0} ({ID_COLUMN}, {CRED_ID_COLUMN}, {VERIFICATION_ID_COLUMN}, \
+             {USERNAME_COLUMN}) VALUES ($1, $2, $3, $4) ON CONFLICT ON CONSTRAINT {0}_pkey DO \
+             NOTHING RETURNING {ID_COLUMN}",
             self.table_name()
         )
     }
@@ -227,7 +228,10 @@ impl Database {
         Ok(verification)
     }
 
-    pub async fn add_verification(&self, entry: VerificationsEntry) -> DbResult<()> {
+    /// Attempt to add a verification. In case the user already exist and is
+    /// identified by a different credential holder ID this will return the
+    /// user ID of the clashing user, and will not do any updates.
+    pub async fn add_verification(&self, entry: VerificationsEntry) -> DbResult<Option<String>> {
         let mut client = self.client.write().await;
         let transaction = client.transaction().await?;
 
@@ -247,6 +251,10 @@ impl Database {
                 "({table_name}.{VERIFICATION_ID_COLUMN}={VERIFICATIONS_TABLE}.{ID_COLUMN} AND \
                  {table_name}.{CRED_ID_COLUMN}=${arg_num})"
             ));
+            tracing::debug!(
+                "Will delete credential with id {} from the database.",
+                entry.cred_id
+            );
             cred_ids.push(entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync));
         }
 
@@ -271,14 +279,35 @@ impl Database {
             .await?
             .try_get(0)?;
 
-        if let Some(telegram) = &entry.telegram {
-            add_platform_entry(&transaction, Platform::Telegram, telegram, verification_id).await?;
+        if let Some(telegram) = entry.telegram {
+            if let Some(user_id) =
+                add_platform_entry(&transaction, Platform::Telegram, telegram, verification_id)
+                    .await?
+            {
+                tracing::debug!(
+                    "Refusing to add new Telegram verification due to clash of user id {}.",
+                    user_id
+                );
+                transaction.rollback().await?;
+                return Ok(Some(user_id));
+            }
         }
-        if let Some(discord) = &entry.discord {
-            add_platform_entry(&transaction, Platform::Discord, discord, verification_id).await?;
+        if let Some(discord) = entry.discord {
+            if let Some(user_id) =
+                add_platform_entry(&transaction, Platform::Discord, discord, verification_id)
+                    .await?
+            {
+                tracing::debug!(
+                    "Refusing to add new Discord verification due to clash of user id {}.",
+                    user_id
+                );
+                transaction.rollback().await?;
+                return Ok(Some(user_id));
+            }
         }
 
-        transaction.commit().await
+        transaction.commit().await?;
+        Ok(None)
     }
 
     /// Remove the verification. Return if anything was removed.
@@ -304,12 +333,14 @@ impl Database {
     }
 }
 
+/// Attempt to add a platform entry. If an entry already exists return the
+/// `user_id` and do no updates.
 async fn add_platform_entry(
     transaction: &tokio_postgres::Transaction<'_>,
     platform: Platform,
-    entry: &PlatformEntry,
+    entry: PlatformEntry,
     verification_id: i64,
-) -> DbResult<()> {
+) -> DbResult<Option<String>> {
     let statement = platform.insert_statement();
 
     let values = [
@@ -319,6 +350,13 @@ async fn add_platform_entry(
         &entry.username,
     ];
 
-    transaction.execute(statement.as_str(), &values).await?;
-    Ok(())
+    if transaction
+        .query_opt(statement.as_str(), &values)
+        .await?
+        .is_some()
+    {
+        Ok(None)
+    } else {
+        Ok(Some(entry.id))
+    }
 }
