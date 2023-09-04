@@ -3,7 +3,7 @@ use concordium_rust_sdk::{
     web3id::{CredentialHolderId, Presentation, Web3IdAttribute},
 };
 use some_verifier_lib::{FullName, Platform};
-use tokio::sync::RwLock;
+use std::usize;
 use tokio_postgres::{types::ToSql, NoTls};
 
 const VERIFICATIONS_TABLE: &str = "verifications";
@@ -78,7 +78,7 @@ impl VerificationsEntry {
 pub struct Database {
     // TODO: This RwLock is not the best design.
     // There would ideally be a connection pool.
-    client: RwLock<tokio_postgres::Client>,
+    client: deadpool_postgres::Pool,
 }
 
 impl VerificationsEntry {
@@ -105,7 +105,10 @@ pub struct PlatformEntry {
     pub username: String,
 }
 
-pub type DbResult<T> = Result<T, tokio_postgres::Error>;
+pub type DbResult<T> = anyhow::Result<T>;
+
+// TODO: Make this runtime param.
+const MAX_POOL_SIZE: usize = 16;
 
 impl Database {
     pub async fn connect(db_config: tokio_postgres::Config) -> DbResult<Self> {
@@ -121,9 +124,19 @@ impl Database {
             .batch_execute(include_str!("../resources/schema.sql"))
             .await?;
 
-        Ok(Self {
-            client: RwLock::new(client),
-        })
+        let manager_config = deadpool_postgres::ManagerConfig {
+            recycling_method: deadpool_postgres::RecyclingMethod::Verified,
+        };
+
+        let manager = deadpool_postgres::Manager::from_config(db_config, NoTls, manager_config);
+        let pool = deadpool_postgres::Pool::builder(manager)
+            .create_timeout(Some(std::time::Duration::from_secs(5)))
+            .recycle_timeout(Some(std::time::Duration::from_secs(5)))
+            .wait_timeout(Some(std::time::Duration::from_secs(5)))
+            .max_size(MAX_POOL_SIZE)
+            .runtime(deadpool_postgres::Runtime::Tokio1)
+            .build()?;
+        Ok(Self { client: pool })
     }
 
     /// Returns the verification for a given social media account if it exists.
@@ -132,7 +145,7 @@ impl Database {
         id: &str,
         platform: Platform,
     ) -> DbResult<Option<DbVerification>> {
-        let mut client = self.client.write().await;
+        let mut client = self.client.get().await?;
         let tx = client.transaction().await?;
 
         let table_name = platform.table_name();
@@ -214,7 +227,7 @@ impl Database {
     /// identified by a different credential holder ID this will return the
     /// user ID of the clashing user, and will not do any updates.
     pub async fn add_verification(&self, entry: VerificationsEntry) -> DbResult<Option<String>> {
-        let mut client = self.client.write().await;
+        let mut client = self.client.get().await?;
         let transaction = client.transaction().await?;
 
         // Clear pre-existing verifications with overlapping credentials;
@@ -293,7 +306,7 @@ impl Database {
         cred_id: &CredentialHolderId,
         platform: Platform,
     ) -> DbResult<bool> {
-        let mut client = self.client.write().await;
+        let mut client = self.client.get().await?;
         let transaction = client.transaction().await?;
 
         // Then delete the verification row.

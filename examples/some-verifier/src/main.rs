@@ -313,7 +313,7 @@ async fn add_verification(
         ))),
         Err(err) => {
             tracing::warn!("Error inserting entries: {err}");
-            Err(Error::Database(err.into()))
+            Err(Error::Database(err))
         }
     }
 }
@@ -359,7 +359,7 @@ async fn remove_verification(
         }
         Err(err) => {
             tracing::warn!("Error removing entries for {credential}: {err}");
-            Err(Error::Database(err.into()))
+            Err(Error::Database(err))
         }
     }
 }
@@ -554,8 +554,7 @@ async fn get_verification(
                         tracing::error!("Failed to look up user: {e}");
                     }
                     res.ok()
-                }
-                )
+                })
                 .collect();
 
             let result = Verification {
