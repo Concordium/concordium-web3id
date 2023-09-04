@@ -3,9 +3,8 @@ use concordium_rust_sdk::{
     web3id::{CredentialHolderId, Presentation, Web3IdAttribute},
 };
 use some_verifier_lib::{FullName, Platform};
-use std::fmt::Write;
 use tokio::sync::RwLock;
-use tokio_postgres::{types::ToSql, NoTls, Row};
+use tokio_postgres::{types::ToSql, NoTls};
 
 const VERIFICATIONS_TABLE: &str = "verifications";
 const PRESENTATION_COLUMN: &str = "presentation";
@@ -22,10 +21,6 @@ const USERNAME_COLUMN: &str = "username";
 trait DbName {
     /// The name of the corresponding table.
     fn table_name(&self) -> &'static str;
-    /// The username alias used when joined with other platforms
-    fn username_alias(&self) -> String;
-    /// The id alias used when joined with other platforms
-    fn id_alias(&self) -> String;
     fn insert_statement(&self) -> String;
 }
 
@@ -37,10 +32,6 @@ impl DbName for Platform {
         }
     }
 
-    fn username_alias(&self) -> String { format!("{}_{USERNAME_COLUMN}", self.table_name()) }
-
-    fn id_alias(&self) -> String { format!("{}_{ID_COLUMN}", self.table_name()) }
-
     fn insert_statement(&self) -> String {
         format!(
             "INSERT INTO {0} ({ID_COLUMN}, {CRED_ID_COLUMN}, {VERIFICATION_ID_COLUMN}, \
@@ -48,44 +39,6 @@ impl DbName for Platform {
              NOTHING RETURNING {ID_COLUMN}",
             self.table_name()
         )
-    }
-}
-
-fn verification_from_row(row: Row) -> DbVerification {
-    let full_name = row
-        .try_get(FIRST_NAME_COLUMN)
-        .and_then(|first_name| {
-            let last_name = row.try_get(LAST_NAME_COLUMN)?;
-            let full_name = FullName {
-                first_name,
-                last_name,
-            };
-            Ok(full_name)
-        })
-        .ok();
-
-    let accounts = Platform::SUPPORTED_PLATFORMS
-        .into_iter()
-        .map(|platform| {
-            let id = row.get(platform.id_alias().as_str());
-            let username = row.get(platform.username_alias().as_str());
-
-            DbAccount {
-                platform,
-                id,
-                username,
-            }
-        })
-        .collect();
-
-    let presentation = row.get::<_, serde_json::Value>(PRESENTATION_COLUMN);
-    let presentation =
-        serde_json::from_value(presentation).expect("presentations can be deserialized");
-
-    DbVerification {
-        accounts,
-        full_name,
-        presentation,
     }
 }
 
@@ -179,53 +132,82 @@ impl Database {
         id: &str,
         platform: Platform,
     ) -> DbResult<Option<DbVerification>> {
+        let mut client = self.client.write().await;
+        let tx = client.transaction().await?;
+
+        let table_name = platform.table_name();
+        let select_verification_id = format!(
+            "SELECT {VERIFICATION_ID_COLUMN}, {ID_COLUMN}, {USERNAME_COLUMN} FROM {table_name} \
+             WHERE {table_name}.id = $1"
+        );
+
+        let Some(platform_row) = tx.query_opt(&select_verification_id, &[&id]).await? else {
+            return Ok(None);
+        };
+        let ver_id: String = platform_row.try_get(VERIFICATION_ID_COLUMN)?;
+
         // The base statement
-        let mut statement =
-            format!("SELECT {PRESENTATION_COLUMN}, {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN}");
-
-        // Additional columns to select and joins to perform built from the supported
-        // platforms.
-        let (columns, joins) = Platform::SUPPORTED_PLATFORMS
-            .into_iter()
-            .map(|platform| {
-                let column = format!(
-                    "{0}.{USERNAME_COLUMN} AS {1}, {}.{ID_COLUMN} AS {2}",
-                    platform.table_name(),
-                    platform.username_alias(),
-                    platform.id_alias()
-                );
-                let join = format!(
-                    "JOIN {0} ON {0}.{VERIFICATION_ID_COLUMN}={VERIFICATIONS_TABLE}.{ID_COLUMN}",
-                    platform.table_name(),
-                );
-                (column, join)
+        let name_statement = format!(
+            "SELECT {PRESENTATION_COLUMN}, {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN} FROM {} WHERE \
+             {ID_COLUMN} = $1",
+            platform.table_name(),
+        );
+        let Some(name_row) = tx.query_opt(&name_statement, &[&ver_id]).await? else {
+            return Ok(None);
+        };
+        let first_name: Option<String> = name_row.try_get(FIRST_NAME_COLUMN)?;
+        let full_name = if let Some(first_name) = first_name {
+            let last_name: String = name_row.try_get(LAST_NAME_COLUMN)?;
+            Some(FullName {
+                first_name,
+                last_name,
             })
-            .fold(
-                (String::new(), String::new()),
-                |(mut columns, mut joins), (column, join)| {
-                    write!(columns, ", {column}").expect("can write to String");
-                    write!(joins, " {join}").expect("can write to String");
-                    (columns, joins)
-                },
-            );
+        } else {
+            None
+        };
 
-        statement.push_str(&columns);
-        statement.push_str(&format!(" FROM {VERIFICATIONS_TABLE}"));
-        statement.push_str(&joins);
-        statement.push_str(&format!(
-            " WHERE {}.{ID_COLUMN} = $1",
-            platform.table_name()
-        ));
+        let id = platform_row.try_get(ID_COLUMN)?;
+        let username = platform_row.try_get(USERNAME_COLUMN)?;
+        let acc = DbAccount {
+            platform,
+            id,
+            username,
+        };
 
-        let verification = self
-            .client
-            .read()
-            .await
-            .query_opt(&statement, &[&id])
-            .await
-            .map(|opt| opt.map(verification_from_row))?;
+        let mut accounts = vec![acc];
 
-        Ok(verification)
+        for p in Platform::SUPPORTED_PLATFORMS {
+            if p != platform {
+                let Some(row) = tx.query_opt(
+                    &format!(
+                        "SELECT {ID_COLUMN}, {USERNAME_COLUMN} FROM {} WHERE \
+                         {VERIFICATION_ID_COLUMN}=$1",
+                        p.table_name()
+                    ),
+                    &[&ver_id],
+                ).await? else {
+                    continue;
+                };
+                let id = row.try_get(ID_COLUMN)?;
+                let username = row.try_get(USERNAME_COLUMN)?;
+                let acc = DbAccount {
+                    platform: p,
+                    id,
+                    username,
+                };
+                accounts.push(acc);
+            }
+        }
+
+        let presentation = name_row.get::<_, serde_json::Value>(PRESENTATION_COLUMN);
+        let presentation =
+            serde_json::from_value(presentation).expect("presentations can be deserialized");
+
+        Ok(Some(DbVerification {
+            accounts,
+            full_name,
+            presentation,
+        }))
     }
 
     /// Attempt to add a verification. In case the user already exist and is

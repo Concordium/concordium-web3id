@@ -549,7 +549,13 @@ async fn get_verification(
             let accounts = future::join_all(futures)
                 .await
                 .into_iter()
-                .filter_map(|res| res.ok())
+                .filter_map(|res| {
+                    if let Err(e) = &res {
+                        tracing::error!("Failed to look up user: {e}");
+                    }
+                    res.ok()
+                }
+                )
                 .collect();
 
             let result = Verification {
