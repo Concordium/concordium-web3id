@@ -4,10 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { TESTNET, MAINNET, WithWalletConnector, WalletConnectionProps } from '@concordium/react-components';
 import Main from './Main';
 import { version } from '../package.json';
+import SelectNetwork from './SelectNetwork';
 
-/**
- * Connect to wallet, setup application state context, and render children when the wallet API is ready for use.
- */
 export default function Root() {
     const [isTestnet, setIsTestnet] = useState<boolean | undefined>(undefined);
     const [active, setActive] = useState(1);
@@ -78,23 +76,6 @@ export default function Root() {
 
     const stepHeaders = ['Select Network', 'Connect Wallet', 'Create MetaData Files', 'Deploy Issuer Smart Contract'];
 
-    const changeDropDownHandler = () => {
-        const e = document.getElementById('write') as HTMLSelectElement;
-        const sel = e.selectedIndex;
-        const { value } = e.options[sel];
-        if (value === 'Testnet') {
-            setIsTestnet(true);
-        } else if (value === 'Mainnet') {
-            setIsTestnet(false);
-        } else {
-            console.error('Select a network');
-            return;
-        }
-
-        const progressNext = document.getElementById('progress-next') as HTMLTextAreaElement;
-        progressNext.disabled = false;
-    };
-
     // Refresh accountInfo periodically.
     // eslint-disable-next-line consistent-return
     useEffect(() => {
@@ -124,23 +105,9 @@ export default function Root() {
                     </ul>
                 </div>
 
-                {active === 1 && (
-                    <>
-                        <label className="field">
-                            Select Network:
-                            <br />
-                            <br />
-                            <select name="write" id="write" onChange={changeDropDownHandler}>
-                                <option value="choose" disabled selected>
-                                    Choose
-                                </option>
-                                <option value="Testnet">Testnet</option>
-                                <option value="Mainnet">Mainnet</option>
-                            </select>
-                        </label>
-                        <br />
-                    </>
-                )}
+                {/* Step 1: Select Network */}
+                {active === 1 && <SelectNetwork setIsTestnet={setIsTestnet} />}
+                {/* Step 2, 3, and 4 */}
                 {(active === 2 || active === 3 || active === 4) && isTestnet !== undefined && (
                     <>
                         <WithWalletConnector network={isTestnet ? TESTNET : MAINNET}>
