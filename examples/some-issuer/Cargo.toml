@@ -25,4 +25,4 @@ concordium-rust-sdk = { version = "*", path = "../../deps/concordium-rust-sdk" }
 http = "0.2"
 tonic = { version = "0.8", features = ["tls", "tls-roots"] }
 handlebars = "4.3"
-futures = "0.3.28"
+futures = "0.3"

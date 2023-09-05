@@ -121,18 +121,6 @@ struct AppState {
     crypto_params:     Arc<CryptographicParameters>,
 }
 
-// TODO: Proper shutdown.
-
-impl AppState {
-    fn get_platform_for_contract(&self, address: &ContractAddress) -> Result<Platform, Error> {
-        match address {
-            addr if addr == &self.telegram_registry => Ok(Platform::Telegram),
-            addr if addr == &self.discord_registry => Ok(Platform::Discord),
-            _ => Err(Error::InvalidIssuer),
-        }
-    }
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app = App::parse();
@@ -326,7 +314,6 @@ async fn remove_verification(
     let Json(request) = request?;
     let creds_with_metadata = state.verify_request(&request).await?;
 
-    // Check the statements and add them to the database
     let Some((credential, &[])) = creds_with_metadata.credential_statements.split_first() else {
         return Err(Error::NotSingleStatement(creds_with_metadata.credential_statements.len()));
     };
@@ -364,57 +351,15 @@ async fn remove_verification(
     }
 }
 
-/// Verify the request. In particular this checks
-/// - all credentials mentioned in the request exist, and are active (in
-///   particular they have not expired)
-/// - all credentials are on the required network
-/// - cryptographic proofs are valid
-/// - the timestamp in the request is no more than 10min from present.
 impl AppState {
-    async fn verify_request(
-        &mut self,
-        request: &Request,
-    ) -> Result<web3id::Request<ArCurve, Web3IdAttribute>, Error> {
-        let Request { proof, timestamp } = request;
-
-        let delta = Utc::now().signed_duration_since(*timestamp);
-        if delta.num_minutes().abs() > 10 {
-            return Err(Error::InvalidTimestamp);
+    fn get_platform_for_contract(&self, address: &ContractAddress) -> Result<Platform, Error> {
+        match address {
+            addr if addr == &self.telegram_registry => Ok(Platform::Telegram),
+            addr if addr == &self.discord_registry => Ok(Platform::Discord),
+            _ => Err(Error::InvalidIssuer),
         }
-
-        // Check that the challenge is the hash of the supplied timestamp
-        let iso_time = timestamp.to_rfc3339_opts(SecondsFormat::Millis, true);
-        let mut hasher = Sha256::new();
-        hasher.update(iso_time.as_bytes());
-        let hash = hasher.finalize();
-
-        if proof.presentation_context[..] != hash[..] {
-            return Err(Error::InvalidChallenge);
-        }
-
-        let public_data = web3id::get_public_data(
-            &mut self.node_client,
-            self.network,
-            proof,
-            BlockIdentifier::LastFinal,
-        )
-        .await?;
-
-        // Check that all credentials are active at the time of the query
-        if !public_data
-            .iter()
-            .all(|cm| matches!(cm.status, CredentialStatus::Active))
-        {
-            return Err(Error::InactiveCredentials);
-        }
-        // And then verify the cryptographic proofs
-        let request = proof.verify(&self.crypto_params, public_data.iter().map(|cm| &cm.inputs))?;
-
-        Ok(request)
     }
-}
 
-impl AppState {
     pub(crate) fn proof_to_verifications_entry(
         &self,
         proof: &CredentialProof<ArCurve, Web3IdAttribute>,
@@ -517,6 +462,52 @@ impl AppState {
                 Ok(())
             }
         }
+    }
+
+    /// Verify the request. In particular this checks
+    /// - all credentials mentioned in the request exist, and are active (in
+    ///   particular they have not expired)
+    /// - all credentials are on the required network
+    /// - cryptographic proofs are valid
+    /// - the timestamp in the request is no more than 10min from present.
+    async fn verify_request(
+        &mut self,
+        request: &Request,
+    ) -> Result<web3id::Request<ArCurve, Web3IdAttribute>, Error> {
+        let Request { proof, timestamp } = request;
+
+        let delta = Utc::now().signed_duration_since(*timestamp);
+        if delta.num_minutes().abs() > 10 {
+            return Err(Error::InvalidTimestamp);
+        }
+
+        // Check that the challenge is the hash of the supplied timestamp
+        let iso_time = timestamp.to_rfc3339_opts(SecondsFormat::Millis, true);
+        let hash = Sha256::digest(iso_time.as_bytes());
+
+        if proof.presentation_context[..] != hash[..] {
+            return Err(Error::InvalidChallenge);
+        }
+
+        let public_data = web3id::get_public_data(
+            &mut self.node_client,
+            self.network,
+            proof,
+            BlockIdentifier::LastFinal,
+        )
+        .await?;
+
+        // Check that all credentials are active at the time of the query
+        if !public_data
+            .iter()
+            .all(|cm| matches!(cm.status, CredentialStatus::Active))
+        {
+            return Err(Error::InactiveCredentials);
+        }
+        // And then verify the cryptographic proofs
+        let request = proof.verify(&self.crypto_params, public_data.iter().map(|cm| &cm.inputs))?;
+
+        Ok(request)
     }
 }
 

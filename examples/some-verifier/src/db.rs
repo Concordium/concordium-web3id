@@ -76,9 +76,7 @@ impl VerificationsEntry {
 }
 
 pub struct Database {
-    // TODO: This RwLock is not the best design.
-    // There would ideally be a connection pool.
-    client: deadpool_postgres::Pool,
+    pool: deadpool_postgres::Pool,
 }
 
 impl VerificationsEntry {
@@ -91,7 +89,7 @@ impl VerificationsEntry {
         }
     }
 
-    fn insert_statement(&self) -> String {
+    fn insert_statement() -> String {
         format!(
             "INSERT INTO {VERIFICATIONS_TABLE} ({FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN}, \
              {PRESENTATION_COLUMN}) VALUES ($1, $2, $3) RETURNING id"
@@ -136,7 +134,7 @@ impl Database {
             .max_size(MAX_POOL_SIZE)
             .runtime(deadpool_postgres::Runtime::Tokio1)
             .build()?;
-        Ok(Self { client: pool })
+        Ok(Self { pool })
     }
 
     /// Returns the verification for a given social media account if it exists.
@@ -147,7 +145,7 @@ impl Database {
         platform: Platform,
     ) -> DbResult<Option<DbVerification>> {
         tracing::debug!("Looking up verifications.");
-        let mut client = self.client.get().await?;
+        let mut client = self.pool.get().await?;
         let tx = client.transaction().await?;
 
         let table_name = platform.table_name();
@@ -228,7 +226,7 @@ impl Database {
     /// identified by a different credential holder ID this will return the
     /// user ID of the clashing user, and will not do any updates.
     pub async fn add_verification(&self, entry: VerificationsEntry) -> DbResult<Option<String>> {
-        let mut client = self.client.get().await?;
+        let mut client = self.pool.get().await?;
         let transaction = client.transaction().await?;
 
         // Clear pre-existing verifications with overlapping credentials;
@@ -256,7 +254,7 @@ impl Database {
             }
         }
 
-        let insert_statement = entry.insert_statement();
+        let insert_statement = VerificationsEntry::insert_statement();
 
         let values: [&(dyn ToSql + Sync); 3] = [
             &entry.full_name.as_ref().map(|n| &n.first_name),
@@ -307,7 +305,7 @@ impl Database {
         cred_id: &CredentialHolderId,
         platform: Platform,
     ) -> DbResult<bool> {
-        let mut client = self.client.get().await?;
+        let mut client = self.pool.get().await?;
         let transaction = client.transaction().await?;
 
         // Then delete the verification row.

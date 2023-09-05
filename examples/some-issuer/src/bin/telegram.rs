@@ -203,6 +203,7 @@ async fn main() -> anyhow::Result<()> {
         use tracing_subscriber::prelude::*;
         let log_filter = tracing_subscriber::filter::Targets::new()
             .with_target(module_path!(), app.log_level)
+            .with_target("some_issuer", app.log_level)
             .with_target("tower_http", app.log_level);
         tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer())

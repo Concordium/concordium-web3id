@@ -67,6 +67,7 @@ impl IssuerState {
         Ok(())
     }
 
+    #[tracing::instrument(level = "debug", skip(self, credential))]
     pub async fn issue_credential(
         self,
         credential: &CredentialInfo,
@@ -98,12 +99,14 @@ impl IssuerState {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip(self, credential))]
     pub async fn register_credential(
         mut self,
         credential: &CredentialInfo,
         user_id: String,
         username: String,
     ) -> anyhow::Result<IssueResponse> {
+        tracing::debug!("Registering a credential.");
         let mut nonce_guard = self.nonce_counter.lock().await;
         // Compute expiry after acquiring the lock to make sure we don't wait
         // too long before acquiring the lock, rendering expiry problematic
