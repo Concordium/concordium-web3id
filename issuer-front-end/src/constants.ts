@@ -1,12 +1,6 @@
 import { BrowserWalletConnector, ephemeralConnectorType } from '@concordium/react-components';
 import moment from 'moment';
 
-export const EXAMPLE_CREDENTIAL_SCHEMA = `https://gist.githubusercontent.com/DOBEN/bfe30ecea16f7a3ea1b87aa40902b9ac/raw/a8ab51fca489d04710fb19fb7122bb283dba719a/gistfile1.txt`;
-
-export const EXAMPLE_CREDENTIAL_METADATA = `https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json`;
-
-export const EXAMPLE_ISSUER_METADATA = `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`;
-
 export const DEFAULT_CREDENTIAL_TYPES = ['VerifiableCredential', 'ConcordiumVerifiableCredential'];
 
 export function getBackendApi(): string {

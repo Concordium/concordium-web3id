@@ -1,6 +1,7 @@
+/* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
+import React, { useEffect, useState, ChangeEvent, PropsWithChildren, MouseEvent, useCallback } from 'react';
 import { saveAs } from 'file-saver';
 import {
     WalletConnectionProps,
@@ -18,10 +19,8 @@ import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 import { createNewIssuer } from './writing_to_blockchain';
 
 import {
-    EXAMPLE_CREDENTIAL_SCHEMA,
     BROWSER_WALLET,
     REFRESH_INTERVAL,
-    EXAMPLE_ISSUER_METADATA,
     EXAMPLE_CREDENTIAL_SCHEMA_OBJECT,
     EXAMPLE_ISSUER_METADATA_OBJECT,
     EXAMPLE_CREDENTIAL_METADATA_OBJECT,
@@ -83,8 +82,11 @@ async function addRevokationKey(
     revocationKeys: string[],
     setRevocationKeys: (value: string[]) => void,
     setRevoationKeyInput: (value: string) => void,
-    newRevocationKey: string
+    newRevocationKey: string | undefined
 ) {
+    if (newRevocationKey === undefined) {
+        throw new Error(`Set revocation key.`);
+    }
     if (revocationKeys.includes(newRevocationKey)) {
         throw new Error(`Duplicate revocation key: ${newRevocationKey}`);
     }
@@ -220,29 +222,23 @@ export default function Main(props: ConnectionProps) {
 
     const [isWaitingForTransaction, setWaitingForUser] = useState(false);
 
-    const [issuerKey, setIssuerKey] = useState<string | undefined>(
-        '8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82'
-    );
+    const [issuerKey, setIssuerKey] = useState<string | undefined>(undefined);
 
     const [accountBalance, setAccountBalance] = useState('');
     const [txHash, setTxHash] = useState('');
 
-    const [issuerMetaData, setIssuerMetaData] = useState(EXAMPLE_ISSUER_METADATA);
+    const [issuerMetaData, setIssuerMetaData] = useState<string | undefined>(undefined);
 
-    const [credentialType, setCredentialType] = useState('myCredentialType');
-    const [schemaCredential, setSchemaCredential] = useState<SchemaRef>({
-        schema_ref: {
-            hash: {
-                None: [],
-            },
-            url: EXAMPLE_CREDENTIAL_SCHEMA,
-        },
-    });
+    const [credentialType, setCredentialType] = useState<string | undefined>(undefined);
+    const [schemaCredential, setSchemaCredential] = useState<SchemaRef | undefined>(undefined);
 
     const [revocationKeys, setRevocationKeys] = useState<string[]>([]);
-    const [revocationKeyInput, setRevocationKeyInput] = useState(
-        '8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82'
-    );
+    const [revocationKeyInput, setRevocationKeyInput] = useState<string | undefined>(undefined);
+
+    const display = useCallback((event: MouseEvent<HTMLElement>) => {
+        const element = event.target as HTMLTextAreaElement;
+        alert(element.parentElement?.title || element.parentElement?.parentElement?.title || element.title);
+    }, []);
 
     const changeDropDownHandler = () => {
         const e = document.getElementById('write') as HTMLSelectElement;
@@ -492,13 +488,13 @@ export default function Main(props: ConnectionProps) {
                 {connection && !accountExistsOnNetwork && (
                     <>
                         <div className="alert alert-danger" role="alert">
-                            Please ensure that your browser wallet is connected to network `
-                            {walletConnectionProps.network.name}` and you have an account in that wallet that is
-                            connected to this website.
+                            Please ensure that your browser wallet is connected to network{' '}
+                            <strong>{walletConnectionProps.network.name}</strong> and you have an account in that wallet
+                            that is connected to this website.
                         </div>
                         <div className="alert alert-danger" role="alert">
-                            Alternatively, if you intend to use `{isTestnet ? 'mainnet' : 'testnet'}`, go back to step 1
-                            and switch the network button.
+                            Alternatively, if you intend to use <strong>{isTestnet ? 'mainnet' : 'testnet'}</strong>, go
+                            back to step 1 and switch the network button.
                         </div>
                     </>
                 )}
@@ -600,7 +596,7 @@ export default function Main(props: ConnectionProps) {
                                                     name="checkBox"
                                                     onChange={(event) => changeCheckBox(required, event)}
                                                 />
-                                                <label htmlFor="checkBox"> Is Type Required</label>
+                                                <label htmlFor="checkBox">&nbsp;Is Type Required</label>
                                             </div>
                                             <br />
                                             <br />
@@ -639,7 +635,9 @@ export default function Main(props: ConnectionProps) {
                                             {attributes.length !== 0 && (
                                                 <>
                                                     <div className="actionResultBox">
-                                                        <div>You have added the following `attributes`:</div>
+                                                        <div>
+                                                            You have added the following <strong>attributes</strong>:
+                                                        </div>
                                                         <div>
                                                             <pre className="largeText">
                                                                 {JSON.stringify(attributes, null, '\t')}
@@ -831,7 +829,19 @@ export default function Main(props: ConnectionProps) {
                             )}
                             {active === 4 && (
                                 <TestBox header="" note="">
-                                    Add <strong>IssuerKey</strong>:
+                                    <div
+                                        className="containerToolTip"
+                                        role="presentation"
+                                        onClick={display}
+                                        data-toggle="tooltip"
+                                        title="If you become an issuer, you will need to sign the credentials with your issuer private key at the backend before a credential that you issue can be added to a holder's wallet. For testing purposes on testnet, you can create a public-private key pair with an online tool (e.g. https://cyphr.me/ed25519_tool/ed.html) and use the public key as the isserKey here. The issuerKey should have a length of 64 characters e.g. `8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82`."
+                                    >
+                                        <div>
+                                            Add <strong>IssuerKey</strong>
+                                        </div>
+                                        <div className="infolink" />
+                                        &nbsp;:
+                                    </div>
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -842,7 +852,19 @@ export default function Main(props: ConnectionProps) {
                                     />
                                     <br />
                                     <br />
-                                    Add <strong>IssuerMetadata</strong>:
+                                    <div
+                                        className="containerToolTip"
+                                        role="presentation"
+                                        onClick={display}
+                                        data-toggle="tooltip"
+                                        title="The issuerMetadata file that you created in the previous step should be hosted on the web. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL. You should then input the URL where you host your issuerMetadata here (e.g. `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`)."
+                                    >
+                                        <div>
+                                            Add <strong>IssuerMetadata</strong>
+                                        </div>
+                                        <div className="infolink" />
+                                        &nbsp;:
+                                    </div>
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -853,7 +875,19 @@ export default function Main(props: ConnectionProps) {
                                     />
                                     <br />
                                     <br />
-                                    Add <strong>CredentialType</strong>:
+                                    <div
+                                        className="containerToolTip"
+                                        role="presentation"
+                                        onClick={display}
+                                        data-toggle="tooltip"
+                                        title="You should define a type for your credential (e.g. `myCredentialType` or `EducationalCertificate`)"
+                                    >
+                                        <div>
+                                            Add <strong>CredentialType</strong>
+                                        </div>
+                                        <div className="infolink" />
+                                        &nbsp;:
+                                    </div>
                                     <br />
                                     <input
                                         className="inputFieldStyle"
@@ -864,13 +898,25 @@ export default function Main(props: ConnectionProps) {
                                     />
                                     <br />
                                     <br />
-                                    Add <strong>CredentialSchema</strong>:
+                                    <div
+                                        className="containerToolTip"
+                                        role="presentation"
+                                        onClick={display}
+                                        data-toggle="tooltip"
+                                        title="The credentialSchema file that you created in the previous step should be hosted on the web. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL. You should then input the URL where you host your credentialSchema here (e.g. `https://gist.githubusercontent.com/DOBEN/bfe30ecea16f7a3ea1b87aa40902b9ac/raw/a8ab51fca489d04710fb19fb7122bb283dba719a/gistfile1.txt`)."
+                                    >
+                                        <div>
+                                            Add <strong>CredentialSchema</strong>
+                                        </div>
+                                        <div className="infolink" />
+                                        &nbsp;:
+                                    </div>
                                     <br />
                                     <input
                                         className="inputFieldStyle"
                                         id="credentialSchemaURL"
                                         type="text"
-                                        value={schemaCredential.schema_ref.url}
+                                        value={schemaCredential?.schema_ref.url}
                                         onChange={changeCredentialSchemaURLHandler}
                                     />
                                     <br />
@@ -878,7 +924,9 @@ export default function Main(props: ConnectionProps) {
                                     {revocationKeys.length !== 0 && (
                                         <>
                                             <div className="actionResultBox">
-                                                <div>You have added the following `revocationKeys`:</div>
+                                                <div>
+                                                    You have added the following <strong>revocationKeys</strong>:
+                                                </div>
                                                 <div>
                                                     {revocationKeys?.map((element) => (
                                                         <li key={element}>{element}</li>
@@ -906,8 +954,18 @@ export default function Main(props: ConnectionProps) {
                                             ).catch((err: Error) => setUserInputError2((err as Error).message));
                                         }}
                                     >
-                                        <div>
-                                            Add <strong>RevocationKeys</strong>:
+                                        <div
+                                            className="containerToolTip"
+                                            role="presentation"
+                                            onClick={display}
+                                            data-toggle="tooltip"
+                                            title="The keys inserted here can revoke any credential that you issue. You can leave this an empty array if you don't want to grant such permissions to special revocation keys. For testing purposes on testnet, you can create public-private key pairs with an online tool (e.g. https://cyphr.me/ed25519_tool/ed.html) and use the public keys here. Each revocationKey should have a length of 64 characters e.g. `8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82`."
+                                        >
+                                            <div>
+                                                Add <strong>RevocationKeys</strong>
+                                            </div>
+                                            <div className="infolink" />
+                                            &nbsp;:
                                         </div>
                                         <br />
                                         <Row>
@@ -945,23 +1003,12 @@ export default function Main(props: ConnectionProps) {
                                             setSmartContractIndex('');
                                             setWaitingForTransactionToFinialize(true);
 
-                                            const schemaCredentialURL = schemaCredential.schema_ref.url;
-
-                                            const exampleCredentialSchema = {
-                                                schema_ref: {
-                                                    hash: {
-                                                        None: [],
-                                                    },
-                                                    url: EXAMPLE_CREDENTIAL_SCHEMA,
-                                                },
-                                            };
-
                                             const tx = createNewIssuer(
                                                 connection,
                                                 account,
                                                 issuerMetaData,
-                                                issuerKey || '',
-                                                schemaCredentialURL === '' ? exampleCredentialSchema : schemaCredential,
+                                                issuerKey,
+                                                schemaCredential,
                                                 JSON.stringify(revocationKeys),
                                                 credentialType
                                             );

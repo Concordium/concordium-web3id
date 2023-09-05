@@ -9,14 +9,26 @@ import { CREDENTIAL_REGISTRY_BASE_64_SCHEMA, MODULE_REFERENCE_CREDENTIAL_REGISTR
 export async function createNewIssuer(
     connection: WalletConnection,
     account: string,
-    issuerMetaData: string,
-    issuerKey: string,
-    credentialSchema: object,
+    issuerMetaData: string | undefined,
+    issuerKey: string | undefined,
+    credentialSchema: object | undefined,
     revocationKeys: string,
-    credentialType: string
+    credentialType: string | undefined
 ) {
-    if (issuerKey === '') {
-        throw new Error(`Create issuer verifyKey in step 1`);
+    if (issuerMetaData === undefined) {
+        throw new Error(`Set issuerMetaData`);
+    }
+
+    if (credentialSchema === undefined) {
+        throw new Error(`Set credentialSchema`);
+    }
+
+    if (credentialType === undefined) {
+        throw new Error(`Set credentialType`);
+    }
+
+    if (issuerKey === undefined) {
+        throw new Error(`Set issuerKey`);
     }
 
     if (issuerKey.length !== 64) {
