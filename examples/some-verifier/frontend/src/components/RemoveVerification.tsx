@@ -93,9 +93,7 @@ export default function RemoveVerification({ isLocked }: Props) {
               ownership of an account included in the verification.
             </Col>
             <Form
-              onSubmit={(e) => {
-                void submit(e);
-              }}
+              onSubmit={submit}
               onChange={() => setError(undefined)}
               className="pt-3"
             >
@@ -129,7 +127,7 @@ export default function RemoveVerification({ isLocked }: Props) {
             </Form>
           </Row>
         </ModalBody>
-      </Modal >
+      </Modal>
     </>
   );
 }

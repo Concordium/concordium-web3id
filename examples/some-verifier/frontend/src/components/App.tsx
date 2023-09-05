@@ -22,14 +22,18 @@ function App() {
     <>
       <Row>
         <Col xs={12} md={7}>
-          <h1 className='mb-0'>Concordia</h1>
+          <h1 className="mb-0">Concordia</h1>
           <h4 className="mb-4">Social media verifier</h4>
         </Col>
         {!isAllowlisted && (
           <Col xs={12} md={5}>
-            <Button className='float-md-end d-inline-flex align-items-center mb-4' color="primary" onClick={connectToWallet}>
+            <Button
+              className="float-md-end d-inline-flex align-items-center mb-4"
+              color="primary"
+              onClick={connectToWallet}
+            >
               Connect to wallet
-              <SVG src={CcdLogo} className='ccd-logo ps-2' />
+              <SVG src={CcdLogo} className="ccd-logo ps-2" />
             </Button>
           </Col>
         )}

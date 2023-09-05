@@ -4,7 +4,7 @@
     background: $header-gradient;
   }
 
-  .accordion[aria-disabled="true"] & {
+  .accordion[aria-disabled='true'] & {
     opacity: 0.3;
     cursor: default;
   }

@@ -20,7 +20,13 @@ import telegramColor from '../assets/telegram-logo-color.svg';
 import discordColor from '../assets/discord-logo-color.svg';
 import { Config, Platform } from '../lib/types';
 import Issuer from './Issuer';
-import { FormEvent, PropsWithChildren, useEffect, useMemo, useState } from 'react';
+import {
+  FormEvent,
+  PropsWithChildren,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import _config from '../../config.json';
 import RemoveVerification from './RemoveVerification';
 import { hash, requestProof } from '../lib/util';
@@ -51,9 +57,7 @@ function Step({ children, step, text }: StepProps) {
       </AccordionHeader>
       <AccordionBody accordionId={step.toString()}>
         <Row className="gy-3">
-          <Col xs={12}>
-            {text}
-          </Col>
+          <Col xs={12}>{text}</Col>
           <Col xs={12}>{children}</Col>
         </Row>
       </AccordionBody>
@@ -141,7 +145,7 @@ export default function Verify({ isLocked }: Props) {
     window.history.replaceState(null, '', url);
   };
 
-  const prove = (event: FormEvent) => {
+  const prove = async (event: FormEvent) => {
     event.preventDefault();
     if (checkedCount < 2) {
       setProofError('Please select at least two options.');
@@ -151,7 +155,7 @@ export default function Verify({ isLocked }: Props) {
     if (telegramChecked) issuers.push(config.issuers[Platform.Telegram]);
     if (discordChecked) issuers.push(config.issuers[Platform.Discord]);
 
-    (async () => {
+    try {
       const timestamp = new Date().toISOString();
       const challenge = await hash(timestamp);
       const proof = await requestProof(issuers, challenge, {
@@ -176,10 +180,10 @@ export default function Verify({ isLocked }: Props) {
 
       setProofError('');
       setOpen('2');
-    })().catch((error) => {
+    } catch (e) {
       setProofError('Proof creation failed.');
-      console.error(error);
-    });
+      console.error(e);
+    }
   };
 
   return (
