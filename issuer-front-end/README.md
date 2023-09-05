@@ -28,8 +28,6 @@ cd ./issuer-front-end
 
 -   Run `yarn install` in this folder.
 
-These extra install steps are needed because some packages have to be built from the submodule link.
-
 To start the front end locally, do the following:
 
 -   Run `yarn build` in this folder

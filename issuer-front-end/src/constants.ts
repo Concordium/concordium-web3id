@@ -3,13 +3,6 @@ import moment from 'moment';
 
 export const DEFAULT_CREDENTIAL_TYPES = ['VerifiableCredential', 'ConcordiumVerifiableCredential'];
 
-export function getBackendApi(): string {
-    if (process.env.BACKEND_API) {
-        return process.env.BACKEND_API;
-    }
-    return window.location.origin;
-}
-
 export const EXAMPLE_ISSUER_METADATA_OBJECT = {
     name: 'Concordium',
     icon: {

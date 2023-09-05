@@ -41,8 +41,6 @@ cd ./issuer-front-end
 
 -   Run `yarn install` in this folder.
 
-These extra install steps are needed because some packages have to be built from the submodule link.
-
 To start the front end locally, do the following:
 
 -   Set the environment variable `BACKEND_API` to the address where the backend is started, e.g., `http://localhost:3000`
