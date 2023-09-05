@@ -78,6 +78,13 @@ struct App {
     )]
     db_config:         tokio_postgres::Config,
     #[clap(
+        long = "db-pool-size",
+        default_value = "16",
+        help = "Maximum size of the database connection pool.",
+        env = "SOME_VERIFIER_DB_POOL_SIZE"
+    )]
+    pool_size:         usize,
+    #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
@@ -138,7 +145,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     tracing::info!("Connecting to database...");
-    let database = Database::connect(app.db_config).await?;
+    let database = Database::connect(app.db_config, app.pool_size).await?;
 
     let endpoint = if app
         .endpoint

@@ -105,11 +105,8 @@ pub struct PlatformEntry {
 
 pub type DbResult<T> = anyhow::Result<T>;
 
-// TODO: Make this runtime param.
-const MAX_POOL_SIZE: usize = 16;
-
 impl Database {
-    pub async fn connect(db_config: tokio_postgres::Config) -> DbResult<Self> {
+    pub async fn connect(db_config: tokio_postgres::Config, pool_size: usize) -> DbResult<Self> {
         let (client, connection) = db_config.connect(NoTls).await?;
 
         tokio::spawn(async move {
@@ -131,7 +128,7 @@ impl Database {
             .create_timeout(Some(std::time::Duration::from_secs(5)))
             .recycle_timeout(Some(std::time::Duration::from_secs(5)))
             .wait_timeout(Some(std::time::Duration::from_secs(5)))
-            .max_size(MAX_POOL_SIZE)
+            .max_size(pool_size)
             .runtime(deadpool_postgres::Runtime::Tokio1)
             .build()?;
         Ok(Self { pool })
