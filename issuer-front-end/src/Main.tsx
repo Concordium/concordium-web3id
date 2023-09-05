@@ -26,11 +26,6 @@ import {
     EXAMPLE_CREDENTIAL_METADATA_OBJECT,
 } from './constants';
 
-type TestBoxProps = PropsWithChildren<{
-    header: string;
-    note: string;
-}>;
-
 type CredentialSchema = {
     name: string;
     description: string;
@@ -67,13 +62,11 @@ type SchemaRef = {
     };
 };
 
-function TestBox({ header, children, note }: TestBoxProps) {
+function TestBox({ children }: PropsWithChildren) {
     return (
         <fieldset className="testBox">
-            <legend>{header}</legend>
             <div className="testBoxFields">{children}</div>
             <br />
-            <p className="note">{note}</p>
         </fieldset>
     );
 }
@@ -85,7 +78,7 @@ async function addRevokationKey(
     newRevocationKey: string | undefined
 ) {
     if (newRevocationKey === undefined) {
-        throw new Error(`Set revocation key.`);
+        throw new Error(`Set revocation key`);
     }
     if (revocationKeys.includes(newRevocationKey)) {
         throw new Error(`Duplicate revocation key: ${newRevocationKey}`);
@@ -216,7 +209,8 @@ export default function Main(props: ConnectionProps) {
 
     const [viewErrorAccountBalance, setViewErrorAccountBalance] = useState('');
     const [transactionError, setTransactionError] = useState('');
-    const [userInputError2, setUserInputError2] = useState('');
+    const [userInputErrorAttributes, setUserInputErrorAttributes] = useState('');
+    const [userInputError, setUserInputError] = useState('');
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
 
@@ -530,7 +524,21 @@ export default function Main(props: ConnectionProps) {
                             )}
                             {active === 3 && (
                                 <>
-                                    <TestBox header="" note="">
+                                    <TestBox>
+                                        <div
+                                            className="containerToolTip"
+                                            role="presentation"
+                                            onClick={display}
+                                            data-toggle="tooltip"
+                                            title="The credentialSchema is a JSON object that you will create in this step. You should host this JSON object somewhere publicly on the web so it is available via a URL. You will use the URL in step 4. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL (e.g. `https://gist.githubusercontent.com/DOBEN/bfe30ecea16f7a3ea1b87aa40902b9ac/raw/a8ab51fca489d04710fb19fb7122bb283dba719a/gistfile1.txt`)."
+                                        >
+                                            <div>
+                                                <h3>CredentialSchema</h3>
+                                            </div>
+                                            <div className="infolink" />
+                                        </div>
+                                        <br />
+                                        <br />
                                         Add <strong>CredentialName</strong>:
                                         <br />
                                         <input
@@ -553,7 +561,7 @@ export default function Main(props: ConnectionProps) {
                                         />
                                         <br />
                                         <br />
-                                        <TestBox header="" note="">
+                                        <TestBox>
                                             Add <strong>AttributeTitle</strong>:
                                             <br />
                                             <input
@@ -604,7 +612,7 @@ export default function Main(props: ConnectionProps) {
                                                 className="btn btn-primary"
                                                 type="button"
                                                 onClick={() => {
-                                                    setUserInputError2('');
+                                                    setUserInputErrorAttributes('');
                                                     addAttribute(
                                                         attributes,
                                                         setAttributes,
@@ -613,7 +621,9 @@ export default function Main(props: ConnectionProps) {
                                                         required,
                                                         attributeType,
                                                         credentialSchema
-                                                    ).catch((err: Error) => setUserInputError2((err as Error).message));
+                                                    ).catch((err: Error) =>
+                                                        setUserInputErrorAttributes((err as Error).message)
+                                                    );
                                                 }}
                                             >
                                                 Add Attribute
@@ -626,7 +636,7 @@ export default function Main(props: ConnectionProps) {
                                                     setAttributeTitle('');
                                                     setAttributeDescription('');
                                                     setAttributeType(undefined);
-                                                    setUserInputError2('');
+                                                    setUserInputErrorAttributes('');
                                                 }}
                                             >
                                                 Clear All Attributes
@@ -648,9 +658,9 @@ export default function Main(props: ConnectionProps) {
                                                     <br />
                                                 </>
                                             )}
-                                            {userInputError2 !== '' && (
+                                            {userInputErrorAttributes !== '' && (
                                                 <div className="alert alert-danger" role="alert">
-                                                    Error: {userInputError2}.
+                                                    Error: {userInputErrorAttributes}.
                                                 </div>
                                             )}
                                         </TestBox>
@@ -688,7 +698,21 @@ export default function Main(props: ConnectionProps) {
                                             </pre>
                                         )}
                                     </TestBox>
-                                    <TestBox header="" note="">
+                                    <TestBox>
+                                        <div
+                                            className="containerToolTip"
+                                            role="presentation"
+                                            onClick={display}
+                                            data-toggle="tooltip"
+                                            title="The credentialMetadata is a JSON object that you will create in this step. You should host this JSON object somewhere publicly on the web so it is available via a URL. You will use the URL when issuing credentials. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL (e.g. `https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json`)."
+                                        >
+                                            <div>
+                                                <h3>CredentialMetadata</h3>
+                                            </div>
+                                            <div className="infolink" />
+                                        </div>
+                                        <br />
+                                        <br />
                                         Add <strong>Title</strong>:
                                         <br />
                                         <input
@@ -752,7 +776,21 @@ export default function Main(props: ConnectionProps) {
                                             </pre>
                                         )}
                                     </TestBox>
-                                    <TestBox header="" note="">
+                                    <TestBox>
+                                        <div
+                                            className="containerToolTip"
+                                            role="presentation"
+                                            onClick={display}
+                                            data-toggle="tooltip"
+                                            title="The issuerMetadata is a JSON object that you will create in this step. You should host this JSON object somewhere publicly on the web so it is available via a URL. You will use the URL in step 4. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL (e.g. `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`)."
+                                        >
+                                            <div>
+                                                <h3>IssuerMetadata</h3>
+                                            </div>
+                                            <div className="infolink" />
+                                        </div>
+                                        <br />
+                                        <br />
                                         Add <strong>IssuerName</strong>:
                                         <br />
                                         <input
@@ -828,7 +866,7 @@ export default function Main(props: ConnectionProps) {
                                 </>
                             )}
                             {active === 4 && (
-                                <TestBox header="" note="">
+                                <TestBox>
                                     <div
                                         className="containerToolTip"
                                         role="presentation"
@@ -937,21 +975,21 @@ export default function Main(props: ConnectionProps) {
                                             <br />
                                         </>
                                     )}
-                                    {userInputError2 !== '' && (
+                                    {userInputError !== '' && (
                                         <div className="alert alert-danger" role="alert">
-                                            Error: {userInputError2}.
+                                            Error: {userInputError}.
                                         </div>
                                     )}
                                     <Form
                                         onSubmit={(e) => {
                                             e.preventDefault();
-                                            setUserInputError2('');
+                                            setUserInputError('');
                                             addRevokationKey(
                                                 revocationKeys,
                                                 setRevocationKeys,
                                                 setRevocationKeyInput,
                                                 revocationKeyInput
-                                            ).catch((err: Error) => setUserInputError2((err as Error).message));
+                                            ).catch((err: Error) => setUserInputError((err as Error).message));
                                         }}
                                     >
                                         <div
@@ -986,7 +1024,7 @@ export default function Main(props: ConnectionProps) {
                                                     onClick={() => {
                                                         setRevocationKeys([]);
                                                         setRevocationKeyInput('');
-                                                        setUserInputError2('');
+                                                        setUserInputError('');
                                                     }}
                                                 >
                                                     Clear
@@ -1012,9 +1050,10 @@ export default function Main(props: ConnectionProps) {
                                                 JSON.stringify(revocationKeys),
                                                 credentialType
                                             );
-                                            tx.then(setTxHash).catch((err: Error) =>
-                                                setTransactionError((err as Error).message)
-                                            );
+                                            tx.then(setTxHash).catch((err: Error) => {
+                                                setTransactionError((err as Error).message);
+                                                setWaitingForTransactionToFinialize(false);
+                                            });
                                         }}
                                     >
                                         Create New Issuer
