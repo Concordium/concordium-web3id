@@ -1,0 +1,23 @@
+// Colors
+$mineral-blue: #48A2AE;
+$ocean-blue: #005A78;
+$dark-blue: #052535;
+
+// Bootstrap overrides
+$cyan: $mineral-blue;
+$blue: #2485DF;
+$red: #DC5050;
+$green: #33C364;
+$yellow: #FBCD29;
+$purple: #7939BA;
+
+$primary: $mineral-blue;
+$secondary: $ocean-blue;
+
+$min-contrast-ratio: 2;
+$enable-gradients: true;
+
+// Gradients
+$button-gradient: linear-gradient(95deg, #005A78 -3.22%, #48A2AE 87.51%);
+$header-gradient: linear-gradient(91deg, #B6DADF 13.38%, #DAECEF 93.45%);
+$bg-gradient: linear-gradient(180deg, #F2F2F2 0%, #FFF 100%);

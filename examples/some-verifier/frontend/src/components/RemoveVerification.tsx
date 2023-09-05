@@ -2,8 +2,6 @@ import { FormEvent, useState } from 'react';
 import {
   Alert,
   Button,
-  Card,
-  CardBody,
   Col,
   Form,
   FormFeedback,
@@ -20,7 +18,11 @@ import { hash, requestProof } from '../lib/util';
 import _config from '../../config.json';
 const config = _config as Config;
 
-export default function RemoveVerification() {
+interface Props {
+  isLocked: boolean;
+}
+
+export default function RemoveVerification({ isLocked }: Props) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -79,26 +81,24 @@ export default function RemoveVerification() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} color="link">
+      <Button onClick={() => setOpen(true)} color="link" disabled={isLocked}>
         Remove verification?
       </Button>
       <Modal isOpen={open} toggle={toggle} onClosed={reset}>
         <ModalHeader toggle={toggle}>Verificaton removal</ModalHeader>
         <ModalBody>
-          <Card>
-            <CardBody>
+          <Row>
+            <Col md={12}>
               To remove your concordia verification, you must first prove
               ownership of an account included in the verification.
-            </CardBody>
-          </Card>
-          <Form
-            onSubmit={(e) => {
-              void submit(e);
-            }}
-            onChange={() => setError(undefined)}
-            className="pt-3"
-          >
-            <Row>
+            </Col>
+            <Form
+              onSubmit={(e) => {
+                void submit(e);
+              }}
+              onChange={() => setError(undefined)}
+              className="pt-3"
+            >
               <Col md={12}>
                 <FormGroup>
                   <Label for="platform">Select platform</Label>
@@ -126,10 +126,10 @@ export default function RemoveVerification() {
                   </Button>
                 )}
               </Col>
-            </Row>
-          </Form>
+            </Form>
+          </Row>
         </ModalBody>
-      </Modal>
+      </Modal >
     </>
   );
 }

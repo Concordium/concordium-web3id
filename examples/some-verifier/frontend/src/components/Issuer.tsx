@@ -3,7 +3,6 @@ import {
   detectConcordiumProvider,
 } from '@concordium/browser-wallet-api-helpers';
 import TelegramLoginButton, { TelegramUser } from 'react-telegram-login';
-import '../scss/Issuer.scss';
 import { useEffect, useState } from 'react';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import { ListGroup, ListGroupItem, ListGroupItemHeading } from 'reactstrap';

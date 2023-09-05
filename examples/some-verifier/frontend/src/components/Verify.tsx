@@ -4,8 +4,6 @@ import {
   AccordionHeader,
   AccordionItem,
   Button,
-  Card,
-  CardBody,
   Col,
   Form,
   FormGroup,
@@ -22,7 +20,7 @@ import telegramColor from '../assets/telegram-logo-color.svg';
 import discordColor from '../assets/discord-logo-color.svg';
 import { Config, Platform } from '../lib/types';
 import Issuer from './Issuer';
-import { FormEvent, PropsWithChildren, useMemo, useState } from 'react';
+import { FormEvent, PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import _config from '../../config.json';
 import RemoveVerification from './RemoveVerification';
 import { hash, requestProof } from '../lib/util';
@@ -53,12 +51,10 @@ function Step({ children, step, text }: StepProps) {
       </AccordionHeader>
       <AccordionBody accordionId={step.toString()}>
         <Row className="gy-3">
-          <Col md={12}>
-            <Card>
-              <CardBody>{text}</CardBody>
-            </Card>
+          <Col xs={12}>
+            {text}
           </Col>
-          <Col>{children}</Col>
+          <Col xs={12}>{children}</Col>
         </Row>
       </AccordionBody>
     </AccordionItem>
@@ -98,7 +94,11 @@ function PlatformOption({
   );
 }
 
-export default function Verify() {
+interface Props {
+  isLocked: boolean;
+}
+
+export default function Verify({ isLocked }: Props) {
   const query = useMemo(() => new URLSearchParams(window.location.search), []);
   const [telegramIssued, setTelegramIssued] = useState(
     query.get(Platform.Telegram) === 'true',
@@ -107,7 +107,7 @@ export default function Verify() {
     query.get(Platform.Discord) === 'true',
   );
 
-  const [open, setOpen] = useState('0');
+  const [open, setOpen] = useState<string>('');
   const [proofError, setProofError] = useState('');
 
   const [telegramChecked, setTelegramChecked] = useState(telegramIssued);
@@ -119,6 +119,12 @@ export default function Verify() {
     if (count >= 2) setProofError('');
     return count;
   }, [telegramChecked, discordChecked, fullNameChecked]);
+
+  useEffect(() => {
+    if (!isLocked) {
+      setOpen('0');
+    }
+  }, [isLocked]);
 
   const issueTelegram = () => {
     setTelegramChecked(true);
@@ -180,7 +186,7 @@ export default function Verify() {
     <>
       {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
       {/* @ts-ignore workaround since toggle is not present on Accordion for some reason */}
-      <Accordion open={open} toggle={setOpen}>
+      <Accordion open={open} toggle={setOpen} aria-disabled={isLocked}>
         <Step
           step={VerificationStep.Issue}
           text="Start by getting Web3 ID credentials for your social media accounts.
@@ -196,8 +202,8 @@ export default function Verify() {
               />
             </Col>
             <Col md={12}>
-              <Button color="primary" onClick={() => setOpen('1')}>
-                Done
+              <Button color="secondary" onClick={() => setOpen('1')}>
+                Continue
               </Button>
             </Col>
           </Row>
@@ -241,8 +247,8 @@ export default function Verify() {
                 </Col>
               )}
               <Col xs={12}>
-                <Button color="primary" type="submit">
-                  Prove
+                <Button color="secondary" type="submit">
+                  Verify
                 </Button>
               </Col>
             </Row>
@@ -278,7 +284,7 @@ export default function Verify() {
           </Row>
         </Step>
       </Accordion>
-      <RemoveVerification />
+      <RemoveVerification isLocked={isLocked} />
     </>
   );
 }
