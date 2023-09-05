@@ -72,13 +72,13 @@ docker build -f issuer-front-end/Dockerfile -t issuer-front-end:3.0.0 .
 To run the docker image run the following command:
 
 ```
-docker run -it -p 8080:8080 --name web issuer-front-end:$PROJECT_VERSION
+docker run -it -d -p 8080:8080 --name web issuer-front-end:$PROJECT_VERSION
 ```
 
 e.g.
 
 ```
-docker run -it -p 8080:8080 --name web issuer-front-end:3.0.0
+docker run -it -d -p 8080:80 --name web issuer-front-end:3.0.0
 ```
 
 Open http://127.0.0.1:8080 in your browser.
