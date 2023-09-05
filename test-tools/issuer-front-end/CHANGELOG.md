@@ -1,5 +1,10 @@
 ## Unreleased changes
 
+## 1.0.10
+
+- Support new date-time format for browser wallet 1.1.6.
+- Allow sending attributes where the attribute type is not recognized.
+
 ## 1.0.9
 
 - Change to use a hexString for the auxiliary data.

@@ -58,30 +58,7 @@ type SchemaRef = {
 };
 
 interface Attributes {
-    [key: string]: string | bigint | Date;
-}
-
-interface AttributeJSON {
     [key: string]: string | bigint | { type: 'date-time'; timestamp: string };
-}
-
-// Transform attributes into the JSON format where date-time attributes
-// are represented as an object.
-function transformAttributes(attributes: Attributes): AttributeJSON {
-    const r: AttributeJSON = {};
-    const attrs = Object.keys(attributes);
-    attrs.forEach((key) => {
-        const v = attributes[key];
-        if (v instanceof Date) {
-            r[key] = {
-                type: 'date-time',
-                timestamp: v.toISOString(),
-            };
-        } else {
-            r[key] = v;
-        }
-    });
-    return r;
 }
 
 function attributeInputPlaceHolder(details: AttributeDetails): string {
@@ -181,23 +158,24 @@ function parseAttributesFromForm(
         } else if (obj.value !== undefined) {
             if (obj.type === 'string') {
                 attributes[obj.tag] = obj.value;
-            } else if (obj.type === 'number' || obj.type == 'integer') {
+            } else if (obj.type === 'number' || obj.type === 'integer') {
                 attributes[obj.tag] = BigInt(obj.value);
             } else if (obj.type === 'date-time') {
                 const date = new Date(obj.value.trim());
                 if (Number.isNaN(date.getTime())) {
                     const msg = `Unable to parse string "${obj.value.trim()}" as a date.`;
                     setParsingError(msg);
-                    // throw new Error(msg);
                 }
-                attributes[obj.tag] = date;
+                attributes[obj.tag] = {
+                    type: 'date-time',
+                    timestamp: obj.value.trim(),
+                };
             } else {
                 setParsingError(
                     `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number/integer and date-time are supported.`
                 );
-                throw new Error(
-                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number/integer and date-time are supported.`
-                );
+                // still set the value so that we can test sending bogus data to the wallet.
+                attributes[obj.tag] = obj.value;
             }
         }
     });
@@ -935,7 +913,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 );
 
                                                 const commitments = {
-                                                    attributes: transformAttributes(attributes),
+                                                    attributes,
                                                     holderId: publicKeyOfCredential,
                                                     issuer: {
                                                         index: credentialRegistryContratIndex,
@@ -1484,7 +1462,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 // Issuer does not register credential here but instead when the next button is pressed.
 
                                                 const commitments = {
-                                                    attributes: transformAttributes(attributes),
+                                                    attributes,
                                                     holderId: publicKeyOfCredential,
                                                     issuer: {
                                                         index: credentialRegistryContratIndex,
@@ -1992,7 +1970,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 );
 
                                                 const commitments = {
-                                                    attributes: transformAttributes(attributes),
+                                                    attributes,
                                                     holderId: publicKeyOfCredential,
                                                     issuer: {
                                                         index: credentialRegistryContratIndex,
