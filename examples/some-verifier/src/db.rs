@@ -140,11 +140,13 @@ impl Database {
     }
 
     /// Returns the verification for a given social media account if it exists.
+    #[tracing::instrument(level = "debug", skip(self))]
     pub async fn get_verification(
         &self,
         id: &str,
         platform: Platform,
     ) -> DbResult<Option<DbVerification>> {
+        tracing::debug!("Looking up verifications.");
         let mut client = self.client.get().await?;
         let tx = client.transaction().await?;
 
@@ -157,13 +159,12 @@ impl Database {
         let Some(platform_row) = tx.query_opt(&select_verification_id, &[&id]).await? else {
             return Ok(None);
         };
-        let ver_id: String = platform_row.try_get(VERIFICATION_ID_COLUMN)?;
+        let ver_id: i64 = platform_row.try_get(VERIFICATION_ID_COLUMN)?;
 
         // The base statement
         let name_statement = format!(
-            "SELECT {PRESENTATION_COLUMN}, {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN} FROM {} WHERE \
-             {ID_COLUMN} = $1",
-            platform.table_name(),
+            "SELECT {PRESENTATION_COLUMN}, {FIRST_NAME_COLUMN}, {LAST_NAME_COLUMN} FROM \
+             {VERIFICATIONS_TABLE} WHERE {ID_COLUMN} = $1"
         );
         let Some(name_row) = tx.query_opt(&name_statement, &[&ver_id]).await? else {
             return Ok(None);
