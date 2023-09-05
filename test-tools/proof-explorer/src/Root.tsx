@@ -416,13 +416,13 @@ function AttributeInRange({ setStatement, attributeOptions }: RevealAttributePro
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
         let lower_bound = lower[0];
-        if (lower[1] == 'number') {
+        if (lower[1] === 'number' || lower[1] === 'integer') {
             lower_bound = BigInt(lower[0]);
         } else if (lower[1] == 'date-time') {
             lower_bound = new Date(lower[0].trim());
         }
         let upper_bound = upper[0];
-        if (upper[1] == 'number') {
+        if (upper[1] === 'number' || upper[1] === 'integer') {
             upper_bound = BigInt(upper[0]);
         } else if (upper[1] == 'date-time') {
             upper_bound = new Date(upper[0].trim());
@@ -488,7 +488,7 @@ function AttributeInSet({ member, setStatement, attributeOptions }: SetMembershi
     };
 
     let proof_set = set.split(',').map((s) => s.trim());
-    if (selected[1] == 'number') {
+    if (selected[1] === 'number' || selected[1] === 'integer') {
         proof_set = proof_set.map((x) => BigInt(x));
     } else if (selected[1] == 'date-time') {
         proof_set = proof_set.map((x) => new Date(x.trim()));
