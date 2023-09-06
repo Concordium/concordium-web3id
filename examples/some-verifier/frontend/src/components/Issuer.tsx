@@ -7,13 +7,11 @@ import { useContext, useEffect, useState } from 'react';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import { ListGroup, ListGroupItem, ListGroupItemHeading } from 'reactstrap';
 import { nanoid } from 'nanoid';
-import { Config, Issuer, Platform } from '../lib/types';
-import _config from '../../config.json';
+import { Issuer, Platform } from '../lib/types';
 import { appState } from '../lib/app-state';
-const config = _config as Config;
 
-function getContractDid(issuer: Issuer): string {
-  return `$did:ccd:${issuer.chain}:sci:${issuer.index}:${issuer.subindex}/issuer`;
+function getContractDid(network: string, issuer: Issuer): string {
+  return `$did:ccd:${network}:sci:${issuer.index}:${issuer.subindex}/issuer`;
 }
 
 declare type NotOptional<T> = {
@@ -51,7 +49,7 @@ function Issuer({
   // that sends a 'message' event back with the user id and username
   useEffect(() => {
     const onDiscordWindowMessage = async (event: MessageEvent) => {
-      if (event.origin !== config.issuers.discord.url) return;
+      if (event.origin + '/' !== config.issuers.discord.url) return;
 
       const {
         userId: id,
@@ -121,7 +119,7 @@ function Issuer({
           <span className="text-info">Transaction sent, please wait...</span>
         ) : (
           <TelegramLoginButton
-            botName="ConcordiaTestBot"
+            botName={config.telegramBotName}
             dataOnauth={onTelegramAuth}
             cornerRadius={3}
           />
@@ -203,17 +201,17 @@ async function requestCredential(
       'ConcordiumVerifiableCredential',
       'SoMeCredential',
     ],
-    issuer: getContractDid(issuer),
+    issuer: getContractDid(config.network, issuer),
     issuanceDate: new Date().toISOString(),
     credentialSubject: { attributes: { userId: id.toString(), username } },
     credentialSchema: {
-      id: `${issuer.url}/json-schemas/JsonSchema2023-${req.platform}.json`,
+      id: `${issuer.url}json-schemas/JsonSchema2023-${req.platform}.json`,
       type: 'JsonSchema2023',
     },
   };
 
   const metadataUrl = {
-    url: issuer.url + '/json-schemas/credential-metadata.json',
+    url: issuer.url + 'json-schemas/credential-metadata.json',
   };
 
   let txHash: string | undefined;
@@ -231,7 +229,7 @@ async function requestCredential(
     };
     if (req.platform === Platform.Telegram) body.telegramUser = req.user;
 
-    const endpoint = issuer.url + '/credential';
+    const endpoint = issuer.url + 'credential';
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -279,7 +277,7 @@ function openDiscordVerification() {
 
   const params = new URLSearchParams({
     client_id: config.discordClientId,
-    redirect_uri: config.issuers.discord.url + '/discord-oauth2',
+    redirect_uri: config.issuers.discord.url + 'discord-oauth2',
     response_type: 'code',
     scope: 'identify',
     state: oAuth2State,
