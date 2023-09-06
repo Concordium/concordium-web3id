@@ -7,10 +7,10 @@
         "node": ">=16.x"
     },
     "dependencies": {
-        "@concordium/browser-wallet-api-helpers": "2.6.0",
+        "@concordium/browser-wallet-api-helpers": "2.7.0",
         "@concordium/react-components": "^0.3.0",
         "@concordium/wallet-connectors": "^0.3.1",
-        "@concordium/web-sdk": "^6.1.1",
+        "@concordium/web-sdk": "^6.3.0",
         "@walletconnect/types": "^2.1.4",
         "eslint": "^8.37.0",
         "file-saver": "^2.0.5",
@@ -22,7 +22,7 @@
         "react-switch": "^7.0.0"
     },
     "resolutions": {
-        "@concordium/web-sdk": "^6.1.1"
+        "@concordium/web-sdk": "^6.3.0"
     },
     "devDependencies": {
         "@craftamap/esbuild-plugin-html": "^0.4.0",
