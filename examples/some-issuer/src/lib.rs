@@ -16,6 +16,7 @@ use concordium_rust_sdk::{
     },
     web3id::{did::Network, SignedCommitments, Web3IdAttribute, Web3IdCredential},
 };
+use dashmap::DashSet;
 use reqwest::{StatusCode, Url};
 use serde::Serialize;
 use std::{collections::BTreeMap, sync::Arc};
@@ -32,6 +33,69 @@ pub struct IssuerState {
     pub max_register_energy:   Energy,
     pub metadata_url:          Arc<Url>,
     pub credential_schema_url: Arc<str>,
+    pub rate_limiter:          Arc<RateLimiter>,
+}
+
+/// Remembers user ids of issued credentials up to a fixed capacity and how many
+/// times credentials have been issued for the same ids.
+///
+/// The implementation uses the reference count of [Arc](std::sync::Arc) to
+/// count the number of credentials that have been issued. So if the queue is at
+/// capacity, the last `Arc` is removed, decreasing the reference count and
+/// allowing one more credential for that id to be issued.
+pub struct RateLimiter {
+    /// MPMC FIFO queue that remembers the most recently
+    /// issued user ids.
+    queue:          crossbeam_deque::Injector<Arc<str>>,
+    /// Concurrent hashset that holds all elements of `queue`.
+    lookup:         DashSet<Arc<str>>,
+    queue_capacity: usize,
+    max_repeats:    usize,
+}
+
+impl RateLimiter {
+    pub fn new(queue_capacity: usize, max_repeats: usize) -> Self {
+        Self {
+            queue: crossbeam_deque::Injector::new(),
+            lookup: DashSet::new(),
+            queue_capacity,
+            max_repeats,
+        }
+    }
+
+    fn id_at_capacity(&self, id: String) -> bool {
+        let arc = Arc::<str>::from(id);
+        match self.lookup.get(&arc) {
+            // If there are self.max_repeats references in the queue and one in the hashset
+            Some(arc) if Arc::strong_count(&arc) > self.max_repeats => true,
+            _ => false,
+        }
+    }
+
+    fn insert(&self, id: String) {
+        let arc = Arc::<str>::from(id);
+        // Find the Arc for the id or use a new one, if the id does not exist
+        let arc = match self.lookup.get(&arc) {
+            Some(arc) => Arc::clone(&arc),
+            None => arc,
+        };
+
+        if self.queue.len() >= self.queue_capacity {
+            let mut removed = self.queue.steal();
+            while removed.is_retry() {
+                removed = self.queue.steal();
+            }
+            if let Some(removed) = removed.success() {
+                // Remove the entry from the map if there are only two references left
+                // (`removed` and the entry itsefl)
+                self.lookup
+                    .remove_if(&removed, |arc| Arc::strong_count(arc) == 2);
+            }
+        }
+
+        self.lookup.insert(arc.clone());
+        self.queue.push(arc);
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -69,12 +133,17 @@ impl IssuerState {
 
     #[tracing::instrument(level = "debug", skip(self, credential))]
     pub async fn issue_credential(
-        self,
+        mut self,
         credential: &CredentialInfo,
         user_id: String,
         username: String,
     ) -> Result<Json<IssueResponse>, StatusCode> {
         tracing::debug!("Request to issue a credential.");
+
+        if self.rate_limiter.id_at_capacity(user_id.clone()) {
+            tracing::info!("Rejecting credential due to rate limit.");
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
 
         if let Err(err) = self.validate_credential(credential) {
             tracing::warn!("Failed to validate credential: {err}");
@@ -82,10 +151,11 @@ impl IssuerState {
         }
 
         match self
-            .register_credential(credential, user_id, username)
+            .register_credential(credential, user_id.clone(), username)
             .await
         {
             Ok(res) => {
+                self.rate_limiter.insert(user_id);
                 tracing::debug!(
                     "Successfully issued credential with id {}.",
                     credential.holder_id
@@ -101,7 +171,7 @@ impl IssuerState {
 
     #[tracing::instrument(level = "debug", skip(self, credential))]
     pub async fn register_credential(
-        mut self,
+        &mut self,
         credential: &CredentialInfo,
         user_id: String,
         username: String,

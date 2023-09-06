@@ -235,8 +235,13 @@ async function requestCredential(
       body: JSON.stringify(body),
     });
 
-    if (!response.ok)
+    if (!response.ok) {
+      if (response.status == 429)
+        throw new Error(
+          'Sorry, too many credentials have been issued for this account.',
+        );
       throw new Error('Error getting credential: ' + (await response.text()));
+    }
 
     const { txHash: hash, credential } =
       (await response.json()) as IssuerResponse;

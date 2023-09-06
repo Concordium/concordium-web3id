@@ -13,7 +13,7 @@ use http::{HeaderValue, StatusCode};
 use reqwest::Url;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use some_issuer::{set_shutdown, IssueResponse, IssuerState};
+use some_issuer::{set_shutdown, IssueResponse, IssuerState, RateLimiter};
 use std::{fmt::Write, net::SocketAddr, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -28,46 +28,46 @@ struct App {
         default_value = "http://localhost:20000",
         env = "TELEGRAM_ISSUER_NODE"
     )]
-    endpoint:            v2::Endpoint,
+    endpoint: v2::Endpoint,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "TELEGRAM_ISSUER_LOG_LEVEL"
     )]
-    log_level:           tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "TELEGRAM_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout:     u64,
+    request_timeout: u64,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "TELEGRAM_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry:            ContractAddress,
+    registry: ContractAddress,
     #[clap(
         long = "network",
         help = "The network of the issuer.",
         default_value = "testnet",
         env = "TELEGRAM_ISSUER_NETWORK"
     )]
-    network:             Network,
+    network: Network,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "TELEGRAM_ISSUER_WALLET"
     )]
-    wallet:              PathBuf,
+    wallet: PathBuf,
     #[clap(
         long = "issuer-key",
         help = "Path to the issuer's key, used to sign commitments.",
         env = "TELEGRAM_ISSUER_KEY"
     )]
-    issuer_key:          PathBuf,
+    issuer_key: PathBuf,
     #[clap(
         long = "max-register-energy",
         help = "The amount of energy to allow for execution of the register credential \
@@ -82,28 +82,42 @@ struct App {
         help = "Bot token for Telegram.",
         env = "TELEGRAM_BOT_TOKEN"
     )]
-    telegram_bot_token:  String,
+    telegram_bot_token: String,
     #[clap(
         long = "listen-address",
         help = "Socket addres for the Telegram issuer.",
         default_value = "0.0.0.0:8080",
         env = "TELEGRAM_ISSUER_LISTEN_ADDRESS"
     )]
-    listen_address:      SocketAddr,
+    listen_address: SocketAddr,
     #[clap(
         long = "url",
         help = "URL of the Telegram issuer.",
         default_value = "http://127.0.0.1:8080/",
         env = "TELEGRAM_ISSUER_URL"
     )]
-    url:                 Url,
+    url: Url,
     #[clap(
         long = "dapp-domain",
         help = "The domain of the dApp, used for CORS.",
         default_value = "http://127.0.0.1",
         env = "TELEGRAM_ISSUER_DAPP_URL"
     )]
-    dapp_domain:         String,
+    dapp_domain: String,
+    #[clap(
+        long = "rate-limit-capacity",
+        help = "The number of issued credentials that we remember for rate limiting.",
+        default_value = "50000",
+        env = "TELEGRAM_ISSUER_RATE_LIMIT_CAPACITY"
+    )]
+    rate_limit_queue_capacity: usize,
+    #[clap(
+        long = "rate-limit-repeats",
+        help = "The number of times the same user id can be issued before being rate limited.",
+        default_value = "5",
+        env = "TELEGRAM_ISSUER_RATE_LIMIT_REPEATS"
+    )]
+    rate_limit_max_repeats: usize,
 }
 
 #[derive(Clone)]
@@ -264,6 +278,8 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Unable to get registry metadata")?;
 
+    let rate_limiter = RateLimiter::new(app.rate_limit_queue_capacity, app.rate_limit_max_repeats);
+
     let issuer = IssuerState {
         crypto_params: Arc::new(crypto_params),
         contract_client,
@@ -275,7 +291,9 @@ async fn main() -> anyhow::Result<()> {
         metadata_url: Arc::new(metadata_url),
         credential_type: registry_metadata.credential_type,
         credential_schema_url: registry_metadata.credential_schema.schema_ref.url().into(),
+        rate_limiter: Arc::new(rate_limiter),
     };
+
     let state = AppState {
         issuer,
         telegram_bot_token: Arc::new(app.telegram_bot_token),
