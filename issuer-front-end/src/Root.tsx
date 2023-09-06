@@ -5,12 +5,13 @@ import { TESTNET, MAINNET, WithWalletConnector, WalletConnectionProps } from '@c
 import Main from './Main';
 import { version } from '../package.json';
 import SelectNetwork from './SelectNetwork';
+import CreateSchemaAndMetadataFiles from './CreateSchemaAndMetadataFiles';
 
 export default function Root() {
     const [isTestnet, setIsTestnet] = useState<boolean | undefined>(undefined);
     const [active, setActive] = useState(1);
     const [isConnected, setIsConnected] = useState<boolean>(false);
-    const [isNextButtonDisabled, setIsNextButtonDisabled] = useState<boolean>(true);
+    const [isNextButtonDisabled, setIsNextButtonDisabled] = useState<boolean>(false);
     const [isPreviousButtonDisabled, setIsPreviousButtonDisabled] = useState<boolean>(true);
 
     const updateProgress = (activeValue: number) => {
@@ -74,7 +75,7 @@ export default function Root() {
     const previousText = `<<<<<<`;
     const nextText = `>>>>>>`;
 
-    const stepHeaders = ['Select Network', 'Connect Wallet', 'Create MetaData Files', 'Deploy Issuer Smart Contract'];
+    const stepHeaders = ['Create MetaData Files', 'Select Network', 'Connect Wallet', 'Deploy Issuer Smart Contract'];
 
     return (
         <div>
@@ -96,12 +97,13 @@ export default function Root() {
                     </ul>
                 </div>
 
-                {/* Step 1: Select Network */}
-                {active === 1 && (
+                {/* Step 1: Create schema and metadata files */}
+                {active === 1 && <CreateSchemaAndMetadataFiles />}
+                {active === 2 && (
                     <SelectNetwork setIsNextButtonDisabled={setIsNextButtonDisabled} setIsTestnet={setIsTestnet} />
                 )}
                 {/* Step 2, 3, and 4 */}
-                {(active === 2 || active === 3 || active === 4) && isTestnet !== undefined && (
+                {(active === 3 || active === 4) && isTestnet !== undefined && (
                     <>
                         <WithWalletConnector network={isTestnet ? TESTNET : MAINNET}>
                             {(props: WalletConnectionProps) => {

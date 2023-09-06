@@ -15,7 +15,6 @@ import {
 import { AccountAddress } from '@concordium/web-sdk';
 
 import { BROWSER_WALLET, REFRESH_INTERVAL_IN_MILLI_SECONDS } from './constants';
-import CreateSchemaAndMetadataFiles from './CreateSchemaAndMetadataFiles';
 import DeployCredentialContract from './DeployCredentialContract';
 
 interface ConnectionProps {
@@ -165,8 +164,6 @@ export default function Main(props: ConnectionProps) {
                                     Error: {viewErrorAccountBalance}.
                                 </div>
                             )}
-                            {/* Step 3: Create schema and metadata files */}
-                            {active === 3 && <CreateSchemaAndMetadataFiles />}
                             {/* Step 4: Deploy issuer smart contract */}
                             {active === 4 && (
                                 <DeployCredentialContract
