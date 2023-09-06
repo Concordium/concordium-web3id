@@ -247,11 +247,11 @@ export default function Verify() {
             <>
               <p>
                 Select the platforms you want to verify with, essentially
-                proving ownership of the accounts referenced by the credentials in your wallet.
-                Additionally, you can also choose to reveal your full name from
-                an identity in your wallet.
+                proving ownership of the accounts referenced by the credentials
+                in your wallet. Additionally, you can also choose to reveal your
+                full name from an identity in your wallet.
               </p>
-              <p className='mb-0'>You must select at least 2 options.</p>
+              <p className="mb-0">You must select at least 2 options.</p>
             </>
           }
         >
@@ -280,7 +280,7 @@ export default function Verify() {
                     checked={fullNameChecked}
                     setChecked={setFullNameChecked}
                   >
-                    <SVG className='me-1' src={ccdLogo} />
+                    <SVG className="me-1" src={ccdLogo} />
                     Full name
                   </PlatformOption>
                 </ListGroup>
@@ -300,9 +300,13 @@ export default function Verify() {
         </Step>
         <Step
           step={VerificationStep.Check}
-          text={<>
-            To check that the verification is completed successfully, you can perform a "/check" on your own user, by interacting with the bot on either platform.
-          </>}
+          text={
+            <>
+              To check that the verification is completed successfully, you can
+              perform a <b>/check</b> on your own user, by interacting with the
+              bot on either platform.
+            </>
+          }
         >
           <Row className="gx-2">
             <Col xs="auto">
@@ -329,7 +333,7 @@ export default function Verify() {
             </Col>
           </Row>
         </Step>
-      </Accordion >
+      </Accordion>
       <RemoveVerification />
     </>
   );
