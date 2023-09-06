@@ -103,8 +103,11 @@ async function addAttribute(
         };
     }
 
-    credentialSchema.properties.credentialSubject.properties.attributes.properties = [...attributes, newAttribute].reduce(function (result, item) {
-        var key = Object.keys(item)[0]; 
+    credentialSchema.properties.credentialSubject.properties.attributes.properties = [
+        ...attributes,
+        newAttribute,
+    ].reduce(function arrayToObject(result, item) {
+        const key = Object.keys(item)[0];
         result[key] = item[key];
         return result;
     }, {});
@@ -137,7 +140,9 @@ export default function CreateSchemaAndMetadataFiles() {
     const [URL, setURL] = useState('https://concordium.com');
     const [issuerDescription, setIssuerDescription] = useState('A public-layer 1, science-backed blockchain');
     const [issuerName, setIssuerName] = useState('Concordium');
-    const [id, setId] = useState('https://example-university.com/certificates/JsonSchema2023-education-certificate.json');
+    const [id, setId] = useState(
+        'https://example-university.com/certificates/JsonSchema2023-education-certificate.json'
+    );
 
     const [attributeTitle, setAttributeTitle] = useState<string | undefined>(undefined);
     const [attributeDescription, setAttributeDescription] = useState<string | undefined>(undefined);
@@ -401,6 +406,9 @@ export default function CreateSchemaAndMetadataFiles() {
                             setAttributeDescription('');
                             setAttributeType(undefined);
                             setUserInputErrorAttributes('');
+
+                            credentialSchema.properties.credentialSubject.properties.attributes.required = [];
+                            credentialSchema.properties.credentialSubject.properties.attributes.properties = {};
                         }}
                     >
                         Clear All Attributes
