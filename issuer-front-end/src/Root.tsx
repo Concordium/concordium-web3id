@@ -111,7 +111,13 @@ export default function Root() {
                                 setIsConnected(connectedAccounts.size > 0);
                                 setIsNextButtonDisabled(!(connectedAccounts.size > 0));
 
-                                return <Main active={active} walletConnectionProps={props} isTestnet={isTestnet} />;
+                                return (
+                                    <Main
+                                        progress={() => next(active, setActive)}
+                                        walletConnectionProps={props}
+                                        isTestnet={isTestnet}
+                                    />
+                                );
                             }}
                         </WithWalletConnector>
                         <br />

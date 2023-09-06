@@ -18,6 +18,7 @@ export const EXAMPLE_CREDENTIAL_METADATA_OBJECT = {
         url: 'https://avatars.githubusercontent.com/u/39614219?s=200&v=4',
     },
     backgroundColor: '#92a8d1',
+    image: undefined as { url: string } | undefined,
 };
 
 export const EXAMPLE_CREDENTIAL_SCHEMA_OBJECT = {

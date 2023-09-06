@@ -20,11 +20,11 @@ import DeployCredentialContract from './DeployCredentialContract';
 interface ConnectionProps {
     walletConnectionProps: WalletConnectionProps;
     isTestnet: boolean;
-    active: number;
+    progress: () => any;
 }
 
 export default function Main(props: ConnectionProps) {
-    const { walletConnectionProps, isTestnet, active } = props;
+    const { walletConnectionProps, isTestnet, progress } = props;
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } =
         walletConnectionProps;
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
@@ -115,6 +115,7 @@ export default function Main(props: ConnectionProps) {
                         type="button"
                         onClick={() => {
                             connect();
+                            progress();
                         }}
                     >
                         Connect To Browser Wallet
@@ -165,7 +166,7 @@ export default function Main(props: ConnectionProps) {
                                 </div>
                             )}
                             {/* Step 4: Deploy issuer smart contract */}
-                            {active === 4 && (
+                            {isConnected && (
                                 <DeployCredentialContract
                                     account={account}
                                     isTestnet={isTestnet}

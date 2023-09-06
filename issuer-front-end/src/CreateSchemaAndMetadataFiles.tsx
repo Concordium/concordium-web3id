@@ -133,6 +133,7 @@ export default function CreateSchemaAndMetadataFiles() {
     );
 
     const [backgroundColor, setBackgroundColor] = useState('#92a8d1');
+    const [backgroundImage, setBackgroundImage] = useState<undefined | string>(undefined);
     const [logo, setLogo] = useState('https://avatars.githubusercontent.com/u/39614219?s=200&v=4');
     const [title, setTitle] = useState('Example Title');
 
@@ -217,6 +218,15 @@ export default function CreateSchemaAndMetadataFiles() {
         setCredentialMetadata(newCredentialMetadata);
     }, []);
 
+    const changeBackgroundImage = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setBackgroundImage(target.value);
+
+        const newCredentialMetadata = credentialMetadata;
+        newCredentialMetadata.image = target.value ? { url: target.value } : undefined;
+        setCredentialMetadata(newCredentialMetadata);
+    }, []);
+
     const changeTitle = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setTitle(target.value);
@@ -274,56 +284,56 @@ export default function CreateSchemaAndMetadataFiles() {
     return (
         <>
             <TestBox>
-                <div
-                    className="containerToolTip"
-                    role="presentation"
-                    onClick={display}
-                    data-toggle="tooltip"
-                    title="The credentialSchema is a JSON object that you will create in this step. You should host this JSON object somewhere publicly on the web so it is available via a URL. You will use the URL in step 4. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL (e.g. `https://gist.githubusercontent.com/DOBEN/bfe30ecea16f7a3ea1b87aa40902b9ac/raw/a8ab51fca489d04710fb19fb7122bb283dba719a/gistfile1.txt`)."
-                >
-                    <div>
-                        <h3>CredentialSchema</h3>
-                    </div>
-                    <div className="infolink" />
+                <div>
+                    <h3>CredentialSchema</h3>
+                    <p>
+                        {' '}
+                        The <strong> credentialSchema </strong> is a JSON schema describing the credential. The schema
+                        must be hosted at a public URL so that it is accessible to the wallet, which uses it, among
+                        other things, to render credentials.{' '}
+                    </p>
+
+                    <p>
+                        {' '}
+                        The schema consists of some metadata (name of the credential and description) together with a
+                        number of attributes. The form below supports inputting the necessary data and generating the
+                        JSON schema in the correct format.{' '}
+                    </p>
                 </div>
                 <br />
+                <label>
+                    {' '}
+                    Credential name
+                    <input
+                        className="inputFieldStyle"
+                        id="issuerKey"
+                        type="text"
+                        value={credentialName}
+                        onChange={changeCredentialName}
+                    />
+                </label>
                 <br />
-                Add <strong>credential name</strong>:
-                <br />
-                <input
-                    className="inputFieldStyle"
-                    id="issuerKey"
-                    type="text"
-                    value={credentialName}
-                    onChange={changeCredentialName}
-                />
-                <br />
-                <br />
-                Add <strong>credential description</strong>:
-                <br />
-                <input
-                    className="inputFieldStyle"
-                    id="credentialDescription"
-                    type="text"
-                    value={credentialDescription}
-                    onChange={changeCredentialDescription}
-                />
+                <label>
+                    {' '}
+                    Credential description
+                    <input
+                        className="inputFieldStyle"
+                        id="credentialDescription"
+                        type="text"
+                        value={credentialDescription}
+                        onChange={changeCredentialDescription}
+                    />
+                </label>
                 <br />
                 <br />
-                <div
-                    className="containerToolTip"
-                    role="presentation"
-                    onClick={display}
-                    data-toggle="tooltip"
-                    title="You can use the URL where this `CredentialSchema` will be hosted on the web as the ID."
-                >
-                    <div>
-                        Add <strong>ID</strong>
-                    </div>
-                    <div className="infolink" />:
+                <div>
+                    <p> The ID should be the URL where this schema will be hosted on the web. </p>
                 </div>
                 <br />
-                <input className="inputFieldStyle" id="id" type="text" value={id} onChange={changeId} />
+                <label>
+                    ID
+                    <input className="inputFieldStyle" id="id" type="text" value={id} onChange={changeId} />{' '}
+                </label>
                 <TestBox>
                     Add <strong>attribute title</strong>:
                     <br />
@@ -360,17 +370,13 @@ export default function CreateSchemaAndMetadataFiles() {
                             <option value="date-time">DateTime</option>
                         </select>
                     </label>
-                    <br />
-                    <br />
-                    <div>
-                        <input
-                            type="checkbox"
-                            id="checkBox"
-                            name="checkBox"
-                            onChange={(event) => changeCheckBox(required, event)}
-                        />
-                        <label htmlFor="checkBox">&nbsp;Is Type Required</label>
-                    </div>
+                    <label htmlFor="checkBox">&nbsp;Attribute is Required&nbsp;</label>
+                    <input
+                        type="checkbox"
+                        id="checkBox"
+                        name="checkBox"
+                        onChange={(event) => changeCheckBox(required, event)}
+                    />
                     <br />
                     <br />
                     <button
@@ -460,19 +466,15 @@ export default function CreateSchemaAndMetadataFiles() {
                 )}
             </TestBox>
             <TestBox>
-                <div
-                    className="containerToolTip"
-                    role="presentation"
-                    onClick={display}
-                    data-toggle="tooltip"
-                    title="The credentialMetadata is a JSON object that you will create in this step. You should host this JSON object somewhere publicly on the web so it is available via a URL. You will use the URL when issuing credentials. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL (e.g. `https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json`)."
-                >
-                    <div>
-                        <h3>CredentialMetadata</h3>
-                    </div>
-                    <div className="infolink" />
+                <div>
+                    <h3>CredentialMetadata</h3>
+                    <p>
+                        {' '}
+                        The credential metadata describes the details of a single credential, such as logo, background
+                        image or color, and localization. Like the JSON schema, the credential metadata must be hosted
+                        at a public URL and will also be used by the wallet to style the credential.{' '}
+                    </p>
                 </div>
-                <br />
                 <br />
                 Add <strong>title</strong>:
                 <br />
@@ -498,6 +500,15 @@ export default function CreateSchemaAndMetadataFiles() {
                     type="text"
                     value={backgroundColor}
                     onChange={changeBackgroundColor}
+                />
+                Add <strong>background image (optional)</strong>:
+                <br />
+                <input
+                    className="inputFieldStyle"
+                    id="backgroundImage"
+                    type="text"
+                    value={backgroundImage !== undefined ? backgroundImage : ''}
+                    onChange={changeBackgroundImage}
                 />
                 <button
                     className="btn btn-primary"
@@ -530,19 +541,14 @@ export default function CreateSchemaAndMetadataFiles() {
                 )}
             </TestBox>
             <TestBox>
-                <div
-                    className="containerToolTip"
-                    role="presentation"
-                    onClick={display}
-                    data-toggle="tooltip"
-                    title="The issuerMetadata is a JSON object that you will create in this step. You should host this JSON object somewhere publicly on the web so it is available via a URL. You will use the URL in step 4. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL (e.g. `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`)."
-                >
-                    <div>
-                        <h3>IssuerMetadata</h3>
-                    </div>
-                    <div className="infolink" />
+                <div>
+                    <h3>IssuerMetadata</h3>
+                    <p>
+                        {' '}
+                        The issuerMetadata is a JSON object describing the <strong>issuer</strong>, compared to the
+                        credential. It allows for styling of the issuer.{' '}
+                    </p>
                 </div>
-                <br />
                 <br />
                 Add <strong>issuer name</strong>:
                 <br />
@@ -564,12 +570,12 @@ export default function CreateSchemaAndMetadataFiles() {
                     value={issuerDescription}
                     onChange={changeIssuerDescription}
                 />
-                Add <strong>URL</strong>:
+                Add <strong>issuer URL</strong>:
                 <br />
                 <input className="inputFieldStyle" id="URL" type="text" value={URL} onChange={changeURL} />
                 <br />
                 <br />
-                Add <strong>icon URL</strong>:
+                Add <strong>issuer icon URL</strong>:
                 <br />
                 <input className="inputFieldStyle" id="iconURL" type="text" value={iconURL} onChange={changeIconURL} />
                 <button

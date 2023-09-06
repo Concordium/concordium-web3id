@@ -151,20 +151,20 @@ export default function DeployCredentialContract(props: ConnectionProps) {
 
     return (
         <TestBox>
-            <div
-                className="containerToolTip"
-                role="presentation"
-                onClick={display}
-                data-toggle="tooltip"
-                title="If you become an issuer, you will need to sign the credentials with your issuer private key at the backend before a credential that you issue can be added to a holder's wallet. For testing purposes on testnet, you can create a public-private key pair with an online tool (e.g. https://cyphr.me/ed25519_tool/ed.html) and use the public key as the isserKey here. The issuerKey should have a length of 64 characters e.g. `8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82`."
-            >
-                <div>
-                    Add <strong>issuer public key</strong>
-                </div>
-                <div className="infolink" />
-                &nbsp;:
+            <div>
+                Add <strong>issuer public key</strong>
+                <p>
+                    {' '}
+                    If you become an issuer, you will need to sign the credentials with your issuer{' '}
+                    <strong>private key</strong> (ed25519 signature scheme). The public key must be registered in the
+                    contract. For <strong>testing purposes</strong> on testnet, you can create a public-private key pair
+                    with an{' '}
+                    <a href="https://cyphr.me/ed25519_tool/ed.html" target="_blank" rel="noreferrer">
+                        online tool
+                    </a>{' '}
+                    ) and use the <strong>public key</strong> here{' '}
+                </p>
             </div>
-            <br />
             <input
                 className="inputFieldStyle"
                 id="issuerKey"
@@ -174,18 +174,9 @@ export default function DeployCredentialContract(props: ConnectionProps) {
             />
             <br />
             <br />
-            <div
-                className="containerToolTip"
-                role="presentation"
-                onClick={display}
-                data-toggle="tooltip"
-                title="The issuerMetadata file that you created in the previous step should be hosted on the web. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL. You should then input the URL where you host your issuerMetadata here (e.g. `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`)."
-            >
-                <div>
-                    Add <strong>issuer metadata URL</strong>
-                </div>
-                <div className="infolink" />
-                &nbsp;:
+            <div>
+                Add <strong>issuer metadata URL</strong>
+                <p> The URL pointing at the issuer metadata file that you created in the previous step </p>
             </div>
             <br />
             <input
@@ -197,18 +188,12 @@ export default function DeployCredentialContract(props: ConnectionProps) {
             />
             <br />
             <br />
-            <div
-                className="containerToolTip"
-                role="presentation"
-                onClick={display}
-                data-toggle="tooltip"
-                title="You should define a type for your credential (e.g. `myCredentialType` or `EducationalCertificate`)"
-            >
-                <div>
-                    Add <strong>credential type</strong>
-                </div>
-                <div className="infolink" />
-                &nbsp;:
+            <div>
+                Add <strong>credential type</strong>
+                <p>
+                    {' '}
+                    You should define a type for your credential (e.g. `myCredentialType` or `EducationalCertificate`){' '}
+                </p>
             </div>
             <br />
             <input
@@ -219,19 +204,9 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                 onChange={changeCredentialTypeHandler}
             />
             <br />
-            <br />
-            <div
-                className="containerToolTip"
-                role="presentation"
-                onClick={display}
-                data-toggle="tooltip"
-                title="The credentialSchema file that you created in the previous step should be hosted on the web. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL. You should then input the URL where you host your credentialSchema here (e.g. `https://gist.githubusercontent.com/DOBEN/bfe30ecea16f7a3ea1b87aa40902b9ac/raw/a8ab51fca489d04710fb19fb7122bb283dba719a/gistfile1.txt`)."
-            >
-                <div>
-                    Add <strong>credential schema URL</strong>
-                </div>
-                <div className="infolink" />
-                &nbsp;:
+            <div>
+                Add <strong>credential schema URL</strong>
+                <p> The URL of the credential schema file that you created in the previous step. </p>
             </div>
             <br />
             <input
@@ -276,18 +251,19 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                     ).catch((err: Error) => setUserInputError((err as Error).message));
                 }}
             >
-                <div
-                    className="containerToolTip"
-                    role="presentation"
-                    onClick={display}
-                    data-toggle="tooltip"
-                    title="The keys inserted here can revoke any credential that you issue. You can leave this an empty array if you don't want to grant such permissions to special revocation keys. For testing purposes on testnet, you can create public-private key pairs with an online tool (e.g. https://cyphr.me/ed25519_tool/ed.html) and use the public keys here. Each revocationKey should have a length of 64 characters e.g. `8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82`."
-                >
-                    <div>
-                        Add <strong>revocation keys</strong>
-                    </div>
-                    <div className="infolink" />
-                    &nbsp;:
+                <div>
+                    Add <strong>revocation keys</strong>
+                    <p>
+                        {' '}
+                        The keys inserted here can revoke any credential that the issuer issues. You can leave this an
+                        empty array if you don't want to grant such permissions to special revocation keys. For testing
+                        purposes on testnet, you can create public-private key pairs with an (e.g.{' '}
+                        <a href="https://cyphr.me/ed25519_tool/ed.html" target="_blank" rel="noreferrer">
+                            {' '}
+                            online tool{' '}
+                        </a>
+                        ) and use the <strong>public keys</strong> here.
+                    </p>
                 </div>
                 <br />
                 <Row>
