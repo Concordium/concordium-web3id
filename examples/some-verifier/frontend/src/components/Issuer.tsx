@@ -1,14 +1,14 @@
 import {
   CredentialProof,
-  detectConcordiumProvider,
+  WalletApi,
 } from '@concordium/browser-wallet-api-helpers';
 import TelegramLoginButton, { TelegramUser } from 'react-telegram-login';
-import '../scss/Issuer.scss';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import { ListGroup, ListGroupItem, ListGroupItemHeading } from 'reactstrap';
 import { nanoid } from 'nanoid';
 import { Issuer, Platform } from '../lib/types';
+import { appState } from '../lib/app-state';
 
 function getContractDid(issuer: Issuer): string {
   return `$did:ccd:${issuer.chain}:sci:${issuer.index}:${issuer.subindex}/issuer`;
@@ -41,6 +41,7 @@ function Issuer({
   discordIssued,
   setDiscordIssued,
 }: IssuerProps) {
+  const { concordiumProvider } = useContext(appState);
   const [telegramPending, setTelegramPending] = useState(false);
   const [discordPending, setDiscordPending] = useState(false);
 
@@ -60,7 +61,9 @@ function Issuer({
       if (state !== oAuth2State)
         throw new Error('State parameter did not match.');
 
+      const api = await concordiumProvider();
       await requestCredential(
+        api,
         {
           platform: Platform.Discord,
           user: { id, username },
@@ -79,7 +82,7 @@ function Issuer({
 
     addEventListener('message', eventHandler);
     return () => removeEventListener('message', eventHandler);
-  }, [setDiscordIssued]);
+  }, [setDiscordIssued, concordiumProvider]);
 
   const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
     try {
@@ -89,7 +92,9 @@ function Issuer({
         );
       }
 
+      const api = await concordiumProvider();
       await requestCredential(
+        api,
         {
           platform: Platform.Telegram,
           user: { username, ...user },
@@ -182,6 +187,7 @@ interface RpcError {
 }
 
 async function requestCredential(
+  api: WalletApi,
   req: TelegramRequest | DiscordRequest,
   setPending: () => void,
 ) {
@@ -208,9 +214,8 @@ async function requestCredential(
     url: issuer.url + 'json-schemas/credential-metadata.json',
   };
 
-  const provider = await detectConcordiumProvider();
   let txHash: string | undefined;
-  await provider.addWeb3IdCredential(credential, metadataUrl, async (id) => {
+  await api.addWeb3IdCredential(credential, metadataUrl, async (id) => {
     const parts = id.split(':');
     const holderId = parts[parts.length - 1];
 
@@ -252,7 +257,7 @@ async function requestCredential(
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      const itemSummary = await provider
+      const itemSummary = await api
         .getGrpcClient()
         .waitForTransactionFinalization(txHash!);
       console.log('Transaction completed.', itemSummary);
