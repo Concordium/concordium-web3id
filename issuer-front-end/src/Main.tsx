@@ -9,11 +9,10 @@ import {
     useGrpcClient,
     TESTNET,
     MAINNET,
+    useWalletConnectorSelector,
 } from '@concordium/react-components';
 
 import { AccountAddress } from '@concordium/web-sdk';
-
-import { WalletConnectionTypeButton } from './WalletConnectorTypeButton';
 
 import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
 import CreateSchemaAndMetadataFiles from './CreateSchemaAndMetadataFiles';
@@ -29,15 +28,18 @@ export default function Main(props: ConnectionProps) {
     const { walletConnectionProps, isTestnet, active } = props;
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } =
         walletConnectionProps;
-
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
-    const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
+    const { isConnected, select } = useWalletConnectorSelector(BROWSER_WALLET, connection, {
+        ...walletConnectionProps,
+    });
+
+    const { connect, connectError } = useConnect(activeConnector, setConnection);
 
     const [viewErrorAccountBalance, setViewErrorAccountBalance] = useState('');
 
     const [accountExistsOnNetwork, setAccountExistsOnNetwork] = useState(true);
 
-    const [isWaitingForTransaction, setWaitingForUser] = useState(false);
+    const [isWaitingForTransaction] = useState(false);
 
     const [accountBalance, setAccountBalance] = useState('');
 
@@ -86,16 +88,13 @@ export default function Main(props: ConnectionProps) {
         }
     }, [connection, account]);
 
+    useEffect(() => {
+        select();
+    }, []);
+
     return (
         <main className="container">
             <div className="textCenter">
-                <WalletConnectionTypeButton
-                    connectorType={BROWSER_WALLET}
-                    connectorName="Browser Wallet"
-                    setWaitingForUser={setWaitingForUser}
-                    connection={connection}
-                    {...walletConnectionProps}
-                />
                 {activeConnectorError && (
                     <p className="alert alert-danger" role="alert">
                         Connector Error: {activeConnectorError}.
@@ -111,14 +110,18 @@ export default function Main(props: ConnectionProps) {
                         Connect Error: {connectError}.
                     </p>
                 )}
-                {!connection && !isWaitingForTransaction && activeConnectorType && activeConnector && (
-                    <p>
-                        <button className="btn btn-primary me-1" type="button" onClick={connect}>
-                            {isConnecting && 'Connecting...'}
-                            {!isConnecting && activeConnectorType === BROWSER_WALLET && 'Connect Browser Wallet'}
-                        </button>
-                    </p>
+                {!isConnected && (
+                    <button
+                        className="btn btn-primary me-1"
+                        type="button"
+                        onClick={() => {
+                            connect();
+                        }}
+                    >
+                        Connect To Browser Wallet
+                    </button>
                 )}
+                {/* //  )} */}
                 {connection && !accountExistsOnNetwork && (
                     <>
                         <div className="alert alert-danger" role="alert">

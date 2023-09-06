@@ -404,7 +404,6 @@ export default function CreateSchemaAndMetadataFiles() {
                             setAttributes([]);
                             setAttributeTitle('');
                             setAttributeDescription('');
-                            setAttributeType(undefined);
                             setUserInputErrorAttributes('');
 
                             credentialSchema.properties.credentialSubject.properties.attributes.required = [];

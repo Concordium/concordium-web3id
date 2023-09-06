@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /* eslint-disable no-alert */
-import React, { ChangeEvent, Dispatch, SetStateAction } from 'react';
+import React, { ChangeEvent, Dispatch, SetStateAction, useEffect } from 'react';
 
 interface ConnectionProps {
     setIsTestnet: Dispatch<SetStateAction<boolean | undefined>>;
@@ -26,6 +26,11 @@ export default function SelectNetwork(props: ConnectionProps) {
 
         setIsNextButtonDisabled(false);
     };
+
+    useEffect(() => {
+        setIsTestnet(undefined);
+        setIsNextButtonDisabled(true);
+    }, []);
 
     return (
         <>
