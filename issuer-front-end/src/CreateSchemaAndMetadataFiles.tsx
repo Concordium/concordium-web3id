@@ -13,6 +13,8 @@ import {
 type CredentialSchema = {
     name: string;
     description: string;
+    $id: string;
+    $schema: string;
     type: string;
     properties: {
         credentialSubject: {
@@ -101,7 +103,11 @@ async function addAttribute(
         };
     }
 
-    credentialSchema.properties.credentialSubject.properties.attributes.properties = [...attributes, newAttribute];
+    credentialSchema.properties.credentialSubject.properties.attributes.properties = [...attributes, newAttribute].reduce(function (result, item) {
+        var key = Object.keys(item)[0]; 
+        result[key] = item[key];
+        return result;
+    }, {});
 
     if (isRequired) {
         credentialSchema.properties.credentialSubject.properties.attributes.required.push(
@@ -131,6 +137,7 @@ export default function CreateSchemaAndMetadataFiles() {
     const [URL, setURL] = useState('https://concordium.com');
     const [issuerDescription, setIssuerDescription] = useState('A public-layer 1, science-backed blockchain');
     const [issuerName, setIssuerName] = useState('Concordium');
+    const [id, setId] = useState('https://example-university.com/certificates/JsonSchema2023-education-certificate.json');
 
     const [attributeTitle, setAttributeTitle] = useState<string | undefined>(undefined);
     const [attributeDescription, setAttributeDescription] = useState<string | undefined>(undefined);
@@ -164,6 +171,11 @@ export default function CreateSchemaAndMetadataFiles() {
     const changeAttributeTitle = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setAttributeTitle(target.value);
+    }, []);
+
+    const changeId = useCallback((event: ChangeEvent) => {
+        const target = event.target as HTMLTextAreaElement;
+        setId(target.value);
     }, []);
 
     const changeCheckBox = useCallback((requiredValue: boolean, event: ChangeEvent) => {
@@ -293,6 +305,26 @@ export default function CreateSchemaAndMetadataFiles() {
                 />
                 <br />
                 <br />
+                <div
+                    className="containerToolTip"
+                    role="presentation"
+                    onClick={display}
+                    data-toggle="tooltip"
+                    title="You can use the URL where this `CredentialSchema` will be hosted on the web as the ID."
+                >
+                    <div>
+                        Add <strong>ID</strong>:
+                    </div>
+                    <div className="infolink" />
+                </div>
+                <br />
+                <input
+                    className="inputFieldStyle"
+                    id="attributeDescription"
+                    type="text"
+                    value={id}
+                    onChange={changeId}
+                />
                 <TestBox>
                     Add <strong>AttributeTitle</strong>:
                     <br />
@@ -314,6 +346,8 @@ export default function CreateSchemaAndMetadataFiles() {
                         value={attributeDescription}
                         onChange={changeAttributeDescription}
                     />
+                    <br />
+                    <br />
                     <label className="field">
                         Select Type:
                         <br />

@@ -24,6 +24,8 @@ export const EXAMPLE_CREDENTIAL_METADATA_OBJECT = {
 export const EXAMPLE_CREDENTIAL_SCHEMA_OBJECT = {
     name: 'Education certificate',
     description: 'Simple representation of an education certificate.',
+    $schema: "https://json-schema.org/draft/2020-12/schema",	
+    $id: "https://example-university.com/certificates/JsonSchema2023-education-certificate.json",
     type: 'object',
     properties: {
         credentialSubject: {
