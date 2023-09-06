@@ -149,10 +149,10 @@ export default function CreateSchemaAndMetadataFiles() {
         alert(element.parentElement?.title || element.parentElement?.parentElement?.title || element.title);
     }, []);
 
-    const changeDropDownHandler = () => {
-        const e = document.getElementById('write') as HTMLSelectElement;
-        const sel = e.selectedIndex;
-        const { value } = e.options[sel];
+    const changeDropDownHandler = (event: ChangeEvent) => {
+        const element = event.target as HTMLSelectElement;
+        const { value } = element;
+
         setAttributeType(value);
     };
 

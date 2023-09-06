@@ -1,28 +1,30 @@
 /* eslint-disable no-console */
-import React, { Dispatch, SetStateAction } from 'react';
+/* eslint-disable no-alert */
+import React, { ChangeEvent, Dispatch, SetStateAction } from 'react';
 
 interface ConnectionProps {
     setIsTestnet: Dispatch<SetStateAction<boolean | undefined>>;
+    setIsNextButtonDisabled: Dispatch<SetStateAction<boolean>>;
 }
 
 export default function SelectNetwork(props: ConnectionProps) {
-    const { setIsTestnet } = props;
+    const { setIsTestnet, setIsNextButtonDisabled } = props;
 
-    const changeDropDownHandler = () => {
-        const e = document.getElementById('write') as HTMLSelectElement;
-        const sel = e.selectedIndex;
-        const { value } = e.options[sel];
+    const changeDropDownHandler = (e: ChangeEvent) => {
+        const element = e.target as HTMLSelectElement;
+        const { value } = element;
+
         if (value === 'Testnet') {
             setIsTestnet(true);
         } else if (value === 'Mainnet') {
             setIsTestnet(false);
         } else {
             console.error('Select a network');
+            alert('Select a network');
             return;
         }
 
-        const progressNext = document.getElementById('progress-next') as HTMLTextAreaElement;
-        progressNext.disabled = false;
+        setIsNextButtonDisabled(false);
     };
 
     return (

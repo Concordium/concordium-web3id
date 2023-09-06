@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 import { TESTNET, MAINNET, WithWalletConnector, WalletConnectionProps } from '@concordium/react-components';
 import Main from './Main';
@@ -10,11 +10,11 @@ export default function Root() {
     const [isTestnet, setIsTestnet] = useState<boolean | undefined>(undefined);
     const [active, setActive] = useState(1);
     const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [isNextButtonDisabled, setIsNextButtonDisabled] = useState<boolean>(true);
+    const [isPreviousButtonDisabled, setIsPreviousButtonDisabled] = useState<boolean>(true);
 
     const updateProgress = (activeValue: number) => {
         const progressBar = document.getElementById('progress-bar');
-        const progressNext = document.getElementById('progress-next') as HTMLTextAreaElement;
-        const progressPrev = document.getElementById('progress-prev') as HTMLTextAreaElement;
         const steps = document.querySelectorAll('.step');
 
         // toggle active class on list items
@@ -25,22 +25,22 @@ export default function Root() {
                 step.classList.remove('active');
             }
         });
-        if (progressBar !== null && progressPrev !== null && progressNext !== null) {
+        if (progressBar !== null) {
             // set progress bar width
             progressBar.style.width = `${((activeValue - 1) / (steps.length - 1)) * 100}%`;
 
             if (activeValue === 2 && isConnected === false) {
-                progressNext.disabled = true;
+                setIsNextButtonDisabled(true);
             }
 
-            // enable disable prev and next buttons
+            // enable/disable prev and next buttons
             if (activeValue === 1) {
-                progressPrev.disabled = true;
+                setIsPreviousButtonDisabled(true);
             } else if (activeValue === steps.length) {
-                progressNext.disabled = true;
+                setIsNextButtonDisabled(true);
             } else {
-                progressPrev.disabled = false;
-                progressNext.disabled = false;
+                setIsPreviousButtonDisabled(false);
+                setIsNextButtonDisabled(false);
             }
         }
     };
@@ -76,15 +76,6 @@ export default function Root() {
 
     const stepHeaders = ['Select Network', 'Connect Wallet', 'Create MetaData Files', 'Deploy Issuer Smart Contract'];
 
-    // Refresh accountInfo periodically.
-    // eslint-disable-next-line consistent-return
-    useEffect(() => {
-        const progressNext = document.getElementById('progress-next') as HTMLTextAreaElement;
-        const progressPrev = document.getElementById('progress-prev') as HTMLTextAreaElement;
-        progressNext.disabled = true;
-        progressPrev.disabled = true;
-    }, []);
-
     return (
         <div>
             <main className="textCenter">
@@ -106,7 +97,9 @@ export default function Root() {
                 </div>
 
                 {/* Step 1: Select Network */}
-                {active === 1 && <SelectNetwork setIsTestnet={setIsTestnet} />}
+                {active === 1 && (
+                    <SelectNetwork setIsNextButtonDisabled={setIsNextButtonDisabled} setIsTestnet={setIsTestnet} />
+                )}
                 {/* Step 2, 3, and 4 */}
                 {(active === 2 || active === 3 || active === 4) && isTestnet !== undefined && (
                     <>
@@ -114,8 +107,7 @@ export default function Root() {
                             {(props: WalletConnectionProps) => {
                                 const { connectedAccounts } = props;
                                 setIsConnected(connectedAccounts.size > 0);
-                                const progressNext = document.getElementById('progress-next') as HTMLTextAreaElement;
-                                progressNext.disabled = !(connectedAccounts.size > 0);
+                                setIsNextButtonDisabled(!(connectedAccounts.size > 0));
 
                                 return <Main active={active} walletConnectionProps={props} isTestnet={isTestnet} />;
                             }}
@@ -129,6 +121,7 @@ export default function Root() {
                     className="btn btn-primary"
                     id="progress-prev"
                     type="button"
+                    disabled={isPreviousButtonDisabled}
                     onClick={() => previous(active, setActive)}
                 >
                     {previousText}
@@ -137,6 +130,7 @@ export default function Root() {
                     className="btn btn-primary"
                     id="progress-next"
                     type="button"
+                    disabled={isNextButtonDisabled}
                     onClick={() => next(active, setActive)}
                 >
                     {nextText}
