@@ -162,6 +162,7 @@ struct AppState {
 struct FrontendConfig {
     discord_client_id: String,
     telegram_bot_name: String,
+    chain:             Network,
     issuers:           HashMap<String, IssuerConfig>,
 }
 
@@ -169,7 +170,6 @@ struct FrontendConfig {
 #[serde(rename_all = "camelCase")]
 struct IssuerConfig {
     url:      String,
-    chain:    Network,
     index:    String,
     subindex: String,
 }
@@ -246,16 +246,15 @@ async fn main() -> anyhow::Result<()> {
     let frontend_config = FrontendConfig {
         discord_client_id: app.discord_client_id,
         telegram_bot_name: app.telegram_bot_name,
+        chain:             app.network,
         issuers:           [
             ("telegram".to_string(), IssuerConfig {
                 url:      app.telegram_issuer_url.to_string(),
-                chain:    app.network,
                 index:    app.telegram_registry.index.to_string(),
                 subindex: app.telegram_registry.subindex.to_string(),
             }),
             ("discord".to_string(), IssuerConfig {
                 url:      app.discord_issuer_url.to_string(),
-                chain:    app.network,
                 index:    app.discord_registry.index.to_string(),
                 subindex: app.discord_registry.subindex.to_string(),
             }),

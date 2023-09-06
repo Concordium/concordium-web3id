@@ -5,7 +5,6 @@ export enum Platform {
 
 export interface Issuer {
   url: string;
-  chain: string;
   index: string;
   subindex: string;
 }

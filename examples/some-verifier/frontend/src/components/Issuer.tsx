@@ -10,8 +10,8 @@ import { nanoid } from 'nanoid';
 import { Issuer, Platform } from '../lib/types';
 import { appState } from '../lib/app-state';
 
-function getContractDid(issuer: Issuer): string {
-  return `$did:ccd:${issuer.chain}:sci:${issuer.index}:${issuer.subindex}/issuer`;
+function getContractDid(network: string, issuer: Issuer): string {
+  return `$did:ccd:${network}:sci:${issuer.index}:${issuer.subindex}/issuer`;
 }
 
 declare type NotOptional<T> = {
@@ -201,7 +201,7 @@ async function requestCredential(
       'ConcordiumVerifiableCredential',
       'SoMeCredential',
     ],
-    issuer: getContractDid(issuer),
+    issuer: getContractDid(config.network, issuer),
     issuanceDate: new Date().toISOString(),
     credentialSubject: { attributes: { userId: id.toString(), username } },
     credentialSchema: {
