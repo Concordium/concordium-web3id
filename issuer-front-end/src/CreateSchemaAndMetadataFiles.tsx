@@ -288,7 +288,7 @@ export default function CreateSchemaAndMetadataFiles() {
                 </div>
                 <br />
                 <br />
-                Add <strong>CredentialName</strong>:
+                Add <strong>credential name</strong>:
                 <br />
                 <input
                     className="inputFieldStyle"
@@ -299,7 +299,7 @@ export default function CreateSchemaAndMetadataFiles() {
                 />
                 <br />
                 <br />
-                Add <strong>CredentialDescription</strong>:
+                Add <strong>credential description</strong>:
                 <br />
                 <input
                     className="inputFieldStyle"
@@ -318,20 +318,14 @@ export default function CreateSchemaAndMetadataFiles() {
                     title="You can use the URL where this `CredentialSchema` will be hosted on the web as the ID."
                 >
                     <div>
-                        Add <strong>ID</strong>:
+                        Add <strong>ID</strong>
                     </div>
-                    <div className="infolink" />
+                    <div className="infolink" />:
                 </div>
                 <br />
-                <input
-                    className="inputFieldStyle"
-                    id="attributeDescription"
-                    type="text"
-                    value={id}
-                    onChange={changeId}
-                />
+                <input className="inputFieldStyle" id="id" type="text" value={id} onChange={changeId} />
                 <TestBox>
-                    Add <strong>AttributeTitle</strong>:
+                    Add <strong>attribute title</strong>:
                     <br />
                     <input
                         className="inputFieldStyle"
@@ -342,7 +336,7 @@ export default function CreateSchemaAndMetadataFiles() {
                     />
                     <br />
                     <br />
-                    Add <strong>AttributeDescription</strong>:
+                    Add <strong>attribute description</strong>:
                     <br />
                     <input
                         className="inputFieldStyle"
@@ -354,7 +348,7 @@ export default function CreateSchemaAndMetadataFiles() {
                     <br />
                     <br />
                     <label className="field">
-                        Select Type:
+                        Select type:
                         <br />
                         <br />
                         <select name="write" id="write" onChange={changeDropDownHandler}>
@@ -480,12 +474,12 @@ export default function CreateSchemaAndMetadataFiles() {
                 </div>
                 <br />
                 <br />
-                Add <strong>Title</strong>:
+                Add <strong>title</strong>:
                 <br />
                 <input className="inputFieldStyle" id="title" type="text" value={title} onChange={changeTitle} />
                 <br />
                 <br />
-                Add <strong>LogoURL</strong>:
+                Add <strong>logo URL</strong>:
                 <br />
                 <input
                     className="inputFieldStyle"
@@ -496,7 +490,7 @@ export default function CreateSchemaAndMetadataFiles() {
                 />{' '}
                 <br />
                 <br />
-                Add <strong>BackGroundColor</strong>:
+                Add <strong>background color</strong>:
                 <br />
                 <input
                     className="inputFieldStyle"
@@ -550,7 +544,7 @@ export default function CreateSchemaAndMetadataFiles() {
                 </div>
                 <br />
                 <br />
-                Add <strong>IssuerName</strong>:
+                Add <strong>issuer name</strong>:
                 <br />
                 <input
                     className="inputFieldStyle"
@@ -561,7 +555,7 @@ export default function CreateSchemaAndMetadataFiles() {
                 />
                 <br />
                 <br />
-                Add <strong>IssuerDescription</strong>:
+                Add <strong>issuer description</strong>:
                 <br />
                 <input
                     className="inputFieldStyle"
@@ -575,7 +569,7 @@ export default function CreateSchemaAndMetadataFiles() {
                 <input className="inputFieldStyle" id="URL" type="text" value={URL} onChange={changeURL} />
                 <br />
                 <br />
-                Add <strong>IconURL</strong>:
+                Add <strong>icon URL</strong>:
                 <br />
                 <input className="inputFieldStyle" id="iconURL" type="text" value={iconURL} onChange={changeIconURL} />
                 <button

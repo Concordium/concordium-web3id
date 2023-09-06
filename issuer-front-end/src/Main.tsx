@@ -14,7 +14,7 @@ import {
 
 import { AccountAddress } from '@concordium/web-sdk';
 
-import { BROWSER_WALLET, REFRESH_INTERVAL } from './constants';
+import { BROWSER_WALLET, REFRESH_INTERVAL_IN_MILLI_SECONDS } from './constants';
 import CreateSchemaAndMetadataFiles from './CreateSchemaAndMetadataFiles';
 import DeployCredentialContract from './DeployCredentialContract';
 
@@ -64,7 +64,7 @@ export default function Main(props: ConnectionProps) {
                         setViewErrorAccountBalance((e as Error).message.replaceAll('%20', ' '));
                         setAccountExistsOnNetwork(false);
                     });
-            }, REFRESH_INTERVAL.asMilliseconds());
+            }, REFRESH_INTERVAL_IN_MILLI_SECONDS);
             return () => clearInterval(interval);
         }
     }, [connection, account]);

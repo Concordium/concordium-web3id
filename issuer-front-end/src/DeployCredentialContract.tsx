@@ -10,7 +10,7 @@ import { TailSpin } from 'react-loader-spinner';
 
 import { createNewIssuer } from './writing_to_blockchain';
 
-import { REFRESH_INTERVAL } from './constants';
+import { REFRESH_INTERVAL_IN_MILLI_SECONDS } from './constants';
 
 type SchemaRef = {
     schema_ref: {
@@ -144,7 +144,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                     .catch((e) => {
                         setViewErrorModuleReference((e as Error).message);
                     });
-            }, REFRESH_INTERVAL.asMilliseconds());
+            }, REFRESH_INTERVAL_IN_MILLI_SECONDS);
             return () => clearInterval(interval);
         }
     }, [connection, account, client, txHash]);
@@ -159,7 +159,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                 title="If you become an issuer, you will need to sign the credentials with your issuer private key at the backend before a credential that you issue can be added to a holder's wallet. For testing purposes on testnet, you can create a public-private key pair with an online tool (e.g. https://cyphr.me/ed25519_tool/ed.html) and use the public key as the isserKey here. The issuerKey should have a length of 64 characters e.g. `8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82`."
             >
                 <div>
-                    Add <strong>IssuerKey</strong>
+                    Add <strong>issuer public key</strong>
                 </div>
                 <div className="infolink" />
                 &nbsp;:
@@ -182,7 +182,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                 title="The issuerMetadata file that you created in the previous step should be hosted on the web. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL. You should then input the URL where you host your issuerMetadata here (e.g. `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`)."
             >
                 <div>
-                    Add <strong>IssuerMetadata</strong>
+                    Add <strong>issuer metadata URL</strong>
                 </div>
                 <div className="infolink" />
                 &nbsp;:
@@ -205,7 +205,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                 title="You should define a type for your credential (e.g. `myCredentialType` or `EducationalCertificate`)"
             >
                 <div>
-                    Add <strong>CredentialType</strong>
+                    Add <strong>credential type</strong>
                 </div>
                 <div className="infolink" />
                 &nbsp;:
@@ -228,7 +228,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                 title="The credentialSchema file that you created in the previous step should be hosted on the web. You can for example host it on your gist account (`https://gist.github.com/`) and click the `raw` button to optain the URL. You should then input the URL where you host your credentialSchema here (e.g. `https://gist.githubusercontent.com/DOBEN/bfe30ecea16f7a3ea1b87aa40902b9ac/raw/a8ab51fca489d04710fb19fb7122bb283dba719a/gistfile1.txt`)."
             >
                 <div>
-                    Add <strong>CredentialSchema</strong>
+                    Add <strong>credential schema URL</strong>
                 </div>
                 <div className="infolink" />
                 &nbsp;:
@@ -284,7 +284,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                     title="The keys inserted here can revoke any credential that you issue. You can leave this an empty array if you don't want to grant such permissions to special revocation keys. For testing purposes on testnet, you can create public-private key pairs with an online tool (e.g. https://cyphr.me/ed25519_tool/ed.html) and use the public keys here. Each revocationKey should have a length of 64 characters e.g. `8fe0dc02ffbab8d30410233ed58b44a53c418b368ae91cdcdbcdb9e79358be82`."
                 >
                     <div>
-                        Add <strong>RevocationKeys</strong>
+                        Add <strong>revocation keys</strong>
                     </div>
                     <div className="infolink" />
                     &nbsp;:

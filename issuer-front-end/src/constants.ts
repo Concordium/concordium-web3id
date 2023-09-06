@@ -1,5 +1,4 @@
 import { BrowserWalletConnector, ephemeralConnectorType } from '@concordium/react-components';
-import moment from 'moment';
 
 export const DEFAULT_CREDENTIAL_TYPES = ['VerifiableCredential', 'ConcordiumVerifiableCredential'];
 
@@ -50,7 +49,7 @@ export const EXAMPLE_CREDENTIAL_SCHEMA_OBJECT = {
     required: ['credentialSubject'],
 };
 
-export const REFRESH_INTERVAL = moment.duration(4, 'seconds');
+export const REFRESH_INTERVAL_IN_MILLI_SECONDS = 2000;
 
 export const BROWSER_WALLET = ephemeralConnectorType(BrowserWalletConnector.create);
 
