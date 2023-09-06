@@ -13,7 +13,7 @@ use http::{HeaderValue, StatusCode};
 use reqwest::Url;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use some_issuer::{issue_credential, IssueResponse, IssuerState};
+use some_issuer::{set_shutdown, IssueResponse, IssuerState};
 use std::{fmt::Write, net::SocketAddr, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -152,7 +152,7 @@ impl User {
         let mac_bytes = mac.finalize().into_bytes();
         let expected = hex::decode(&self.hash)?;
 
-        anyhow::ensure!(&mac_bytes[..] == &expected[..], "MAC did not match hash.");
+        anyhow::ensure!(mac_bytes[..] == expected[..], "MAC did not match hash.");
         Ok(())
     }
 }
@@ -167,18 +167,11 @@ struct TelegramIssueRequest {
     telegram_user: User,
 }
 
+#[tracing::instrument(level = "debug", skip_all, fields(holder_id = %request.credential.holder_id))]
 async fn issue_telegram_credential(
     State(state): State<AppState>,
-    Json(request): Json<serde_json::Value>,
+    Json(request): Json<TelegramIssueRequest>,
 ) -> Result<Json<IssueResponse>, StatusCode> {
-    let request = match serde_json::from_value::<TelegramIssueRequest>(request) {
-        Ok(req) => req,
-        Err(err) => {
-            tracing::warn!("Unable to deserialize request: {err}");
-            return Err(StatusCode::BAD_REQUEST);
-        }
-    };
-
     if let Err(err) = request.telegram_user.check(&state.telegram_bot_token) {
         tracing::warn!("Invalid Telegram user in request: {err}");
         return Err(StatusCode::BAD_REQUEST);
@@ -190,13 +183,14 @@ async fn issue_telegram_credential(
             Err(StatusCode::BAD_REQUEST)
         }
         Some(username) => {
-            issue_credential(
-                state.issuer,
-                request.credential,
-                request.telegram_user.id.to_string(),
-                username,
-            )
-            .await
+            state
+                .issuer
+                .issue_credential(
+                    &request.credential,
+                    request.telegram_user.id.to_string(),
+                    username,
+                )
+                .await
         }
     }
 }
@@ -207,9 +201,13 @@ async fn main() -> anyhow::Result<()> {
 
     {
         use tracing_subscriber::prelude::*;
+        let log_filter = tracing_subscriber::filter::Targets::new()
+            .with_target(module_path!(), app.log_level)
+            .with_target("some_issuer", app.log_level)
+            .with_target("tower_http", app.log_level);
         tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer())
-            .with(app.log_level)
+            .with(log_filter)
             .init();
     }
 
@@ -257,10 +255,14 @@ async fn main() -> anyhow::Result<()> {
         .await?
         .response;
 
-    let contract_client = Cis4Contract::create(node_client, app.registry).await?;
+    let mut contract_client = Cis4Contract::create(node_client, app.registry).await?;
 
     let metadata_url = app.url.join("json-schemas/credential-metadata.json")?;
-    let credential_schema_url = app.url.join("json-schemas/JsonSchema2023-discord.json")?;
+
+    let registry_metadata = contract_client
+        .registry_metadata(BlockIdentifier::LastFinal)
+        .await
+        .context("Unable to get registry metadata")?;
 
     let issuer = IssuerState {
         crypto_params: Arc::new(crypto_params),
@@ -271,7 +273,8 @@ async fn main() -> anyhow::Result<()> {
         nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
         max_register_energy: app.max_register_energy,
         metadata_url: Arc::new(metadata_url),
-        credential_schema_url: Arc::new(credential_schema_url),
+        credential_type: registry_metadata.credential_type,
+        credential_schema_url: registry_metadata.credential_schema.schema_ref.url().into(),
     };
     let state = AppState {
         issuer,
@@ -306,8 +309,12 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting server on {}...", app.listen_address);
 
+    // Start handling of shutdown signals now, before starting the server.
+    let shutdown_signal = set_shutdown()?;
+
     axum::Server::bind(&app.listen_address)
         .serve(router.into_make_service())
+        .with_graceful_shutdown(shutdown_signal)
         .await
         .context("Unable to start server.")
 }

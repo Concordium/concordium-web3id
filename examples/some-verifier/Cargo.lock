@@ -696,7 +696,7 @@ dependencies = [
  "group",
  "hex",
  "hmac",
- "itertools 0.10.5",
+ "itertools",
  "leb128",
  "libc",
  "nom",
@@ -868,6 +868,40 @@ dependencies = [
  "darling_core",
  "quote",
  "syn 2.0.28",
+]
+
+[[package]]
+name = "deadpool"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "421fe0f90f2ab22016f32a9881be5134fdd71c65298917084b0c7477cbc3856e"
+dependencies = [
+ "async-trait",
+ "deadpool-runtime",
+ "num_cpus",
+ "retain_mut",
+ "tokio",
+]
+
+[[package]]
+name = "deadpool-postgres"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "836a24a9d49deefe610b8b60c767a7412e9a931d79a89415cd2d2d71630ca8d7"
+dependencies = [
+ "deadpool",
+ "log",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
+name = "deadpool-runtime"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eaa37046cc0f6c3cc6090fbdbf73ef0b8ef4cfcc37f6befc0020f63e8cf121e1"
+dependencies = [
+ "tokio",
 ]
 
 [[package]]
@@ -1475,15 +1509,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2070,7 +2095,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5d2d8d10f3c6ded6da8b05b5fb3b8a5082514344d56c9f871412d29b4e075b4"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -2277,6 +2302,12 @@ dependencies = [
  "web-sys",
  "winreg",
 ]
+
+[[package]]
+name = "retain_mut"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4389f1d5789befaf6029ebd9f7dac4af7f7e3d61b69d4f30e2ac02b57e7712b0"
 
 [[package]]
 name = "ring"
@@ -2614,6 +2645,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "signal-hook-registry"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8229b473baa5980ac72ef434c4415e70c4b5e71b423043adb4ba059f89c99a1"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "signature"
 version = "1.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2676,9 +2716,9 @@ dependencies = [
  "chrono",
  "clap",
  "concordium-rust-sdk",
+ "deadpool-postgres",
  "futures",
  "http",
- "itertools 0.11.0",
  "reqwest",
  "serde",
  "serde_json",
@@ -2873,6 +2913,7 @@ dependencies = [
  "mio",
  "num_cpus",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2 0.4.9",
  "tokio-macros",
  "windows-sys",

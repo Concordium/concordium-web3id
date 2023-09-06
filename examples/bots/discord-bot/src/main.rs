@@ -169,9 +169,12 @@ async fn main() -> anyhow::Result<()> {
 
     {
         use tracing_subscriber::prelude::*;
+        let log_filter = tracing_subscriber::filter::Targets::new()
+            .with_target(module_path!(), app.log_level)
+            .with_target("poise", app.log_level);
         tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer())
-            .with(app.log_level)
+            .with(log_filter)
             .init();
     }
 
@@ -225,7 +228,9 @@ fn link_button<'btn>(
     }
 }
 
+#[tracing::instrument(level = "debug", skip(cfg))]
 async fn get_verification(cfg: &BotConfig, id: serenity::UserId) -> anyhow::Result<Verification> {
+    tracing::debug!("Requesting verification.");
     let url = cfg
         .verifier_url
         .join("verifications/discord/")
