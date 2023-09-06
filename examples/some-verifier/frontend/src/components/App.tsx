@@ -1,4 +1,3 @@
-import { Col, Row } from 'reactstrap';
 import Verify from './Verify';
 import { AppState, appState } from '../lib/app-state';
 import { createRef, useCallback, useMemo } from 'react';
@@ -21,12 +20,10 @@ function App() {
 
   return (
     <appState.Provider value={appStateValue}>
-      <Row>
-        <Col xs={12} md={7}>
-          <h1 className="mb-0">Concordia</h1>
-          <h4 className="mb-4">Social media verifier</h4>
-        </Col>
-      </Row>
+      <div className="text-center">
+        <h1 className="mb-0">Concordia</h1>
+        <h4 className="mb-4">Social media verifier</h4>
+      </div>
       <Verify />
     </appState.Provider>
   );

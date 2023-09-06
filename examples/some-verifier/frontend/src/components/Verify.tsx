@@ -18,6 +18,7 @@ import telegram from 'bootstrap-icons/icons/telegram.svg';
 import discord from 'bootstrap-icons/icons/discord.svg';
 import telegramColor from '../assets/telegram-logo-color.svg';
 import discordColor from '../assets/discord-logo-color.svg';
+import ccdLogo from '../assets/ccd-logo.svg';
 import { Config, Platform } from '../lib/types';
 import Issuer from './Issuer';
 import {
@@ -48,7 +49,7 @@ const stepTitleMap: { [p in VerificationStep]: string } = {
 
 type StepProps = PropsWithChildren<{
   step: VerificationStep;
-  text: string;
+  text: string | JSX.Element;
 }>;
 
 function Step({ children, step, text }: StepProps) {
@@ -110,7 +111,9 @@ export default function Verify() {
     query.get(Platform.Discord) === 'true',
   );
 
-  const [open, setOpen] = useState<VerificationStep>(VerificationStep.Issue);
+  const [open, setOpen] = useState<VerificationStep | undefined>(
+    VerificationStep.Issue,
+  );
   const [proofError, setProofError] = useState('');
 
   const [telegramChecked, setTelegramChecked] = useState(telegramIssued);
@@ -189,15 +192,35 @@ export default function Verify() {
     }
   };
 
+  const toggle = (id: VerificationStep) => {
+    if (open === id) {
+      setOpen(undefined);
+    } else {
+      setOpen(id);
+    }
+  };
+
   return (
     <>
       {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
       {/* @ts-ignore workaround since toggle is not present on Accordion for some reason */}
-      <Accordion open={open} toggle={setOpen}>
+      <Accordion open={open ?? ''} toggle={toggle}>
         <Step
           step={VerificationStep.Issue}
-          text="Start by getting Web3 ID credentials for your social media accounts.
-                If you already have them, you can proceed to verification."
+          text={
+            <>
+              <p>
+                To verify with Concordia, you need web3 ID credentials for the
+                corresponding social media platforms in your wallet. If you
+                already have the credentials in your wallet, you can skip this
+                step
+              </p>
+              <p className="mb-0">
+                To add credentials to your wallet, please log to the platforms
+                below.
+              </p>
+            </>
+          }
         >
           <Row className="gy-3">
             <Col md={12}>
@@ -220,7 +243,17 @@ export default function Verify() {
         </Step>
         <Step
           step={VerificationStep.Verify}
-          text="Select the credentials that you want to be verified with. Please select at least two options."
+          text={
+            <>
+              <p>
+                Select the platforms you want to verify with, essentially
+                proving ownership of the accounts referenced by the credentials in your wallet.
+                Additionally, you can also choose to reveal your full name from
+                an identity in your wallet.
+              </p>
+              <p className='mb-0'>You must select at least 2 options.</p>
+            </>
+          }
         >
           <Form onSubmit={prove}>
             <Row className="gy-3">
@@ -247,7 +280,8 @@ export default function Verify() {
                     checked={fullNameChecked}
                     setChecked={setFullNameChecked}
                   >
-                    Reveal full name?
+                    <SVG className='me-1' src={ccdLogo} />
+                    Full name
                   </PlatformOption>
                 </ListGroup>
               </Col>
@@ -266,7 +300,9 @@ export default function Verify() {
         </Step>
         <Step
           step={VerificationStep.Check}
-          text="Check your verification status with one of our social media bots."
+          text={<>
+            To check that the verification is completed successfully, you can perform a "/check" on your own user, by interacting with the bot on either platform.
+          </>}
         >
           <Row className="gx-2">
             <Col xs="auto">
@@ -293,7 +329,7 @@ export default function Verify() {
             </Col>
           </Row>
         </Step>
-      </Accordion>
+      </Accordion >
       <RemoveVerification />
     </>
   );

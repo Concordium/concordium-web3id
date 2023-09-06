@@ -99,8 +99,23 @@ export default function RemoveVerification() {
         <ModalBody>
           <Row>
             <Col md={12}>
-              To remove your concordia verification, you must first prove
-              ownership of an account included in the verification.
+              <p>
+                The credentials linked in a verification are stored with a
+                reference to the <i>credential ID</i> they are created with.
+              </p>
+              <p>
+                The credential ID is the public key used to identify the holder
+                of the credential, which is unique for each ID.
+              </p>
+              <p>
+                To remove your Concordia verification, you must first prove
+                ownership of a credential, which{' '}
+                <b>
+                  must have the same credential ID as one included in the
+                  verification
+                </b>
+                .
+              </p>
             </Col>
             <Form
               onSubmit={submit}
