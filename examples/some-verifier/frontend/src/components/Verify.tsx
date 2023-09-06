@@ -4,8 +4,6 @@ import {
   AccordionHeader,
   AccordionItem,
   Button,
-  Card,
-  CardBody,
   Col,
   Form,
   FormGroup,
@@ -20,18 +18,27 @@ import telegram from 'bootstrap-icons/icons/telegram.svg';
 import discord from 'bootstrap-icons/icons/discord.svg';
 import telegramColor from '../assets/telegram-logo-color.svg';
 import discordColor from '../assets/discord-logo-color.svg';
+import ccdLogo from '../assets/ccd-logo.svg';
 import { Config, Platform } from '../lib/types';
 import Issuer from './Issuer';
-import { FormEvent, PropsWithChildren, useMemo, useState } from 'react';
+import {
+  FormEvent,
+  PropsWithChildren,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 import _config from '../../config.json';
 import RemoveVerification from './RemoveVerification';
 import { hash, requestProof } from '../lib/util';
+import { appState } from '../lib/app-state';
+import { WalletApi } from '@concordium/browser-wallet-api-helpers';
 const config = _config as Config;
 
 enum VerificationStep {
-  Issue,
-  Verify,
-  Check,
+  Issue = '0',
+  Verify = '1',
+  Check = '2',
 }
 
 const stepTitleMap: { [p in VerificationStep]: string } = {
@@ -42,7 +49,7 @@ const stepTitleMap: { [p in VerificationStep]: string } = {
 
 type StepProps = PropsWithChildren<{
   step: VerificationStep;
-  text: string;
+  text: string | JSX.Element;
 }>;
 
 function Step({ children, step, text }: StepProps) {
@@ -53,12 +60,8 @@ function Step({ children, step, text }: StepProps) {
       </AccordionHeader>
       <AccordionBody accordionId={step.toString()}>
         <Row className="gy-3">
-          <Col md={12}>
-            <Card>
-              <CardBody>{text}</CardBody>
-            </Card>
-          </Col>
-          <Col>{children}</Col>
+          <Col xs={12}>{text}</Col>
+          <Col xs={12}>{children}</Col>
         </Row>
       </AccordionBody>
     </AccordionItem>
@@ -99,6 +102,7 @@ function PlatformOption({
 }
 
 export default function Verify() {
+  const { concordiumProvider } = useContext(appState);
   const query = useMemo(() => new URLSearchParams(window.location.search), []);
   const [telegramIssued, setTelegramIssued] = useState(
     query.get(Platform.Telegram) === 'true',
@@ -107,7 +111,9 @@ export default function Verify() {
     query.get(Platform.Discord) === 'true',
   );
 
-  const [open, setOpen] = useState('0');
+  const [open, setOpen] = useState<VerificationStep | undefined>(
+    VerificationStep.Issue,
+  );
   const [proofError, setProofError] = useState('');
 
   const [telegramChecked, setTelegramChecked] = useState(telegramIssued);
@@ -135,7 +141,7 @@ export default function Verify() {
     window.history.replaceState(null, '', url);
   };
 
-  const prove = (event: FormEvent) => {
+  const prove = async (event: FormEvent) => {
     event.preventDefault();
     if (checkedCount < 2) {
       setProofError('Please select at least two options.');
@@ -145,10 +151,20 @@ export default function Verify() {
     if (telegramChecked) issuers.push(config.issuers[Platform.Telegram]);
     if (discordChecked) issuers.push(config.issuers[Platform.Discord]);
 
-    (async () => {
-      const timestamp = new Date().toISOString();
-      const challenge = await hash(timestamp);
-      const proof = await requestProof(issuers, challenge, {
+    let api: WalletApi;
+    try {
+      api = await concordiumProvider();
+    } catch (e) {
+      setProofError((e as Error).message); // We know the error type here.
+      console.error(e);
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const challenge = await hash(timestamp);
+
+    try {
+      const proof = await requestProof(api, issuers, challenge, {
         revealName: fullNameChecked,
         revealUsername: true,
       });
@@ -169,22 +185,42 @@ export default function Verify() {
       }
 
       setProofError('');
-      setOpen('2');
-    })().catch((error) => {
+      setOpen(VerificationStep.Check);
+    } catch (e) {
       setProofError('Proof creation failed.');
-      console.error(error);
-    });
+      console.error(e);
+    }
+  };
+
+  const toggle = (id: VerificationStep) => {
+    if (open === id) {
+      setOpen(undefined);
+    } else {
+      setOpen(id);
+    }
   };
 
   return (
     <>
       {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
       {/* @ts-ignore workaround since toggle is not present on Accordion for some reason */}
-      <Accordion open={open} toggle={setOpen}>
+      <Accordion open={open ?? ''} toggle={toggle}>
         <Step
           step={VerificationStep.Issue}
-          text="Start by getting Web3 ID credentials for your social media accounts.
-                If you already have them, you can proceed to verification."
+          text={
+            <>
+              <p>
+                To verify with Concordia, you need web3 ID credentials for the
+                corresponding social media platforms in your wallet. If you
+                already have the credentials in your wallet, you can skip this
+                step
+              </p>
+              <p className="mb-0">
+                To add credentials to your wallet, please log to the platforms
+                below.
+              </p>
+            </>
+          }
         >
           <Row className="gy-3">
             <Col md={12}>
@@ -196,15 +232,28 @@ export default function Verify() {
               />
             </Col>
             <Col md={12}>
-              <Button color="primary" onClick={() => setOpen('1')}>
-                Done
+              <Button
+                color="secondary"
+                onClick={() => setOpen(VerificationStep.Verify)}
+              >
+                Continue
               </Button>
             </Col>
           </Row>
         </Step>
         <Step
           step={VerificationStep.Verify}
-          text="Select the credentials that you want to be verified with. Please select at least two options."
+          text={
+            <>
+              <p>
+                Select the platforms you want to verify with, essentially
+                proving ownership of the accounts referenced by the credentials
+                in your wallet. Additionally, you can also choose to reveal your
+                full name from an identity in your wallet.
+              </p>
+              <p className="mb-0">You must select at least 2 options.</p>
+            </>
+          }
         >
           <Form onSubmit={prove}>
             <Row className="gy-3">
@@ -231,7 +280,8 @@ export default function Verify() {
                     checked={fullNameChecked}
                     setChecked={setFullNameChecked}
                   >
-                    Reveal full name?
+                    <SVG className="me-1" src={ccdLogo} />
+                    Full name
                   </PlatformOption>
                 </ListGroup>
               </Col>
@@ -241,8 +291,8 @@ export default function Verify() {
                 </Col>
               )}
               <Col xs={12}>
-                <Button color="primary" type="submit">
-                  Prove
+                <Button color="secondary" type="submit">
+                  Verify
                 </Button>
               </Col>
             </Row>
@@ -250,7 +300,13 @@ export default function Verify() {
         </Step>
         <Step
           step={VerificationStep.Check}
-          text="Check your verification status with one of our social media bots."
+          text={
+            <>
+              To check that the verification is completed successfully, you can
+              perform a <b>/check</b> on your own user, by interacting with the
+              bot on either platform.
+            </>
+          }
         >
           <Row className="gx-2">
             <Col xs="auto">

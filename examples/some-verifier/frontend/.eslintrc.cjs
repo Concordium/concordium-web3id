@@ -18,6 +18,15 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
+    '@typescript-eslint/unbound-method': 0,
+    '@typescript-eslint/no-misused-promises': [
+      'error',
+      {
+        checksVoidReturn: {
+          attributes: false,
+        },
+      },
+    ],
   },
   parserOptions: {
     ecmaVersion: 'latest',

@@ -1,9 +1,7 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useContext, useState } from 'react';
 import {
   Alert,
   Button,
-  Card,
-  CardBody,
   Col,
   Form,
   FormFeedback,
@@ -18,9 +16,12 @@ import {
 import { Config, Platform } from '../lib/types';
 import { hash, requestProof } from '../lib/util';
 import _config from '../../config.json';
+import { WalletApi } from '@concordium/browser-wallet-api-helpers';
+import { appState } from '../lib/app-state';
 const config = _config as Config;
 
 export default function RemoveVerification() {
+  const { concordiumProvider } = useContext(appState);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -41,10 +42,21 @@ export default function RemoveVerification() {
 
     setPending(true);
 
+    const timestamp = new Date().toISOString();
+    const challenge = await hash(timestamp);
+
+    let api: WalletApi;
     try {
-      const timestamp = new Date().toISOString();
-      const challenge = await hash(timestamp);
+      api = await concordiumProvider();
+    } catch (e) {
+      setError((e as Error).message); // We know the error type here.
+      console.error(e);
+      return;
+    }
+
+    try {
       const proof = await requestProof(
+        api,
         [config.issuers[platform as Platform]],
         challenge,
       );
@@ -85,20 +97,31 @@ export default function RemoveVerification() {
       <Modal isOpen={open} toggle={toggle} onClosed={reset}>
         <ModalHeader toggle={toggle}>Verificaton removal</ModalHeader>
         <ModalBody>
-          <Card>
-            <CardBody>
-              To remove your concordia verification, you must first prove
-              ownership of an account included in the verification.
-            </CardBody>
-          </Card>
-          <Form
-            onSubmit={(e) => {
-              void submit(e);
-            }}
-            onChange={() => setError(undefined)}
-            className="pt-3"
-          >
-            <Row>
+          <Row>
+            <Col md={12}>
+              <p>
+                The credentials linked in a verification are stored with a
+                reference to the <i>credential ID</i> they are created with.
+              </p>
+              <p>
+                The credential ID is the public key used to identify the holder
+                of the credential, which is unique for each ID.
+              </p>
+              <p>
+                To remove your Concordia verification, you must first prove
+                ownership of a credential, which{' '}
+                <b>
+                  must have the same credential ID as one included in the
+                  verification
+                </b>
+                .
+              </p>
+            </Col>
+            <Form
+              onSubmit={submit}
+              onChange={() => setError(undefined)}
+              className="pt-3"
+            >
               <Col md={12}>
                 <FormGroup>
                   <Label for="platform">Select platform</Label>
@@ -126,8 +149,8 @@ export default function RemoveVerification() {
                   </Button>
                 )}
               </Col>
-            </Row>
-          </Form>
+            </Form>
+          </Row>
         </ModalBody>
       </Modal>
     </>
