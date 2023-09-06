@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 1.0.11
+
+- Update module reference for the credential registry contract.
+
 ## 1.0.10
 
 - Support new date-time format for browser wallet 1.1.6.
