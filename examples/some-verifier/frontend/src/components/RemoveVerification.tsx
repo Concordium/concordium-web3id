@@ -15,10 +15,8 @@ import {
   ModalHeader,
   Row,
 } from 'reactstrap';
-import { Config, Platform } from '../lib/types';
+import { Platform } from '../lib/types';
 import { hash, requestProof } from '../lib/util';
-import _config from '../../config.json';
-const config = _config as Config;
 
 export default function RemoveVerification() {
   const [open, setOpen] = useState(false);

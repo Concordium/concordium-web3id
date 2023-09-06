@@ -20,14 +20,11 @@ import telegram from 'bootstrap-icons/icons/telegram.svg';
 import discord from 'bootstrap-icons/icons/discord.svg';
 import telegramColor from '../assets/telegram-logo-color.svg';
 import discordColor from '../assets/discord-logo-color.svg';
-import { Config, Platform } from '../lib/types';
+import { Platform } from '../lib/types';
 import Issuer from './Issuer';
 import { FormEvent, PropsWithChildren, useMemo, useState } from 'react';
-import _config from '../../config.json';
 import RemoveVerification from './RemoveVerification';
 import { hash, requestProof } from '../lib/util';
-const config = _config as Config;
-
 enum VerificationStep {
   Issue,
   Verify,
