@@ -446,7 +446,7 @@ export default function CreateSchemaAndMetadataFiles() {
 
                         const fileName = 'credentialSchema.json';
 
-                        const fileToSave = new Blob([JSON.stringify(credentialSchema)], {
+                        const fileToSave = new Blob([JSON.stringify(credentialSchema, null, 2)], {
                             type: 'application/json',
                         });
 
@@ -516,7 +516,7 @@ export default function CreateSchemaAndMetadataFiles() {
 
                         const fileName = 'credentialMetadata.json';
 
-                        const fileToSave = new Blob([JSON.stringify(credentialMetadata)], {
+                        const fileToSave = new Blob([JSON.stringify(credentialMetadata, null, 2)], {
                             type: 'application/json',
                         });
 
@@ -589,7 +589,7 @@ export default function CreateSchemaAndMetadataFiles() {
 
                         const fileName = 'issuerMetadata.json';
 
-                        const fileToSave = new Blob([JSON.stringify(issuerMetadata)], {
+                        const fileToSave = new Blob([JSON.stringify(issuerMetadata, null, 2)], {
                             type: 'application/json',
                         });
 
