@@ -4,7 +4,33 @@ import {
   Web3StatementBuilder,
 } from '@concordium/web-sdk';
 import { Issuer } from './types';
-import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
+import {
+  WalletApi,
+  detectConcordiumProvider,
+} from '@concordium/browser-wallet-api-helpers';
+
+/**
+ * Connects concordium wallet
+ *
+ * @throws If wallet connection is rejected
+ * @throws If wallet could not be found
+ *
+ * @returns {WalletApi} The wallet API
+ */
+export async function connectWallet(): Promise<WalletApi> {
+  try {
+    const api = await detectConcordiumProvider(0); // Throws `undefined` if not found...
+    await api.requestAccounts(); // This will throw an `Error` if user rejects.
+    return api;
+  } catch (e) {
+    if (e === undefined) {
+      // Concordium provider not available.
+      throw new Error('Wallet not found');
+    }
+
+    throw new Error('Wallet connection rejected by user');
+  }
+}
 
 export async function hash(message: string): Promise<string> {
   const msgUint8 = new TextEncoder().encode(message);
@@ -24,6 +50,7 @@ interface ProofOptions {
 }
 
 export async function requestProof(
+  walletApi: WalletApi,
   issuers: Issuer[],
   challenge: string,
   { revealName = false, revealUsername = false }: ProofOptions = {},
@@ -59,7 +86,6 @@ export async function requestProof(
   }
 
   const statements = builder.getStatements();
-  const provider = await detectConcordiumProvider();
 
-  return await provider.requestVerifiablePresentation(challenge, statements);
+  return await walletApi.requestVerifiablePresentation(challenge, statements);
 }

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useContext, useState } from 'react';
 import {
   Alert,
   Button,
@@ -16,13 +16,12 @@ import {
 import { Config, Platform } from '../lib/types';
 import { hash, requestProof } from '../lib/util';
 import _config from '../../config.json';
+import { WalletApi } from '@concordium/browser-wallet-api-helpers';
+import { appState } from '../lib/app-state';
 const config = _config as Config;
 
-interface Props {
-  isLocked: boolean;
-}
-
-export default function RemoveVerification({ isLocked }: Props) {
+export default function RemoveVerification() {
+  const { concordiumProvider } = useContext(appState);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [removed, setRemoved] = useState(false);
@@ -43,10 +42,21 @@ export default function RemoveVerification({ isLocked }: Props) {
 
     setPending(true);
 
+    const timestamp = new Date().toISOString();
+    const challenge = await hash(timestamp);
+
+    let api: WalletApi;
     try {
-      const timestamp = new Date().toISOString();
-      const challenge = await hash(timestamp);
+      api = await concordiumProvider();
+    } catch (e) {
+      setError((e as Error).message); // We know the error type here.
+      console.error(e);
+      return;
+    }
+
+    try {
       const proof = await requestProof(
+        api,
         [config.issuers[platform as Platform]],
         challenge,
       );
@@ -81,7 +91,7 @@ export default function RemoveVerification({ isLocked }: Props) {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} color="link" disabled={isLocked}>
+      <Button onClick={() => setOpen(true)} color="link">
         Remove verification?
       </Button>
       <Modal isOpen={open} toggle={toggle} onClosed={reset}>

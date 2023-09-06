@@ -23,19 +23,21 @@ import Issuer from './Issuer';
 import {
   FormEvent,
   PropsWithChildren,
-  useEffect,
+  useContext,
   useMemo,
   useState,
 } from 'react';
 import _config from '../../config.json';
 import RemoveVerification from './RemoveVerification';
 import { hash, requestProof } from '../lib/util';
+import { appState } from '../lib/app-state';
+import { WalletApi } from '@concordium/browser-wallet-api-helpers';
 const config = _config as Config;
 
 enum VerificationStep {
-  Issue,
-  Verify,
-  Check,
+  Issue = '0',
+  Verify = '1',
+  Check = '2',
 }
 
 const stepTitleMap: { [p in VerificationStep]: string } = {
@@ -98,11 +100,8 @@ function PlatformOption({
   );
 }
 
-interface Props {
-  isLocked: boolean;
-}
-
-export default function Verify({ isLocked }: Props) {
+export default function Verify() {
+  const { concordiumProvider } = useContext(appState);
   const query = useMemo(() => new URLSearchParams(window.location.search), []);
   const [telegramIssued, setTelegramIssued] = useState(
     query.get(Platform.Telegram) === 'true',
@@ -111,7 +110,7 @@ export default function Verify({ isLocked }: Props) {
     query.get(Platform.Discord) === 'true',
   );
 
-  const [open, setOpen] = useState<string>('');
+  const [open, setOpen] = useState<VerificationStep>(VerificationStep.Issue);
   const [proofError, setProofError] = useState('');
 
   const [telegramChecked, setTelegramChecked] = useState(telegramIssued);
@@ -123,12 +122,6 @@ export default function Verify({ isLocked }: Props) {
     if (count >= 2) setProofError('');
     return count;
   }, [telegramChecked, discordChecked, fullNameChecked]);
-
-  useEffect(() => {
-    if (!isLocked) {
-      setOpen('0');
-    }
-  }, [isLocked]);
 
   const issueTelegram = () => {
     setTelegramChecked(true);
@@ -155,10 +148,20 @@ export default function Verify({ isLocked }: Props) {
     if (telegramChecked) issuers.push(config.issuers[Platform.Telegram]);
     if (discordChecked) issuers.push(config.issuers[Platform.Discord]);
 
+    let api: WalletApi;
     try {
-      const timestamp = new Date().toISOString();
-      const challenge = await hash(timestamp);
-      const proof = await requestProof(issuers, challenge, {
+      api = await concordiumProvider();
+    } catch (e) {
+      setProofError((e as Error).message); // We know the error type here.
+      console.error(e);
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const challenge = await hash(timestamp);
+
+    try {
+      const proof = await requestProof(api, issuers, challenge, {
         revealName: fullNameChecked,
         revealUsername: true,
       });
@@ -179,7 +182,7 @@ export default function Verify({ isLocked }: Props) {
       }
 
       setProofError('');
-      setOpen('2');
+      setOpen(VerificationStep.Check);
     } catch (e) {
       setProofError('Proof creation failed.');
       console.error(e);
@@ -190,7 +193,7 @@ export default function Verify({ isLocked }: Props) {
     <>
       {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
       {/* @ts-ignore workaround since toggle is not present on Accordion for some reason */}
-      <Accordion open={open} toggle={setOpen} aria-disabled={isLocked}>
+      <Accordion open={open} toggle={setOpen}>
         <Step
           step={VerificationStep.Issue}
           text="Start by getting Web3 ID credentials for your social media accounts.
@@ -206,7 +209,10 @@ export default function Verify({ isLocked }: Props) {
               />
             </Col>
             <Col md={12}>
-              <Button color="secondary" onClick={() => setOpen('1')}>
+              <Button
+                color="secondary"
+                onClick={() => setOpen(VerificationStep.Verify)}
+              >
                 Continue
               </Button>
             </Col>
@@ -288,7 +294,7 @@ export default function Verify({ isLocked }: Props) {
           </Row>
         </Step>
       </Accordion>
-      <RemoveVerification isLocked={isLocked} />
+      <RemoveVerification />
     </>
   );
 }
