@@ -73,8 +73,8 @@ The following configuration options are supported
           Socket addres for the Discord issuer. [env: DISCORD_ISSUER_LISTEN_ADDRESS=] [default: 0.0.0.0:8081]
       --url <URL>
           URL of the Discord issuer. [env: DISCORD_ISSUER_URL=] [default: http://127.0.0.1:8081/]
-      --dapp-domain <DAPP_DOMAIN>
-          The domain of the dApp, used for CORS. [env: DISCORD_ISSUER_DAPP_URL=] [default: http://127.0.0.1]
+      --verifier-dapp-domain <VERIFIER_DAPP_DOMAIN>
+          The domain of the verifier dApp, used for CORS. [env: DISCORD_ISSUER_VERIFIER_DAPP_URL=] [default: http://127.0.0.1]
 
 
 ### Configuration of the telegram issuer
@@ -101,6 +101,6 @@ The following configuration options are supported
           Socket addres for the Telegram issuer. [env: TELEGRAM_ISSUER_LISTEN_ADDRESS=] [default: 0.0.0.0:8080]
       --url <URL>
           URL of the Telegram issuer. [env: TELEGRAM_ISSUER_URL=] [default: http://127.0.0.1:8080/]
-      --dapp-domain <DAPP_DOMAIN>
-          The domain of the dApp, used for CORS. [env: TELEGRAM_ISSUER_DAPP_URL=] [default: http://127.0.0.1]
+      --verifier-dapp-domain <VERIFIER_DAPP_DOMAIN>
+          The domain of the verifier dApp, used for CORS. [env: TELEGRAM_ISSUER_VERIFIER_DAPP_URL=] [default: http://127.0.0.1]
 

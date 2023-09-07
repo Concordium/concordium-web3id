@@ -119,12 +119,12 @@ struct App {
     )]
     url:                   Url,
     #[clap(
-        long = "dapp-domain",
-        help = "The domain of the dApp, used for CORS.",
+        long = "verifier-dapp-domain",
+        help = "The domain of the verifier dApp, used for CORS.",
         default_value = "http://127.0.0.1:8081",
         env = "DISCORD_ISSUER_DAPP_URL"
     )]
-    dapp_domain:           String,
+    verifier_dapp_domain:  String,
     #[clap(
         long = "frontend",
         default_value = "./frontend/dist/discord",
@@ -447,7 +447,7 @@ async fn main() -> anyhow::Result<()> {
         http_client,
         discord_redirect_uri: Arc::new(discord_redirect_uri),
         handlebars: Arc::new(handlebars),
-        dapp_domain: Arc::new(app.dapp_domain.clone()),
+        dapp_domain: Arc::new(app.verifier_dapp_domain.clone()),
     };
 
     let session_store = CookieStore::new();
@@ -462,7 +462,7 @@ async fn main() -> anyhow::Result<()> {
     let cors = CorsLayer::new()
         .allow_methods([http::Method::GET, http::Method::POST])
         .allow_origin(
-            app.dapp_domain
+            app.verifier_dapp_domain
                 .parse::<HeaderValue>()
                 .context("dApp domain was not valid.")?,
         )
