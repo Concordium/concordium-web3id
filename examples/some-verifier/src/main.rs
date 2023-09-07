@@ -162,7 +162,7 @@ struct AppState {
 struct FrontendConfig {
     discord_client_id: String,
     telegram_bot_name: String,
-    chain:             Network,
+    network:           Network,
     issuers:           HashMap<String, IssuerConfig>,
 }
 
@@ -246,7 +246,7 @@ async fn main() -> anyhow::Result<()> {
     let frontend_config = FrontendConfig {
         discord_client_id: app.discord_client_id,
         telegram_bot_name: app.telegram_bot_name,
-        chain:             app.network,
+        network:           app.network,
         issuers:           [
             ("telegram".to_string(), IssuerConfig {
                 url:      app.telegram_issuer_url.to_string(),
