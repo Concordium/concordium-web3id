@@ -45,7 +45,8 @@ const discordConfig: DiscordConfig = {
 
 const configs: { [p in Platform]: PlatformConfig } = {
   [Platform.Telegram]: {
-    port: 8080,
+    // If not served on default port (80), telegram login doesn't work due to iframe restrictions
+    port: 80,
     config: telegramConfig,
   },
   [Platform.Discord]: {
