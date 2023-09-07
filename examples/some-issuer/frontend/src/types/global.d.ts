@@ -4,5 +4,5 @@ import { TelegramConfig } from '../telegram/types';
 export type Config = DiscordConfig | TelegramConfig;
 
 declare global {
-  declare const config: Config;
+    declare const config: Config;
 }

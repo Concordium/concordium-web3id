@@ -8,33 +8,27 @@ import Layout from 'shared/Layout';
 const { telegramBotName } = config as TelegramConfig;
 
 function App() {
-  const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
-    try {
-      if (!username) {
-        throw new Error(
-          'A telegram username must be available to create a credential.',
-        );
-      }
+    const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
+        try {
+            if (!username) {
+                throw new Error('A telegram username must be available to create a credential.');
+            }
 
-      await requestCredential({
-        platform: Platform.Telegram,
-        user: { username, ...user },
-      });
-    } catch (error) {
-      alert(`An error occured: ${(error as Error).message ?? error}`);
-      return;
-    }
-  };
+            await requestCredential({
+                platform: Platform.Telegram,
+                user: { username, ...user },
+            });
+        } catch (error) {
+            alert(`An error occured: ${(error as Error).message ?? error}`);
+            return;
+        }
+    };
 
-  return (
-    <Layout platform="Telegram" logo={<img src={telegramLogo} alt="Telegram logo" />}>
-      <TelegramLoginButton
-        botName={telegramBotName}
-        dataOnauth={onTelegramAuth}
-        cornerRadius={3}
-      />
-    </Layout>
-  )
+    return (
+        <Layout platform="Telegram" logo={<img src={telegramLogo} alt="Telegram logo" />}>
+            <TelegramLoginButton botName={telegramBotName} dataOnauth={onTelegramAuth} cornerRadius={3} />
+        </Layout>
+    );
 }
 
-export default App
+export default App;
