@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { replaceCodePlugin } from "vite-plugin-replace";
+import tsconfigPaths from 'vite-tsconfig-paths'
 
 type PlatformConfig = {
   port: number;
@@ -35,7 +35,7 @@ const { port } = configs[platform];
 export default defineConfig({
   plugins: [
     react(),
-    replaceCodePlugin({ replacements: [{ from: "{{platform}}", to: platform }] })
+    tsconfigPaths()
   ],
   esbuild: false,
   server: {
