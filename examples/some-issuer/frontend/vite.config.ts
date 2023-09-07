@@ -8,6 +8,7 @@ import { DiscordConfig } from './src/discord/types';
 
 interface PlatformConfig {
   port: number;
+  config: Config;
 }
 
 interface HtmlPlaceholders {
@@ -15,6 +16,7 @@ interface HtmlPlaceholders {
 }
 
 const SUPPORTED_PLATFORMS = [Platform.Discord, Platform.Telegram];
+const DEFAULT_NETWORK = 'testnet';
 
 const platform: Platform = process.env.VITE_SOME_ISSUER_PLATFORM as Platform;
 
@@ -22,16 +24,37 @@ if (!SUPPORTED_PLATFORMS.includes(platform)) {
   throw new Error(`Please specify environment variable "VITE_SOME_ISSUER_PLATFORM" to be one of: ${SUPPORTED_PLATFORMS.join(',')}`)
 }
 
+const parseContractAddress = (address: string) => {
+  const [index, subindex] = address.replace(/[<>]/g, '').split(',');
+  return { index, subindex };
+}
+
+const telegramConfig: TelegramConfig = {
+  type: Platform.Telegram,
+  network: process.env.TELEGRAM_ISSUER_NETWORK ?? DEFAULT_NETWORK,
+  telegramBotName: process.env.TELEGRAM_BOT_NAME,
+  contract: parseContractAddress(process.env.TELEGRAM_ISSUER_REGISTRY_ADDRESS)
+};
+
+const discordConfig: DiscordConfig = {
+  type: Platform.Discord,
+  network: process.env.DISCORD_ISSUER_NETWORK ?? DEFAULT_NETWORK,
+  discordClientId: process.env.DISCORD_CLIENT_ID,
+  contract: parseContractAddress(process.env.DISCORD_ISSUER_REGISTRY_ADDRESS)
+};
+
 const configs: { [p in Platform]: PlatformConfig } = {
   [Platform.Telegram]: {
     port: 8080,
+    config: telegramConfig,
   },
   [Platform.Discord]: {
     port: 8081,
+    config: discordConfig,
   },
 }
 
-const { port } = configs[platform];
+const { port, config } = configs[platform];
 
 const transformHtml: (data: HtmlPlaceholders) => Plugin = data => ({
   name: 'transform-html',
@@ -39,7 +62,7 @@ const transformHtml: (data: HtmlPlaceholders) => Plugin = data => ({
     enforce: 'pre',
     handler(html, ctx) {
       if (!ctx.server) {
-        // We building for production. Let production server do placeholder replacements
+        // We're building for production. Let production server do placeholder replacements
         return html;
       }
 
@@ -57,34 +80,12 @@ const transformHtml: (data: HtmlPlaceholders) => Plugin = data => ({
   }
 });
 
-const telegramConfig: TelegramConfig = {
-  type: Platform.Telegram,
-  network: 'testnet',
-  telegramBotName: 'concordium_bot',
-  contract: {
-    index: '5924',
-    subindex: '0'
-  }
-};
-
-const discordConfig: DiscordConfig = {
-  type: Platform.Discord,
-  network: 'testnet',
-  discordClientId: '1127954266213056635',
-  contract: {
-    index: '5968',
-    subindex: '0'
-  }
-};
-
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tsconfigPaths(),
-    transformHtml({
-      config: discordConfig // TODO: from env...
-    }),
+    transformHtml({ config }),
   ],
   esbuild: false,
   server: {
