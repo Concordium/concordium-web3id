@@ -28,8 +28,8 @@ if (!SUPPORTED_PLATFORMS.includes(platform)) {
     );
 }
 
-const parseContractAddress = (address: string) => {
-    const [index, subindex] = address.replace(/[<>]/g, '').split(',');
+const parseContractAddress = (address: string | undefined) => {
+    const [index, subindex] = address?.replace(/[<>]/g, '').split(',') ?? [];
     return { index, subindex };
 };
 
@@ -37,14 +37,14 @@ const telegramConfig: TelegramConfig = {
     type: Platform.Telegram,
     network: process.env.TELEGRAM_ISSUER_NETWORK ?? DEFAULT_NETWORK,
     telegramBotName: process.env.TELEGRAM_BOT_NAME!,
-    contract: parseContractAddress(process.env.TELEGRAM_ISSUER_REGISTRY_ADDRESS!),
+    contract: parseContractAddress(process.env.TELEGRAM_ISSUER_REGISTRY_ADDRESS),
 };
 
 const discordConfig: DiscordConfig = {
     type: Platform.Discord,
     network: process.env.DISCORD_ISSUER_NETWORK ?? DEFAULT_NETWORK,
     discordClientId: process.env.DISCORD_CLIENT_ID!,
-    contract: parseContractAddress(process.env.DISCORD_ISSUER_REGISTRY_ADDRESS!),
+    contract: parseContractAddress(process.env.DISCORD_ISSUER_REGISTRY_ADDRESS),
 };
 
 const configs: { [p in Platform]: PlatformConfig } = {
