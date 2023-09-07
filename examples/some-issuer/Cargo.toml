@@ -32,5 +32,4 @@ http = "0.2"
 tonic = { version = "0.8", features = ["tls", "tls-roots"] }
 handlebars = "4.3"
 futures = "0.3"
-dashmap = "5.5"
-crossbeam-deque = "0.8"
+priority-queue = "1.3"

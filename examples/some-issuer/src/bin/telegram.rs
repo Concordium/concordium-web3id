@@ -291,7 +291,7 @@ async fn main() -> anyhow::Result<()> {
         metadata_url: Arc::new(metadata_url),
         credential_type: registry_metadata.credential_type,
         credential_schema_url: registry_metadata.credential_schema.schema_ref.url().into(),
-        rate_limiter: Arc::new(rate_limiter),
+        rate_limiter: Arc::new(tokio::sync::Mutex::new(rate_limiter)),
     };
 
     let state = AppState {

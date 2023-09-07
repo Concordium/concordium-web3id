@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+
 use axum_sessions::{
     async_session::CookieStore,
     extractors::{ReadableSession, WritableSession},
@@ -419,7 +420,7 @@ async fn main() -> anyhow::Result<()> {
         max_register_energy: app.max_register_energy,
         metadata_url: Arc::new(metadata_url),
         credential_schema_url: registry_metadata.credential_schema.schema_ref.url().into(),
-        rate_limiter: Arc::new(rate_limiter),
+        rate_limiter: Arc::new(tokio::sync::Mutex::new(rate_limiter)),
     };
 
     let discord_redirect_uri = app.url.join("discord-oauth2")?;

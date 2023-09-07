@@ -16,10 +16,14 @@ use concordium_rust_sdk::{
     },
     web3id::{did::Network, SignedCommitments, Web3IdAttribute, Web3IdCredential},
 };
-use dashmap::DashSet;
+use priority_queue::PriorityQueue;
 use reqwest::{StatusCode, Url};
 use serde::Serialize;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    cmp::Reverse,
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 #[derive(Clone)]
 pub struct IssuerState {
@@ -33,22 +37,20 @@ pub struct IssuerState {
     pub max_register_energy:   Energy,
     pub metadata_url:          Arc<Url>,
     pub credential_schema_url: Arc<str>,
-    pub rate_limiter:          Arc<RateLimiter>,
+    pub rate_limiter:          Arc<tokio::sync::Mutex<RateLimiter>>,
 }
 
 /// Remembers user ids of issued credentials up to a fixed capacity and how many
 /// times credentials have been issued for the same ids.
-///
-/// The implementation uses the reference count of [Arc](std::sync::Arc) to
-/// count the number of credentials that have been issued. So if the queue is at
-/// capacity, the last `Arc` is removed, decreasing the reference count and
-/// allowing one more credential for that id to be issued.
 pub struct RateLimiter {
-    /// MPMC FIFO queue that remembers the most recently
-    /// issued user ids.
-    queue:          crossbeam_deque::Injector<Arc<str>>,
-    /// Concurrent hashset that holds all elements of `queue`.
-    lookup:         DashSet<Arc<str>>,
+    /// A counter that is incremented for each new credential giving them a
+    /// priority.
+    next_priority:  u64,
+    /// Remembers user ids of recently issued credentials and orders them by
+    /// recency.
+    queue:          PriorityQueue<String, Reverse<u64>>,
+    /// Stores how many times a given user id in `queue` has been issued.
+    repeat_counts:  HashMap<String, usize>,
     queue_capacity: usize,
     max_repeats:    usize,
 }
@@ -56,45 +58,56 @@ pub struct RateLimiter {
 impl RateLimiter {
     pub fn new(queue_capacity: usize, max_repeats: usize) -> Self {
         Self {
-            queue: crossbeam_deque::Injector::new(),
-            lookup: DashSet::new(),
+            next_priority: 0,
+            queue: PriorityQueue::new(),
+            repeat_counts: HashMap::new(),
             queue_capacity,
             max_repeats,
         }
     }
 
-    fn id_at_capacity(&self, id: String) -> bool {
-        let arc = Arc::<str>::from(id);
-        match self.lookup.get(&arc) {
-            // If there are self.max_repeats references in the queue and one in the hashset
-            Some(arc) if Arc::strong_count(&arc) > self.max_repeats => true,
-            _ => false,
-        }
+    fn id_at_capacity(&self, id: &str) -> bool {
+        let repeat_count = self.repeat_counts.get(id);
+        repeat_count == Some(&self.max_repeats)
     }
 
-    fn insert(&self, id: String) {
-        let arc = Arc::<str>::from(id);
-        // Find the Arc for the id or use a new one, if the id does not exist
-        let arc = match self.lookup.get(&arc) {
-            Some(arc) => Arc::clone(&arc),
-            None => arc,
-        };
+    /// Insert an id into the rate limiter returning its old priority if it was
+    /// already present.
+    fn insert(&mut self, id: String) -> Option<u64> {
+        // Insert in queue or update priority
+        let old_priority = self
+            .queue
+            .push_decrease(id.clone(), Reverse(self.next_priority));
+        self.next_priority += 1;
 
-        if self.queue.len() >= self.queue_capacity {
-            let mut removed = self.queue.steal();
-            while removed.is_retry() {
-                removed = self.queue.steal();
-            }
-            if let Some(removed) = removed.success() {
-                // Remove the entry from the map if there are only two references left
-                // (`removed` and the entry itsefl)
-                self.lookup
-                    .remove_if(&removed, |arc| Arc::strong_count(arc) == 2);
-            }
+        // If the queue is now too big, remove an element
+        if self.queue.len() > self.queue_capacity {
+            let (removed, _) = self.queue.pop().unwrap();
+            self.repeat_counts.remove(&removed);
         }
 
-        self.lookup.insert(arc.clone());
-        self.queue.push(arc);
+        // Increment in the repeats table
+        self.repeat_counts
+            .entry(id)
+            .and_modify(|e| *e += 1)
+            .or_insert(1);
+
+        old_priority.map(|Reverse(p)| p)
+    }
+
+    fn undo_insert(&mut self, id: &str, old_priority: Option<u64>) {
+        let count = match self.repeat_counts.get_mut(id) {
+            Some(count) => count,
+            None => return,
+        };
+
+        if *count == 1 {
+            self.repeat_counts.remove(id);
+            self.queue.remove(id);
+        } else if let Some(p) = old_priority {
+            *count -= 1;
+            self.queue.change_priority(id, Reverse(p));
+        }
     }
 }
 
@@ -140,37 +153,49 @@ impl IssuerState {
     ) -> Result<Json<IssueResponse>, StatusCode> {
         tracing::debug!("Request to issue a credential.");
 
-        if self.rate_limiter.id_at_capacity(user_id.clone()) {
-            tracing::info!("Rejecting credential due to rate limit.");
-            return Err(StatusCode::TOO_MANY_REQUESTS);
-        }
-
         if let Err(err) = self.validate_credential(credential) {
             tracing::warn!("Failed to validate credential: {err}");
             return Err(StatusCode::BAD_REQUEST);
         }
 
-        match self
+        let mut rate_limiter_guard = self.rate_limiter.lock().await;
+        if rate_limiter_guard.id_at_capacity(&user_id) {
+            tracing::info!("Rejecting credential due to rate limit.");
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
+        // Insert immediately so that we hold the lock for as short time as possible.
+        // Additionally, IssueResponse does not implement Send, so it is not possible to
+        // lock the rate_limiter after an IssueResponse has been created, since
+        // otherwise we will hold a !Send across an await which means our handlers will
+        // not implement axum::Handler.
+        let old_priority = rate_limiter_guard.insert(user_id.clone());
+        drop(rate_limiter_guard);
+
+        // This awkward match circumvents https://github.com/rust-lang/rust/issues/104883
+        let err = match self
             .register_credential(credential, user_id.clone(), username)
             .await
         {
             Ok(res) => {
-                self.rate_limiter.insert(user_id);
                 tracing::debug!(
                     "Successfully issued credential with id {}.",
                     credential.holder_id
                 );
-                Ok(Json(res))
+                return Ok(Json(res));
             }
-            Err(err) => {
-                tracing::error!("Failed to register credential: {err}");
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        }
+            Err(err) => err,
+        };
+
+        self.rate_limiter
+            .lock()
+            .await
+            .undo_insert(&user_id, old_priority);
+        tracing::error!("Failed to register credential: {err}");
+        Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
 
     #[tracing::instrument(level = "debug", skip(self, credential))]
-    pub async fn register_credential(
+    async fn register_credential(
         &mut self,
         credential: &CredentialInfo,
         user_id: String,
