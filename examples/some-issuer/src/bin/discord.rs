@@ -121,8 +121,8 @@ struct App {
     #[clap(
         long = "verifier-dapp-domain",
         help = "The domain of the verifier dApp, used for CORS.",
-        default_value = "http://127.0.0.1:8081",
-        env = "DISCORD_ISSUER_DAPP_URL"
+        default_value = "http://127.0.0.1",
+        env = "DISCORD_ISSUER_VERIFIER_DAPP_URL"
     )]
     verifier_dapp_domain:  String,
     #[clap(
@@ -142,7 +142,8 @@ struct AppState {
     http_client:           reqwest::Client,
     handlebars:            Arc<Handlebars<'static>>,
     discord_redirect_uri:  Arc<Url>,
-    dapp_domain:           Arc<String>,
+    dapp_domain:           Arc<Url>,
+    verifier_dapp_domain:  Arc<String>,
 }
 
 /// Request for issuance of Discord credential.
@@ -181,9 +182,10 @@ struct Oauth2RedirectParams {
 
 #[derive(Serialize)]
 struct OauthTemplateParams<'a> {
-    id:          &'a str,
-    username:    &'a str,
-    dapp_domain: &'a str,
+    id:                   &'a str,
+    username:             &'a str,
+    dapp_domain:          &'a str,
+    verifier_dapp_domain: &'a str,
 }
 
 #[derive(Serialize)]
@@ -336,9 +338,10 @@ impl AppState {
             .context("Cannot serialize username.")?;
 
         let params = OauthTemplateParams {
-            id:          &user.id,
-            username:    &username,
-            dapp_domain: &self.dapp_domain,
+            id:                   &user.id,
+            username:             &username,
+            dapp_domain:          &self.dapp_domain.to_string(),
+            verifier_dapp_domain: &self.verifier_dapp_domain,
         };
 
         let output = self
@@ -447,7 +450,8 @@ async fn main() -> anyhow::Result<()> {
         http_client,
         discord_redirect_uri: Arc::new(discord_redirect_uri),
         handlebars: Arc::new(handlebars),
-        dapp_domain: Arc::new(app.verifier_dapp_domain.clone()),
+        dapp_domain: Arc::new(app.url.into()),
+        verifier_dapp_domain: Arc::new(app.verifier_dapp_domain.clone()),
     };
 
     let session_store = CookieStore::new();
