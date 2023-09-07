@@ -1,14 +1,10 @@
-import { useState } from "react"
+import telegramLogo from 'assets/telegram-logo-color.svg';
 import Layout from "../shared/Layout"
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <Layout title="Telegram">
-      <button onClick={() => setCount((count) => count + 1)}>
-        count is {count}
-      </button>
+    <Layout platform="Telegram" logo={<img src={telegramLogo} alt="Telegram logo" />}>
+
     </Layout>
   )
 }

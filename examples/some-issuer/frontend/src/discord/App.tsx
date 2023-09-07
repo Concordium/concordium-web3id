@@ -1,14 +1,10 @@
-import { useState } from "react"
+import discordLogo from 'assets/discord-logo-color.svg';
 import Layout from "../shared/Layout"
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
-    <Layout title="Discord">
-      <button onClick={() => setCount((count) => count + 1)}>
-        count is {count}
-      </button>
+    <Layout platform="Discord" logo={<img src={discordLogo} alt="Discord logo" />}>
     </Layout>
   )
 }
