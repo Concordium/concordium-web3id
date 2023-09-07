@@ -75,6 +75,8 @@ The following configuration options are supported
           URL of the Discord issuer. [env: DISCORD_ISSUER_URL=] [default: http://127.0.0.1:8081/]
       --verifier-dapp-domain <VERIFIER_DAPP_DOMAIN>
           The domain of the verifier dApp, used for CORS. [env: DISCORD_ISSUER_VERIFIER_DAPP_URL=] [default: http://127.0.0.1]
+      --frontend <FRONTEND_ASSETS>
+          Path to the directory where frontend assets are located. [env: DISCORD_ISSUER_FRONTEND=] [default: ./frontend/dist/discord]
 
 
 ### Configuration of the telegram issuer
@@ -96,11 +98,15 @@ The following configuration options are supported
       --max-register-energy <MAX_REGISTER_ENERGY>
           The amount of energy to allow for execution of the register credential transaction. This must be less than max block energy of the chain the service is connected to. [env: TELEGRAM_ISSUER_MAX_REGISTER_ENERGY=] [default: 10000]
       --telegram-token <TELEGRAM_BOT_TOKEN>
-          Bot token for Telegram. [env: TELEGRAM_BOT_TOKEN=]
+          Bot token for Telegram. [env: TELEGRAM_ISSUER_TELEGRAM_BOT_TOKEN=]
       --listen-address <LISTEN_ADDRESS>
-          Socket addres for the Telegram issuer. [env: TELEGRAM_ISSUER_LISTEN_ADDRESS=] [default: 0.0.0.0:8080]
+          Socket address for the Telegram issuer. [env: TELEGRAM_ISSUER_LISTEN_ADDRESS=] [default: 0.0.0.0:80]
       --url <URL>
-          URL of the Telegram issuer. [env: TELEGRAM_ISSUER_URL=] [default: http://127.0.0.1:8080/]
+          URL of the Telegram issuer. [env: TELEGRAM_ISSUER_URL=] [default: http://127.0.0.1/]
       --verifier-dapp-domain <VERIFIER_DAPP_DOMAIN>
           The domain of the verifier dApp, used for CORS. [env: TELEGRAM_ISSUER_VERIFIER_DAPP_URL=] [default: http://127.0.0.1]
+      --telegram-bot-name <TELEGRAM_BOT_NAME>
+          The name (handle) of the Telegram bot. [env: TELEGRAM_ISSUER_TELEGRAM_BOT_NAME=]
+      --frontend <FRONTEND_ASSETS>
+          Path to the directory where frontend assets are located. [env: TELEGRAM_ISSUER_FRONTEND=] [default: ./frontend/dist/telegram]
 

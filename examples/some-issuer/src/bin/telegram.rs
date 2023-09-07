@@ -89,7 +89,7 @@ struct App {
     #[clap(
         long = "telegram-token",
         help = "Bot token for Telegram.",
-        env = "TELEGRAM_BOT_TOKEN"
+        env = "TELEGRAM_ISSUER_TELEGRAM_BOT_TOKEN"
     )]
     telegram_bot_token:   String,
     #[clap(
@@ -116,7 +116,7 @@ struct App {
     #[clap(
         long = "telegram-bot-name",
         help = "The name (handle) of the Telegram bot.",
-        env = "TELEGRAM_BOT_NAME"
+        env = "TELEGRAM_ISSUER_TELEGRAM_BOT_NAME"
     )]
     telegram_bot_name:    String,
     #[clap(

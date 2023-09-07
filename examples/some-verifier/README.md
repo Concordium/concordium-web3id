@@ -93,13 +93,25 @@ The following configuration options are supported
           Address of the Telegram registry smart contract. [env: SOME_VERIFIER_TELEGRAM_REGISTRY_ADDRESS=]
       --discord-registry <DISCORD_REGISTRY>
           Address of the Discord registry smart contract. [env: SOME_VERIFIER_DISCORD_REGISTRY_ADDRESS=]
+      --telegram-bot-name <TELEGRAM_BOT_NAME>
+          The name (handle) of the Telegram bot. [env: SOME_VERIFIER_TELEGRAM_BOT_NAME=]
       --discord-bot-token <DISCORD_BOT_TOKEN>
           Discord bot token for looking up usernames. [env: SOME_VERIFIER_DISCORD_BOT_TOKEN=]
+      --discord-client-id <DISCORD_CLIENT_ID>
+          Discord client id for OAuth2. [env: SOME_VERIFIER_DISCORD_CLIENT_ID=]
+      --telegram-issuer-url <TELEGRAM_ISSUER_URL>
+          URL of the Telegram Issuer. [env: SOME_VERIFIER_TELEGRAM_ISSUER_URL=] [default: http://127.0.0.1:8080]
+      --discord-issuer-url <DISCORD_ISSUER_URL>
+          URL of the Discord Issuer. [env: SOME_VERIFIER_DISCORD_ISSUER_URL=] [default: http://127.0.0.1:8081]
       --db <DB_CONFIG>
           Database connection string. [env: SOME_VERIFIER_DB_STRING=] [default: "host=localhost dbname=some-verifier user=postgres password=password port=5432"]
+      --db-pool-size <POOL_SIZE>
+          Maximum size of the database connection pool. [env: SOME_VERIFIER_DB_POOL_SIZE=] [default: 16]
       --log-level <LOG_LEVEL>
           Maximum log level. [env: SOME_VERIFIER_LOG_LEVEL=] [default: info]
       --request-timeout <REQUEST_TIMEOUT>
           Request timeout (both of request to the node and server requests) in milliseconds. [env: SOME_VERIFIER_REQUEST_TIMEOUT=] [default: 5000]
       --port <LISTEN_ADDRESS>
           Address where the server will listen on. [env: SOME_VERIFIER_LISTEN_ADDRESS=] [default: 0.0.0.0:80]
+      --frontend <FRONTEND_ASSETS>
+          Path to the directory where frontend assets are located. [env: SOME_VERIFIER_FRONTEND=] [default: ./frontend/dist]
