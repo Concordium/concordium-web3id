@@ -34,9 +34,14 @@ export default function Root() {
                 setIsNextButtonDisabled(true);
             }
 
+            if (activeValue === 3) {
+                setIsNextButtonDisabled(true);
+            }
+
             // enable/disable prev and next buttons
             if (activeValue === 1) {
                 setIsPreviousButtonDisabled(true);
+                setIsNextButtonDisabled(false);
             } else if (activeValue === steps.length) {
                 setIsNextButtonDisabled(true);
             } else {
@@ -93,23 +98,22 @@ export default function Root() {
                         <li className="step active">1</li>
                         <li className="step">2</li>
                         <li className="step">3</li>
-                        <li className="step">4</li>
                     </ul>
                 </div>
 
                 {/* Step 1: Create schema and metadata files */}
                 {active === 1 && <CreateSchemaAndMetadataFiles />}
+                {/* Step 2: Select Network */}
                 {active === 2 && (
                     <SelectNetwork setIsNextButtonDisabled={setIsNextButtonDisabled} setIsTestnet={setIsTestnet} />
                 )}
-                {/* Step 2, 3, and 4 */}
-                {(active === 3 || active === 4) && isTestnet !== undefined && (
+                {/* Step 3 */}
+                {active === 3 && isTestnet !== undefined && (
                     <>
                         <WithWalletConnector network={isTestnet ? TESTNET : MAINNET}>
                             {(props: WalletConnectionProps) => {
                                 const { connectedAccounts } = props;
                                 setIsConnected(connectedAccounts.size > 0);
-                                setIsNextButtonDisabled(!(connectedAccounts.size > 0));
 
                                 return (
                                     <Main
