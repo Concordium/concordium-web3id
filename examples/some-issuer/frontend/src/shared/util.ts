@@ -63,7 +63,7 @@ export async function requestCredential(
     issuanceDate: new Date().toISOString(),
     credentialSubject: { attributes: { userId: id.toString(), username } },
     credentialSchema: {
-      id: `${ISSUER_URL}/json-schemas/JsonSchema2023-${req.platform}.json`,
+      id: `${ISSUER_URL}json-schemas/JsonSchema2023-${req.platform}.json`,
       type: 'JsonSchema2023',
     },
   };

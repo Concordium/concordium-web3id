@@ -88,6 +88,9 @@ export default defineConfig({
     transformHtml({ config }),
   ],
   esbuild: false,
+  build: {
+    outDir: `./dist/${platform}`
+  },
   server: {
     port,
     strictPort: true,

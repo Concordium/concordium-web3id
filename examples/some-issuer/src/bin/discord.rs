@@ -23,8 +23,9 @@ use http::{HeaderValue, StatusCode};
 use rand::Rng;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use some_issuer::{set_shutdown, IssueResponse, IssuerState};
-use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
@@ -120,10 +121,17 @@ struct App {
     #[clap(
         long = "dapp-domain",
         help = "The domain of the dApp, used for CORS.",
-        default_value = "http://127.0.0.1",
+        default_value = "http://127.0.0.1:8081",
         env = "DISCORD_ISSUER_DAPP_URL"
     )]
     dapp_domain:           String,
+    #[clap(
+        long = "frontend",
+        default_value = "./frontend/dist/discord",
+        help = "Path to the directory where frontend assets are located.",
+        env = "DISCORD_ISSUER_FRONTEND"
+    )]
+    frontend_assets:       std::path::PathBuf,
 }
 
 #[derive(Clone)]
@@ -176,6 +184,32 @@ struct OauthTemplateParams<'a> {
     id:          &'a str,
     username:    &'a str,
     dapp_domain: &'a str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ContractConfig {
+    index:    String,
+    subindex: String,
+}
+
+impl From<ContractAddress> for ContractConfig {
+    fn from(value: ContractAddress) -> Self {
+        Self {
+            index:    value.index.to_string(),
+            subindex: value.subindex.to_string(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FrontendConfig {
+    #[serde(rename = "type")]
+    config_type:       String,
+    discord_client_id: String,
+    network:           Network,
+    contract:          ContractConfig,
 }
 
 /// Handles OAuth2 redirects and inserts an id in the session.
@@ -408,7 +442,7 @@ async fn main() -> anyhow::Result<()> {
     let discord_redirect_uri = app.url.join("discord-oauth2")?;
     let state = AppState {
         issuer,
-        discord_client_id: app.discord_client_id.into(),
+        discord_client_id: app.discord_client_id.clone().into(),
         discord_client_secret: app.discord_client_secret.into(),
         http_client,
         discord_redirect_uri: Arc::new(discord_redirect_uri),
@@ -435,8 +469,28 @@ async fn main() -> anyhow::Result<()> {
         .allow_credentials(true)
         .allow_headers([http::header::CONTENT_TYPE]);
 
+    // Render index.html with config
+    let index_template = fs::read_to_string(app.frontend_assets.join("index.html"))
+        .context("Frontend was not built.")?;
+    let mut reg = Handlebars::new();
+    // Prevent handlebars from escaping inserted object
+    reg.register_escape_fn(|s| s.into());
+    let frontend_config = FrontendConfig {
+        config_type:       "discord".into(),
+        discord_client_id: app.discord_client_id,
+        network:           app.network,
+        contract:          app.registry.into(),
+    };
+    let config_string = serde_json::to_string(&frontend_config)?;
+    let index_html = reg.render_template(&index_template, &json!({ "config": config_string }))?;
+
+    let serve_dir_service = ServeDir::new(app.frontend_assets.join("assets"));
     let json_schema_service = ServeDir::new("json-schemas/discord");
+
+    tracing::info!("Starting server...");
     let router = Router::new()
+        .route("/", get(|| async { Html(index_html) }))
+        .nest_service("/assets", serve_dir_service)
         .route("/credential", post(issue_discord_credential))
         .route("/discord-oauth2", get(handle_oauth_redirect))
         .route_layer(session_layer)
