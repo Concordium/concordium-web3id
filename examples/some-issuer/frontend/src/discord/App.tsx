@@ -1,11 +1,11 @@
 import discordLogo from 'assets/discord-logo-color.svg';
-import Layout from "../shared/Layout"
+import Main from "../shared/Main"
 
 function App() {
 
   return (
-    <Layout platform="Discord" logo={<img src={discordLogo} alt="Discord logo" />}>
-    </Layout>
+    <Main platform="Discord" logo={<img src={discordLogo} alt="Discord logo" />}>
+    </Main>
   )
 }
 

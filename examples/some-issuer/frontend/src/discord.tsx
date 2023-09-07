@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client'
 import App from './discord/App.tsx'
 import './scss/index.scss'
 
+if (config.type !== 'discord') {
+  throw new Error('Expected discord config');
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
