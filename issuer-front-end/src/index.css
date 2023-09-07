@@ -160,26 +160,3 @@ label,
     justify-content: center;
     align-items: center; 
 }
-
-.infolink:after {
-    content: '?';
-    display: inline-block;
-    font-family: sans-serif;
-    font-weight: bold;
-    text-align: center;
-    font-size: 0.8em;
-    line-height: 0.8em;
-    border-radius: 50%;
-    margin-left: 6px;
-    padding: 0.13em 0.2em 0.09em 0.2em;
-    color: inherit;
-    border: 1px solid;
-    text-decoration: none;
-}
-
-.containerToolTip{
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-

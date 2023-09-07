@@ -15,17 +15,16 @@ import {
 import { AccountAddress } from '@concordium/web-sdk';
 
 import { BROWSER_WALLET, REFRESH_INTERVAL_IN_MILLI_SECONDS } from './constants';
-import CreateSchemaAndMetadataFiles from './CreateSchemaAndMetadataFiles';
 import DeployCredentialContract from './DeployCredentialContract';
 
 interface ConnectionProps {
     walletConnectionProps: WalletConnectionProps;
     isTestnet: boolean;
-    active: number;
+    progress: () => any;
 }
 
 export default function Main(props: ConnectionProps) {
-    const { walletConnectionProps, isTestnet, active } = props;
+    const { walletConnectionProps, isTestnet, progress } = props;
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } =
         walletConnectionProps;
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
@@ -116,6 +115,7 @@ export default function Main(props: ConnectionProps) {
                         type="button"
                         onClick={() => {
                             connect();
+                            progress();
                         }}
                     >
                         Connect To Browser Wallet
@@ -165,10 +165,8 @@ export default function Main(props: ConnectionProps) {
                                     Error: {viewErrorAccountBalance}.
                                 </div>
                             )}
-                            {/* Step 3: Create schema and metadata files */}
-                            {active === 3 && <CreateSchemaAndMetadataFiles />}
                             {/* Step 4: Deploy issuer smart contract */}
-                            {active === 4 && (
+                            {isConnected && (
                                 <DeployCredentialContract
                                     account={account}
                                     isTestnet={isTestnet}
