@@ -273,7 +273,7 @@ async function requestCredential(
 }
 
 function openDiscordVerification() {
-  oAuth2State = nanoid();
+  const oAuth2State = nanoid();
 
   const params = new URLSearchParams({
     client_id: config.discordClientId,

@@ -1,9 +1,9 @@
 import TelegramLoginButton, { TelegramUser } from 'react-telegram-login';
 import telegramLogo from 'assets/telegram-logo-color.svg';
-import Main from "../shared/Main"
 import { TelegramConfig } from './types';
 import { Platform } from '../shared/types';
 import { requestCredential } from '../shared/util';
+import Layout from 'shared/Layout';
 
 const { telegramBotName } = config as TelegramConfig;
 
@@ -27,13 +27,13 @@ function App() {
   };
 
   return (
-    <Main platform="Telegram" logo={<img src={telegramLogo} alt="Telegram logo" />}>
+    <Layout platform="Telegram" logo={<img src={telegramLogo} alt="Telegram logo" />}>
       <TelegramLoginButton
         botName={telegramBotName}
         dataOnauth={onTelegramAuth}
         cornerRadius={3}
       />
-    </Main>
+    </Layout>
   )
 }
 

@@ -1,0 +1,19 @@
+.layout {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  &__plus {
+    font-size: rfs-value(30px);
+  }
+
+  &__logo {
+    height: 6em;
+    padding: 1.5em;
+
+    img {
+      height: 100%;
+    }
+  }
+}

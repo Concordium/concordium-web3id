@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { Config } from './src/types/global';
 import { Platform } from './src/shared/types';
+import { TelegramConfig } from './src/telegram/types';
+import { DiscordConfig } from './src/discord/types';
 
 interface PlatformConfig {
   port: number;
@@ -55,21 +57,33 @@ const transformHtml: (data: HtmlPlaceholders) => Plugin = data => ({
   }
 });
 
+const telegramConfig: TelegramConfig = {
+  type: Platform.Telegram,
+  network: 'testnet',
+  telegramBotName: 'concordium_bot',
+  contract: {
+    index: '5924',
+    subindex: '0'
+  }
+};
+
+const discordConfig: DiscordConfig = {
+  type: Platform.Discord,
+  network: 'testnet',
+  discordClientId: '1127954266213056635',
+  contract: {
+    index: '5968',
+    subindex: '0'
+  }
+};
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tsconfigPaths(),
     transformHtml({
-      config: { // TODO: from env...
-        type: Platform.Telegram,
-        network: 'testnet',
-        telegramBotName: 'concordium_bot',
-        contract: {
-          index: '1234',
-          subindex: '0'
-        }
-      }
+      config: discordConfig // TODO: from env...
     }),
   ],
   esbuild: false,

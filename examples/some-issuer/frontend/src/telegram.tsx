@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './telegram/App.tsx'
-import './scss/index.scss'
+import './scss/telegram.scss'
 
 if (config.type !== 'telegram') {
   throw new Error('Expected telegram config');

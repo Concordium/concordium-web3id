@@ -24,6 +24,9 @@
     "paths": {
       "assets/*": [
         "./src/assets/*"
+      ],
+      "shared/*": [
+        "./src/shared/*"
       ]
     }
   },
