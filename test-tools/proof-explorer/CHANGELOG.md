@@ -1,5 +1,13 @@
 ## Unreleased changes.
 
+## 1.0.4
+
+Fix the date format when submitting proof.
+
+## 1.0.3
+
+Support 'integer' type in the schema.
+
 ## 1.0.2
 
 Add support for date-time attributes.

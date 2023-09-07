@@ -1,11 +1,11 @@
 {
     "name": "proof-explorer",
     "license": "Apache-2.0",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "packageManager": "yarn@3.2.0",
     "dependencies": {
-        "@concordium/browser-wallet-api-helpers": "2.6.0",
-        "@concordium/web-sdk": "^6.1.1",
+        "@concordium/browser-wallet-api-helpers": "2.7.0",
+        "@concordium/web-sdk": "^6.3.0",
         "@protobuf-ts/grpcweb-transport": "^2.9.1",
         "@walletconnect/qrcode-modal": "^1.8.0",
         "@walletconnect/sign-client": "^2.1.5",
@@ -16,7 +16,7 @@
         "react-select": "^5.7.0"
     },
     "resolutions": {
-        "@concordium/web-sdk": "^6.1.1"
+        "@concordium/web-sdk": "^6.3.0"
     },
     "devDependencies": {
         "@craftamap/esbuild-plugin-html": "^0.4.0",
@@ -46,6 +46,7 @@
     "scripts": {
         "lint-and-fix": "eslint . --cache --max-warnings 0 --ext .ts,.tsx --fix",
         "lint": "eslint . --cache --max-warnings 0 --ext .ts,.tsx",
+        "type:check": "yarn run tsc --noEmit",
         "build": "node --loader ts-node/esm ./esbuild.config.ts",
         "watch": "cross-env WATCH=1 yarn build",
         "start": "live-server ./dist"

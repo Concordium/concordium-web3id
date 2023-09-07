@@ -15,6 +15,7 @@ import {
     toBuffer,
     deserializeTypeValue,
     SmartContractTypeValues,
+    TimestampAttribute,
 } from '@concordium/web-sdk';
 import { Buffer } from 'buffer';
 import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
@@ -175,7 +176,7 @@ function Statement({ inner, new_statement }: { inner: TopLevelStatements; new_st
             </>
         );
     } else {
-        return statements;
+        return <> {statements} </>;
     }
 }
 
@@ -221,7 +222,10 @@ async function submitProof(
     }
 }
 
-function SubmitProof(all_statements: TopLevelStatements, provider: WalletProvider | undefined): React.JSX.Element {
+function SubmitProof(
+    all_statements: TopLevelStatements,
+    provider: WalletProvider | undefined
+): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
 
     const request = all_statements.map((s) => {
@@ -415,17 +419,23 @@ function AttributeInRange({ setStatement, attributeOptions }: RevealAttributePro
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        let lower_bound = lower[0];
-        if (lower[1] == 'number') {
+        let lower_bound: string | bigint | TimestampAttribute = lower[0];
+        if (lower[1] === 'number' || lower[1] === 'integer') {
             lower_bound = BigInt(lower[0]);
         } else if (lower[1] == 'date-time') {
-            lower_bound = new Date(lower[0].trim());
+            lower_bound = {
+                type: 'date-time',
+                timestamp: lower[0],
+            };
         }
-        let upper_bound = upper[0];
-        if (upper[1] == 'number') {
+        let upper_bound: string | bigint | TimestampAttribute = upper[0];
+        if (upper[1] === 'number' || upper[1] === 'integer') {
             upper_bound = BigInt(upper[0]);
         } else if (upper[1] == 'date-time') {
-            upper_bound = new Date(upper[0].trim());
+            upper_bound = {
+                type: 'date-time',
+                timestamp: upper[0],
+            };
         }
         setStatement([
             {
@@ -487,11 +497,16 @@ function AttributeInSet({ member, setStatement, attributeOptions }: SetMembershi
         setSelected([option.label, option.type]);
     };
 
-    let proof_set = set.split(',').map((s) => s.trim());
-    if (selected[1] == 'number') {
+    let proof_set: string[] | bigint[] | TimestampAttribute[] = set.split(',').map((s) => s.trim());
+    if (selected[1] === 'number' || selected[1] === 'integer') {
         proof_set = proof_set.map((x) => BigInt(x));
     } else if (selected[1] == 'date-time') {
-        proof_set = proof_set.map((x) => new Date(x.trim()));
+        proof_set = proof_set.map((x) => {
+            return {
+                type: 'date-time',
+                timestamp: x.trim(),
+            };
+        });
     }
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {

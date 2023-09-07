@@ -40,7 +40,6 @@ cd ./issuer-front-end
 ```
 
 -   Run `yarn install` in this folder.
--   Run `yarn install` in this folder.
 
 These extra install steps are needed because some packages have to be built from the submodule link.
 

@@ -58,37 +58,14 @@ type SchemaRef = {
 };
 
 interface Attributes {
-    [key: string]: string | bigint | Date;
-}
-
-interface AttributeJSON {
     [key: string]: string | bigint | { type: 'date-time'; timestamp: string };
-}
-
-// Transform attributes into the JSON format where date-time attributes
-// are represented as an object.
-function transformAttributes(attributes: Attributes): AttributeJSON {
-    const r: AttributeJSON = {};
-    const attrs = Object.keys(attributes);
-    attrs.forEach((key) => {
-        const v = attributes[key];
-        if (v instanceof Date) {
-            r[key] = {
-                type: 'date-time',
-                timestamp: v.toISOString(),
-            };
-        } else {
-            r[key] = v;
-        }
-    });
-    return r;
 }
 
 function attributeInputPlaceHolder(details: AttributeDetails): string {
     if (details.type === 'date-time') {
         return '2023-08-30T06:22:46Z';
     }
-    if (details.type === 'number') {
+    if (details.type === 'number' || details.type === 'integer') {
         return '1234';
     }
     return 'myString';
@@ -181,28 +158,40 @@ function parseAttributesFromForm(
         } else if (obj.value !== undefined) {
             if (obj.type === 'string') {
                 attributes[obj.tag] = obj.value;
-            } else if (obj.type === 'number') {
+            } else if (obj.type === 'number' || obj.type === 'integer') {
                 attributes[obj.tag] = BigInt(obj.value);
             } else if (obj.type === 'date-time') {
                 const date = new Date(obj.value.trim());
                 if (Number.isNaN(date.getTime())) {
                     const msg = `Unable to parse string "${obj.value.trim()}" as a date.`;
                     setParsingError(msg);
-                    // throw new Error(msg);
                 }
-                attributes[obj.tag] = date;
+                attributes[obj.tag] = {
+                    type: 'date-time',
+                    timestamp: obj.value.trim(),
+                };
             } else {
                 setParsingError(
-                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number and date-time are supported.`
+                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number/integer and date-time are supported.`
                 );
-                throw new Error(
-                    `Attribute ${obj.tag} has type ${obj.type}. Only the types string/number and date-time are supported.`
-                );
+                // still set the value so that we can test sending bogus data to the wallet.
+                attributes[obj.tag] = obj.value;
             }
         }
     });
     return attributes;
 }
+
+// Convert a hex string to a byte array
+const hexToBytes = (hex: string) => {
+    const bytes = [];
+
+    for (let c = 0; c < hex.length; c += 2) {
+        bytes.push(parseInt(hex.substr(c, 2), 16));
+    }
+
+    return bytes;
+};
 
 export default function Main(props: WalletConnectionProps) {
     const { activeConnectorType, activeConnector, activeConnectorError, connectedAccounts, genesisHashes } = props;
@@ -215,7 +204,7 @@ export default function Main(props: WalletConnectionProps) {
     const [transactionError, setTransactionError] = useState('');
     const [userInputError2, setUserInputError2] = useState('');
 
-    const [auxiliaryData, setAuxiliaryData] = useState<number[]>([1, 2, 3]);
+    const [auxiliaryData, setAuxiliaryData] = useState('83fe0d');
 
     const [credentialRegistryContratIndex, setCredentialRegistryContratIndex] = useState<number | undefined>(0);
 
@@ -316,7 +305,7 @@ export default function Main(props: WalletConnectionProps) {
 
     const changeAuxiliaryDataHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
-        setAuxiliaryData(Array.from(JSON.parse(target.value)));
+        setAuxiliaryData(target.value);
     }, []);
 
     const changeSeedHandler = useCallback((event: ChangeEvent) => {
@@ -820,13 +809,13 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
-                                Add `AuxiliaryData`:
+                                Add `AuxiliaryData` (the hex string will be converted into bytes):
                                 <br />
                                 <input
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase4"
                                     type="text"
-                                    value={auxiliaryData.toString()}
+                                    value={auxiliaryData}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -916,7 +905,7 @@ export default function Main(props: WalletConnectionProps) {
                                                     credentialMetaDataURL,
                                                     isHolderRevocable,
                                                     credentialRegistryContratIndex,
-                                                    auxiliaryData
+                                                    hexToBytes(auxiliaryData)
                                                 );
 
                                                 tx.then(setTxHash).catch((err: Error) =>
@@ -924,7 +913,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 );
 
                                                 const commitments = {
-                                                    attributes: transformAttributes(attributes),
+                                                    attributes,
                                                     holderId: publicKeyOfCredential,
                                                     issuer: {
                                                         index: credentialRegistryContratIndex,
@@ -1064,13 +1053,13 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changeReasonHandler}
                                 />
                                 <br />
-                                Add `AuxiliaryData`:
+                                Add `AuxiliaryData` (the hex string will be converted into bytes):
                                 <br />
                                 <input
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase6"
                                     type="text"
-                                    value={auxiliaryData.toString()}
+                                    value={auxiliaryData}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <br />
@@ -1085,7 +1074,7 @@ export default function Main(props: WalletConnectionProps) {
                                             account,
                                             publicKey,
                                             credentialRegistryContratIndex,
-                                            auxiliaryData,
+                                            hexToBytes(auxiliaryData),
                                             reason
                                         );
 
@@ -1386,13 +1375,13 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changeManualCredentialSchemaHandler}
                                 />
                                 <br />
-                                Add `AuxiliaryData`:
+                                Add `AuxiliaryData` (the hex string will be converted into bytes):
                                 <br />
                                 <input
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase11"
                                     type="text"
-                                    value={auxiliaryData.toString()}
+                                    value={auxiliaryData}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -1473,7 +1462,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 // Issuer does not register credential here but instead when the next button is pressed.
 
                                                 const commitments = {
-                                                    attributes: transformAttributes(attributes),
+                                                    attributes,
                                                     holderId: publicKeyOfCredential,
                                                     issuer: {
                                                         index: credentialRegistryContratIndex,
@@ -1550,7 +1539,7 @@ export default function Main(props: WalletConnectionProps) {
                                             credentialMetaDataURL,
                                             isHolderRevocable,
                                             credentialRegistryContratIndex,
-                                            auxiliaryData
+                                            hexToBytes(auxiliaryData)
                                         );
 
                                         tx.then(setTxHash).catch((err: Error) =>
@@ -1659,13 +1648,13 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
-                                Add `AuxiliaryData`:
+                                Add `AuxiliaryData` (the hex string will be converted into bytes):
                                 <br />
                                 <input
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase12"
                                     type="text"
-                                    value={auxiliaryData.toString()}
+                                    value={auxiliaryData}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -1747,7 +1736,7 @@ export default function Main(props: WalletConnectionProps) {
                                                     credentialMetaDataURL,
                                                     isHolderRevocable,
                                                     credentialRegistryContratIndex,
-                                                    auxiliaryData
+                                                    hexToBytes(auxiliaryData)
                                                 );
 
                                                 tx.then(setTxHash).catch((err: Error) =>
@@ -1880,13 +1869,13 @@ export default function Main(props: WalletConnectionProps) {
                                     onChange={changeCredentialMetaDataURLHandler}
                                 />
                                 <br />
-                                Add `AuxiliaryData`:
+                                Add `AuxiliaryData` (the hex string will be converted into bytes):
                                 <br />
                                 <input
                                     className="inputFieldStyle"
                                     id="auxiliaryDataTestCase13"
                                     type="text"
-                                    value={auxiliaryData.toString()}
+                                    value={auxiliaryData}
                                     onChange={changeAuxiliaryDataHandler}
                                 />
                                 <div className="switch-wrapper">
@@ -1973,7 +1962,7 @@ export default function Main(props: WalletConnectionProps) {
                                                     credentialMetaDataURL,
                                                     isHolderRevocable,
                                                     credentialRegistryContratIndex,
-                                                    auxiliaryData
+                                                    hexToBytes(auxiliaryData)
                                                 );
 
                                                 tx.then(setTxHash).catch((err: Error) =>
@@ -1981,7 +1970,7 @@ export default function Main(props: WalletConnectionProps) {
                                                 );
 
                                                 const commitments = {
-                                                    attributes: transformAttributes(attributes),
+                                                    attributes,
                                                     holderId: publicKeyOfCredential,
                                                     issuer: {
                                                         index: credentialRegistryContratIndex,

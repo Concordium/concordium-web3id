@@ -70,7 +70,7 @@ enum Action {
         #[clap(
             long = "module",
             help = "The source module from which to initialize.",
-            default_value = "5b58fde5766cecf481288a971b5f0f3391af736b41ddc806364713e602d82d2b"
+            default_value = "9630530e200d01cbf15890eb322e513755df1ba88bc5efac1cbead8002d24857"
         )]
         mod_ref:         ModuleReference,
     },

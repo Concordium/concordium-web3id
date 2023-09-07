@@ -1,5 +1,19 @@
 ## Unreleased changes
 
+## 1.0.11
+
+- Update module reference for the credential registry contract.
+
+## 1.0.10
+
+- Support new date-time format for browser wallet 1.1.6.
+- Allow sending attributes where the attribute type is not recognized.
+
+## 1.0.9
+
+- Change to use a hexString for the auxiliary data.
+- Support 'integer' type in the schema.
+
 ## 1.0.8
 
 - Add support for date-time attributes.
