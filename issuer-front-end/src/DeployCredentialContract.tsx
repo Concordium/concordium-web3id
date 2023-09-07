@@ -1,7 +1,7 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren, MouseEvent, useCallback } from 'react';
+import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
 
 import { useGrpcClient, TESTNET, MAINNET, WalletConnection } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
@@ -80,11 +80,6 @@ export default function DeployCredentialContract(props: ConnectionProps) {
     const [revocationKeys, setRevocationKeys] = useState<string[]>([]);
     const [revocationKeyInput, setRevocationKeyInput] = useState<string | undefined>(undefined);
 
-    const display = useCallback((event: MouseEvent<HTMLElement>) => {
-        const element = event.target as HTMLTextAreaElement;
-        alert(element.parentElement?.title || element.parentElement?.parentElement?.title || element.title);
-    }, []);
-
     const changeIssuerMetaDataURLHandler = useCallback((event: ChangeEvent) => {
         const target = event.target as HTMLTextAreaElement;
         setIssuerMetaData(target.value);
@@ -151,20 +146,17 @@ export default function DeployCredentialContract(props: ConnectionProps) {
 
     return (
         <TestBox>
-            <div>
-                Add <strong>issuer public key</strong>
-                <p>
-                    {' '}
-                    If you become an issuer, you will need to sign the credentials with your issuer{' '}
-                    <strong>private key</strong> (ed25519 signature scheme). The public key must be registered in the
-                    contract. For <strong>testing purposes</strong> on testnet, you can create a public-private key pair
-                    with an{' '}
-                    <a href="https://cyphr.me/ed25519_tool/ed.html" target="_blank" rel="noreferrer">
-                        online tool
-                    </a>{' '}
-                    ) and use the <strong>public key</strong> here{' '}
-                </p>
-            </div>
+            <label htmlFor="issuerKey">Issuer public key</label>
+            <p>
+                If you become an issuer, you will need to sign the credentials with your issuer{' '}
+                <strong>private key</strong> (ed25519 signature scheme). The public key must be registered in the
+                contract. For <strong>testing purposes</strong> on testnet, you can create a public-private key pair
+                with an{' '}
+                <a href="https://cyphr.me/ed25519_tool/ed.html" target="_blank" rel="noreferrer">
+                    online tool
+                </a>{' '}
+                and use the <strong>public key</strong> here.
+            </p>
             <input
                 className="inputFieldStyle"
                 id="issuerKey"
@@ -174,11 +166,8 @@ export default function DeployCredentialContract(props: ConnectionProps) {
             />
             <br />
             <br />
-            <div>
-                Add <strong>issuer metadata URL</strong>
-                <p> The URL pointing at the issuer metadata file that you created in the previous step </p>
-            </div>
-            <br />
+            <label htmlFor="issuerMetaDataURL">Issuer metadata URL</label>
+            <p> The URL pointing at the issuer metadata file that you created in the previous step. </p>
             <input
                 className="inputFieldStyle"
                 id="issuerMetaDataURL"
@@ -188,14 +177,8 @@ export default function DeployCredentialContract(props: ConnectionProps) {
             />
             <br />
             <br />
-            <div>
-                Add <strong>credential type</strong>
-                <p>
-                    {' '}
-                    You should define a type for your credential (e.g. `myCredentialType` or `EducationalCertificate`){' '}
-                </p>
-            </div>
-            <br />
+            <label htmlFor="credentialType">Credential type</label>
+            <p>You should define a type for your credential (e.g. `myCredentialType` or `EducationalCertificate`).</p>
             <input
                 className="inputFieldStyle"
                 id="credentialType"
@@ -204,11 +187,9 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                 onChange={changeCredentialTypeHandler}
             />
             <br />
-            <div>
-                Add <strong>credential schema URL</strong>
-                <p> The URL of the credential schema file that you created in the previous step. </p>
-            </div>
             <br />
+            <label htmlFor="credentialSchemaURL">Credential schema URL</label>
+            <p> The URL of the credential schema file that you created in the previous step. </p>
             <input
                 className="inputFieldStyle"
                 id="credentialSchemaURL"
@@ -252,17 +233,16 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                 }}
             >
                 <div>
-                    Add <strong>revocation keys</strong>
+                    <label htmlFor="credentialType">Revocation keys</label>
                     <p>
-                        {' '}
                         The keys inserted here can revoke any credential that the issuer issues. You can leave this an
-                        empty array if you don't want to grant such permissions to special revocation keys. For testing
-                        purposes on testnet, you can create public-private key pairs with an (e.g.{' '}
+                        empty array if you don&apos;t want to grant such permissions to special revocation keys. For
+                        testing purposes on testnet, you can create public-private key pairs with an{' '}
                         <a href="https://cyphr.me/ed25519_tool/ed.html" target="_blank" rel="noreferrer">
                             {' '}
                             online tool{' '}
                         </a>
-                        ) and use the <strong>public keys</strong> here.
+                        and use the <strong>public keys</strong> here.
                     </p>
                 </div>
                 <br />

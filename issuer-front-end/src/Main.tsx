@@ -20,7 +20,7 @@ import DeployCredentialContract from './DeployCredentialContract';
 interface ConnectionProps {
     walletConnectionProps: WalletConnectionProps;
     isTestnet: boolean;
-    progress: () => any;
+    progress: () => void;
 }
 
 export default function Main(props: ConnectionProps) {
@@ -131,7 +131,7 @@ export default function Main(props: ConnectionProps) {
                         </div>
                         <div className="alert alert-danger" role="alert">
                             Alternatively, if you intend to use <strong>{isTestnet ? 'mainnet' : 'testnet'}</strong>, go
-                            back to step 1 and switch the network button.
+                            back to step 2 and switch the network button.
                         </div>
                     </>
                 )}

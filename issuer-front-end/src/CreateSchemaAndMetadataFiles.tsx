@@ -1,7 +1,7 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
-import React, { useState, ChangeEvent, PropsWithChildren, MouseEvent, useCallback } from 'react';
+import React, { useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
 import { saveAs } from 'file-saver';
 
 import {
@@ -157,11 +157,6 @@ export default function CreateSchemaAndMetadataFiles() {
 
     const [userInputErrorAttributes, setUserInputErrorAttributes] = useState('');
 
-    const display = useCallback((event: MouseEvent<HTMLElement>) => {
-        const element = event.target as HTMLTextAreaElement;
-        alert(element.parentElement?.title || element.parentElement?.parentElement?.title || element.title);
-    }, []);
-
     const changeDropDownHandler = (event: ChangeEvent) => {
         const element = event.target as HTMLSelectElement;
         const { value } = element;
@@ -287,56 +282,48 @@ export default function CreateSchemaAndMetadataFiles() {
                 <div>
                     <h3>CredentialSchema</h3>
                     <p>
-                        {' '}
                         The <strong> credentialSchema </strong> is a JSON schema describing the credential. The schema
                         must be hosted at a public URL so that it is accessible to the wallet, which uses it, among
-                        other things, to render credentials.{' '}
+                        other things, to render credentials.
                     </p>
 
                     <p>
-                        {' '}
                         The schema consists of some metadata (name of the credential and description) together with a
                         number of attributes. The form below supports inputting the necessary data and generating the
-                        JSON schema in the correct format.{' '}
+                        JSON schema in the correct format.
                     </p>
                 </div>
                 <br />
-                <label>
-                    {' '}
-                    Credential name
-                    <input
-                        className="inputFieldStyle"
-                        id="issuerKey"
-                        type="text"
-                        value={credentialName}
-                        onChange={changeCredentialName}
-                    />
-                </label>
                 <br />
-                <label>
-                    {' '}
-                    Credential description
-                    <input
-                        className="inputFieldStyle"
-                        id="credentialDescription"
-                        type="text"
-                        value={credentialDescription}
-                        onChange={changeCredentialDescription}
-                    />
-                </label>
+                <label htmlFor="credentialName">Credential name</label>
+                <input
+                    className="inputFieldStyle"
+                    id="credentialName"
+                    type="text"
+                    value={credentialName}
+                    onChange={changeCredentialName}
+                />
+                <br />
+                <br />
+                <label htmlFor="credentialDescription">Credential description</label>
+                <input
+                    className="inputFieldStyle"
+                    id="credentialDescription"
+                    type="text"
+                    value={credentialDescription}
+                    onChange={changeCredentialDescription}
+                />
                 <br />
                 <br />
                 <div>
                     <p> The ID should be the URL where this schema will be hosted on the web. </p>
                 </div>
                 <br />
-                <label>
-                    ID
-                    <input className="inputFieldStyle" id="id" type="text" value={id} onChange={changeId} />{' '}
-                </label>
+
+                <label htmlFor="id">ID</label>
+                <input className="inputFieldStyle" id="id" type="text" value={id} onChange={changeId} />
                 <TestBox>
-                    Add <strong>attribute title</strong>:
-                    <br />
+                    <label htmlFor="attributeTitle">Attribute title</label>
                     <input
                         className="inputFieldStyle"
                         id="attributeTitle"
@@ -346,8 +333,7 @@ export default function CreateSchemaAndMetadataFiles() {
                     />
                     <br />
                     <br />
-                    Add <strong>attribute description</strong>:
-                    <br />
+                    <label htmlFor="attributeDescription">Attribute Description</label>
                     <input
                         className="inputFieldStyle"
                         id="attributeDescription"
@@ -370,7 +356,9 @@ export default function CreateSchemaAndMetadataFiles() {
                             <option value="date-time">DateTime</option>
                         </select>
                     </label>
-                    <label htmlFor="checkBox">&nbsp;Attribute is Required&nbsp;</label>
+                    <br />
+                    <br />
+                    <label htmlFor="checkBox">&nbsp;Attribute is required:&nbsp;</label>
                     <input
                         type="checkbox"
                         id="checkBox"
@@ -415,6 +403,7 @@ export default function CreateSchemaAndMetadataFiles() {
                     <br />
                     {attributes.length !== 0 && (
                         <>
+                            <br />
                             <div className="actionResultBox">
                                 <div>
                                     You have added the following <strong>attributes</strong>:
@@ -425,6 +414,23 @@ export default function CreateSchemaAndMetadataFiles() {
                             </div>
                             <br />
                             <br />
+                            <div className="actionResultBox">
+                                {credentialSchema.properties.credentialSubject.properties.attributes.required.length ===
+                                    0 && <div>No required attribues.</div>}
+                                {credentialSchema.properties.credentialSubject.properties.attributes.required.length !==
+                                    0 && (
+                                    <>
+                                        <div>Required attributes:</div>
+                                        <div>
+                                            {credentialSchema.properties.credentialSubject.properties.attributes.required?.map(
+                                                (element) => (
+                                                    <li key={element}>{element}</li>
+                                                )
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </>
                     )}
                     {userInputErrorAttributes !== '' && (
@@ -469,31 +475,20 @@ export default function CreateSchemaAndMetadataFiles() {
                 <div>
                     <h3>CredentialMetadata</h3>
                     <p>
-                        {' '}
                         The credential metadata describes the details of a single credential, such as logo, background
                         image or color, and localization. Like the JSON schema, the credential metadata must be hosted
-                        at a public URL and will also be used by the wallet to style the credential.{' '}
+                        at a public URL and will also be used by the wallet to style the credential.
                     </p>
                 </div>
-                <br />
-                Add <strong>title</strong>:
-                <br />
+                <label htmlFor="title">Title</label>
                 <input className="inputFieldStyle" id="title" type="text" value={title} onChange={changeTitle} />
                 <br />
                 <br />
-                Add <strong>logo URL</strong>:
-                <br />
-                <input
-                    className="inputFieldStyle"
-                    id="logoURL"
-                    type="text"
-                    value={logo}
-                    onChange={changeLogoURL}
-                />{' '}
+                <label htmlFor="logoURL">Logo URL</label>
+                <input className="inputFieldStyle" id="logoURL" type="text" value={logo} onChange={changeLogoURL} />
                 <br />
                 <br />
-                Add <strong>background color</strong>:
-                <br />
+                <label htmlFor="backgroundColor">Background color</label>
                 <input
                     className="inputFieldStyle"
                     id="backgroundColor"
@@ -501,8 +496,9 @@ export default function CreateSchemaAndMetadataFiles() {
                     value={backgroundColor}
                     onChange={changeBackgroundColor}
                 />
-                Add <strong>background image (optional)</strong>:
                 <br />
+                <br />
+                <label htmlFor="backgroundImage">Background image (optional)</label>
                 <input
                     className="inputFieldStyle"
                     id="backgroundImage"
@@ -510,6 +506,8 @@ export default function CreateSchemaAndMetadataFiles() {
                     value={backgroundImage !== undefined ? backgroundImage : ''}
                     onChange={changeBackgroundImage}
                 />
+                <br />
+                <br />
                 <button
                     className="btn btn-primary"
                     type="button"
@@ -544,14 +542,13 @@ export default function CreateSchemaAndMetadataFiles() {
                 <div>
                     <h3>IssuerMetadata</h3>
                     <p>
-                        {' '}
                         The issuerMetadata is a JSON object describing the <strong>issuer</strong>, compared to the
-                        credential. It allows for styling of the issuer.{' '}
+                        credential. It allows for styling of the issuer.
                     </p>
                 </div>
                 <br />
-                Add <strong>issuer name</strong>:
                 <br />
+                <label htmlFor="issuerName">Issuer name</label>
                 <input
                     className="inputFieldStyle"
                     id="issuerName"
@@ -561,8 +558,7 @@ export default function CreateSchemaAndMetadataFiles() {
                 />
                 <br />
                 <br />
-                Add <strong>issuer description</strong>:
-                <br />
+                <label htmlFor="issuerDescription">Issuer description</label>
                 <input
                     className="inputFieldStyle"
                     id="issuerDescription"
@@ -570,14 +566,16 @@ export default function CreateSchemaAndMetadataFiles() {
                     value={issuerDescription}
                     onChange={changeIssuerDescription}
                 />
-                Add <strong>issuer URL</strong>:
                 <br />
+                <br />
+                <label htmlFor="URL">Issuer URL</label>
                 <input className="inputFieldStyle" id="URL" type="text" value={URL} onChange={changeURL} />
                 <br />
                 <br />
-                Add <strong>issuer icon URL</strong>:
-                <br />
+                <label htmlFor="iconURL">Issuer icon URL</label>
                 <input className="inputFieldStyle" id="iconURL" type="text" value={iconURL} onChange={changeIconURL} />
+                <br />
+                <br />
                 <button
                     className="btn btn-primary"
                     type="button"
