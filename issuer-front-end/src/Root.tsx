@@ -84,7 +84,7 @@ export default function Root() {
 
     return (
         <div>
-            <main className="textCenter">
+            <main id="#root">
                 <br />
                 {isTestnet === undefined && <h1>Web3Id Issuer Front End</h1>}
                 {isTestnet !== undefined && <h1>Web3Id Issuer Front End {isTestnet ? '(Testnet)' : '(Mainnet)'}</h1>}

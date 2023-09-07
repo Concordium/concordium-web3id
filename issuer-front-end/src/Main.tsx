@@ -11,6 +11,7 @@ import {
     MAINNET,
     useWalletConnectorSelector,
 } from '@concordium/react-components';
+import './scss/index.scss';
 
 import { AccountAddress } from '@concordium/web-sdk';
 
