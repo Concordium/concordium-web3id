@@ -6,7 +6,7 @@ export const EXAMPLE_ISSUER_METADATA_OBJECT = {
     name: 'Concordium',
     icon: {
         url: 'https://concordium.com/wp-content/uploads/2022/07/Concordium-1.png',
-        hash: '',
+        hash: undefined as undefined | string,
     },
     description: 'A public-layer 1, science-backed blockchain',
     url: 'https://concordium.com',

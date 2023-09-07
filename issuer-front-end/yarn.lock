@@ -5518,6 +5518,7 @@ cors@latest:
     react: ^18.1.0
     react-bootstrap: ^2.7.4
     react-dom: ^18.1.0
+    react-hook-form: ^7.46
     react-loader-spinner: ^5.4.5
     react-switch: ^7.0.0
     stylelint: ^14.7.1
@@ -7186,6 +7187,15 @@ proxy-middleware@latest:
   peerDependencies:
     react: ^18.2.0
   checksum: 7d323310bea3a91be2965f9468d552f201b1c27891e45ddc2d6b8f717680c95a75ae0bc1e3f5cf41472446a2589a75aed4483aee8169287909fcd59ad149e8cc
+  languageName: node
+  linkType: hard
+
+"react-hook-form@npm:^7.46":
+  version: 7.46.1
+  resolution: "react-hook-form@npm:7.46.1"
+  peerDependencies:
+    react: ^16.8.0 || ^17 || ^18
+  checksum: 9c11ba454ce5b2a16e7499f2ca710e0c0cff227f39689b8e7985902f27f99bfc7a2c49f145ef228528764cf8286bf6101fc8a0f5094ce652eb31cab1684518d1
   languageName: node
   linkType: hard
 

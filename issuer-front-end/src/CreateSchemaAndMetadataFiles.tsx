@@ -1,9 +1,15 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
-import React, { useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
+import React, { useState, PropsWithChildren } from 'react';
+import { useForm } from 'react-hook-form';
+
 import { saveAs } from 'file-saver';
 
+import { Accordion, Alert, Button, Form, Modal, Row } from 'react-bootstrap';
+import AccordionItem from 'react-bootstrap/esm/AccordionItem';
+import AccordionHeader from 'react-bootstrap/esm/AccordionHeader';
+import AccordionBody from 'react-bootstrap/esm/AccordionBody';
 import {
     EXAMPLE_CREDENTIAL_SCHEMA_OBJECT,
     EXAMPLE_ISSUER_METADATA_OBJECT,
@@ -39,36 +45,15 @@ type CredentialSchema = {
     required: string[];
 };
 
-function TestBox({ children }: PropsWithChildren) {
-    return (
-        <fieldset className="testBox">
-            <div className="testBoxFields">{children}</div>
-            <br />
-        </fieldset>
-    );
-}
-
 async function addAttribute(
     attributes: object[],
     setAttributes: (value: object[]) => void,
-    attributeTitle: string | undefined,
-    attributeDescription: string | undefined,
+    attributeTitle: string,
+    attributeDescription: string,
     isRequired: boolean,
-    type: string | undefined,
+    type: string,
     credentialSchema: CredentialSchema
 ) {
-    if (attributeTitle === undefined) {
-        throw new Error(`AttributeTitle needs to be set`);
-    }
-
-    if (attributeDescription === undefined) {
-        throw new Error(`AttributeDescription needs to be set`);
-    }
-
-    if (type === undefined) {
-        throw new Error(`Type needs to be set`);
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     attributes.forEach((value: any) => {
         if (value[attributeTitle.replaceAll(' ', '')] !== undefined) {
@@ -122,488 +107,415 @@ async function addAttribute(
 }
 
 export default function CreateSchemaAndMetadataFiles() {
-    const [credentialSchema, setCredentialSchema] = useState(EXAMPLE_CREDENTIAL_SCHEMA_OBJECT);
+    const [credentialSchema, _] = useState(EXAMPLE_CREDENTIAL_SCHEMA_OBJECT);
     const [credentialMetadata, setCredentialMetadata] = useState(EXAMPLE_CREDENTIAL_METADATA_OBJECT);
     const [issuerMetadata, setIssuerMetadata] = useState(EXAMPLE_ISSUER_METADATA_OBJECT);
+    const issuerMetadataForm = useForm<typeof EXAMPLE_ISSUER_METADATA_OBJECT>();
+    const credentialMetadataForm = useForm<typeof EXAMPLE_CREDENTIAL_METADATA_OBJECT>();
+    const credentialSchemaForm = useForm<typeof EXAMPLE_CREDENTIAL_SCHEMA_OBJECT>();
+    const attributeForm = useForm<{
+        title: string;
+        description: string;
+        type: 'integer' | 'string' | 'date-time';
+        required: boolean;
+    }>();
     const [attributes, setAttributes] = useState<object[]>([]);
-
-    const [credentialName, setCredentialName] = useState('Education certificate');
-    const [credentialDescription, setCredentialDescription] = useState(
-        'Simple representation of an education certificate.'
-    );
-
-    const [backgroundColor, setBackgroundColor] = useState('#92a8d1');
-    const [backgroundImage, setBackgroundImage] = useState<undefined | string>(undefined);
-    const [logo, setLogo] = useState('https://avatars.githubusercontent.com/u/39614219?s=200&v=4');
-    const [title, setTitle] = useState('Example Title');
-
-    const [iconURL, setIconURL] = useState('https://concordium.com/wp-content/uploads/2022/07/Concordium-1.png');
-    const [URL, setURL] = useState('https://concordium.com');
-    const [issuerDescription, setIssuerDescription] = useState('A public-layer 1, science-backed blockchain');
-    const [issuerName, setIssuerName] = useState('Concordium');
-    const [id, setId] = useState(
-        'https://example-university.com/certificates/JsonSchema2023-education-certificate.json'
-    );
-
-    const [attributeTitle, setAttributeTitle] = useState<string | undefined>(undefined);
-    const [attributeDescription, setAttributeDescription] = useState<string | undefined>(undefined);
-
-    const [attributeType, setAttributeType] = useState<string>();
-    const [required, setRequired] = useState(false);
 
     const [showCredentialSchema, setShowCredentialSchema] = useState(false);
     const [showCredentialMetadata, setShowCredentialMetadata] = useState(false);
     const [showIssuerMetadata, setShowIssuerMetadata] = useState(false);
 
-    const [userInputErrorAttributes, setUserInputErrorAttributes] = useState('');
+    const [show, setShow] = useState(false);
 
-    const changeDropDownHandler = (event: ChangeEvent) => {
-        const element = event.target as HTMLSelectElement;
-        const { value } = element;
-
-        setAttributeType(value);
-    };
-
-    const changeAttributeDescription = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setAttributeDescription(target.value);
-    }, []);
-
-    const changeAttributeTitle = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setAttributeTitle(target.value);
-    }, []);
-
-    const changeId = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setId(target.value);
-    }, []);
-
-    const changeCheckBox = useCallback((requiredValue: boolean, event: ChangeEvent) => {
-        const target = event.target as HTMLInputElement;
-        target.checked = !requiredValue;
-
-        setRequired(!requiredValue);
-    }, []);
-
-    const changeCredentialDescription = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialDescription(target.value);
-
-        const newCredentialSchema = credentialSchema;
-        newCredentialSchema.description = target.value;
-        setCredentialSchema(newCredentialSchema);
-    }, []);
-
-    const changeCredentialName = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialName(target.value);
-
-        const newCredentialSchema = credentialSchema;
-        newCredentialSchema.name = target.value;
-        setCredentialSchema(newCredentialSchema);
-    }, []);
-
-    const changeBackgroundColor = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setBackgroundColor(target.value);
-
-        const newCredentialMetadata = credentialMetadata;
-        newCredentialMetadata.backgroundColor = target.value;
-        setCredentialMetadata(newCredentialMetadata);
-    }, []);
-
-    const changeBackgroundImage = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setBackgroundImage(target.value);
-
-        const newCredentialMetadata = credentialMetadata;
-        newCredentialMetadata.image = target.value ? { url: target.value } : undefined;
-        setCredentialMetadata(newCredentialMetadata);
-    }, []);
-
-    const changeTitle = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setTitle(target.value);
-
-        const newCredentialMetadata = credentialMetadata;
-        newCredentialMetadata.title = target.value;
-        setCredentialMetadata(newCredentialMetadata);
-    }, []);
-
-    const changeLogoURL = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setLogo(target.value);
-
-        const newCredentialMetadata = credentialMetadata;
-        newCredentialMetadata.logo.url = target.value;
-        setCredentialMetadata(newCredentialMetadata);
-    }, []);
-
-    const changeIconURL = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setIconURL(target.value);
-
-        const newIssuerMetadata = issuerMetadata;
-        newIssuerMetadata.icon.url = target.value;
-        setIssuerMetadata(newIssuerMetadata);
-    }, []);
-
-    const changeURL = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setURL(target.value);
-
-        const newIssuerMetadata = issuerMetadata;
-        newIssuerMetadata.url = target.value;
-        setIssuerMetadata(newIssuerMetadata);
-    }, []);
-
-    const changeIssuerDescription = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setIssuerDescription(target.value);
-
-        const newIssuerMetadata = issuerMetadata;
-        newIssuerMetadata.description = target.value;
-        setIssuerMetadata(newIssuerMetadata);
-    }, []);
-
-    const changeIssuerName = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setIssuerName(target.value);
-
-        const newIssuerMetadata = issuerMetadata;
-        newIssuerMetadata.name = target.value;
-        setIssuerMetadata(newIssuerMetadata);
-    }, []);
+    const handleClose = () => setShow(false);
 
     return (
         <>
-            <TestBox>
-                <div>
-                    <h3>CredentialSchema</h3>
-                    <p>
-                        The <strong> credentialSchema </strong> is a JSON schema describing the credential. The schema
-                        must be hosted at a public URL so that it is accessible to the wallet, which uses it, among
-                        other things, to render credentials.
-                    </p>
+            <Modal show={show}>
+                <Modal.Dialog>
+                    <Modal.Header closeButton>
+                        <Modal.Title>Duplicate attribute tags.</Modal.Title>
+                    </Modal.Header>
 
-                    <p>
-                        The schema consists of some metadata (name of the credential and description) together with a
-                        number of attributes. The form below supports inputting the necessary data and generating the
-                        JSON schema in the correct format.
-                    </p>
-                </div>
-                <br />
-                <br />
-                <label htmlFor="credentialName">Credential name</label>
-                <input
-                    className="inputFieldStyle"
-                    id="credentialName"
-                    type="text"
-                    value={credentialName}
-                    onChange={changeCredentialName}
-                />
-                <br />
-                <br />
-                <label htmlFor="credentialDescription">Credential description</label>
-                <input
-                    className="inputFieldStyle"
-                    id="credentialDescription"
-                    type="text"
-                    value={credentialDescription}
-                    onChange={changeCredentialDescription}
-                />
-                <br />
-                <br />
-                <div>
-                    <p> The ID should be the URL where this schema will be hosted on the web. </p>
-                </div>
-                <br />
-
-                <label htmlFor="id">ID</label>
-                <input className="inputFieldStyle" id="id" type="text" value={id} onChange={changeId} />
-                <TestBox>
-                    <label htmlFor="attributeTitle">Attribute title</label>
-                    <input
-                        className="inputFieldStyle"
-                        id="attributeTitle"
-                        type="text"
-                        value={attributeTitle}
-                        onChange={changeAttributeTitle}
-                    />
-                    <br />
-                    <br />
-                    <label htmlFor="attributeDescription">Attribute Description</label>
-                    <input
-                        className="inputFieldStyle"
-                        id="attributeDescription"
-                        type="text"
-                        value={attributeDescription}
-                        onChange={changeAttributeDescription}
-                    />
-                    <br />
-                    <br />
-                    <label className="field">
-                        Select type:
-                        <br />
-                        <br />
-                        <select name="write" id="write" onChange={changeDropDownHandler}>
-                            <option value="choose" disabled selected>
-                                Choose
-                            </option>
-                            <option value="integer">Integer</option>
-                            <option value="string">String</option>
-                            <option value="date-time">DateTime</option>
-                        </select>
-                    </label>
-                    <br />
-                    <br />
-                    <label htmlFor="checkBox">&nbsp;Attribute is required:&nbsp;</label>
-                    <input
-                        type="checkbox"
-                        id="checkBox"
-                        name="checkBox"
-                        onChange={(event) => changeCheckBox(required, event)}
-                    />
-                    <br />
-                    <br />
-                    <button
-                        className="btn btn-primary"
-                        type="button"
-                        onClick={() => {
-                            setUserInputErrorAttributes('');
-                            addAttribute(
-                                attributes,
-                                setAttributes,
-                                attributeTitle,
-                                attributeDescription,
-                                required,
-                                attributeType,
-                                credentialSchema
-                            ).catch((err: Error) => setUserInputErrorAttributes((err as Error).message));
-                        }}
-                    >
-                        Add Attribute
-                    </button>
-                    <button
-                        className="btn btn-primary"
-                        type="button"
-                        onClick={() => {
-                            setAttributes([]);
-                            setAttributeTitle('');
-                            setAttributeDescription('');
-                            setUserInputErrorAttributes('');
-
-                            credentialSchema.properties.credentialSubject.properties.attributes.required = [];
-                            credentialSchema.properties.credentialSubject.properties.attributes.properties = {};
-                        }}
-                    >
-                        Clear All Attributes
-                    </button>
-                    <br />
-                    {attributes.length !== 0 && (
-                        <>
-                            <br />
-                            <div className="actionResultBox">
-                                <div>
-                                    You have added the following <strong>attributes</strong>:
-                                </div>
-                                <div>
-                                    <pre className="largeText">{JSON.stringify(attributes, null, '\t')}</pre>
-                                </div>
-                            </div>
-                            <br />
-                            <br />
-                            <div className="actionResultBox">
-                                {credentialSchema.properties.credentialSubject.properties.attributes.required.length ===
-                                    0 && <div>No required attribues.</div>}
-                                {credentialSchema.properties.credentialSubject.properties.attributes.required.length !==
-                                    0 && (
-                                    <>
-                                        <div>Required attributes:</div>
-                                        <div>
-                                            {credentialSchema.properties.credentialSubject.properties.attributes.required?.map(
-                                                (element) => (
-                                                    <li key={element}>{element}</li>
-                                                )
-                                            )}
-                                        </div>
-                                    </>
+                    <Modal.Body>
+                        <p>Cannot have duplicate attribute tags.</p>
+                    </Modal.Body>
+                    <Modal.Footer>
+                        <Button variant="secondary" onClick={handleClose}>
+                            Close
+                        </Button>
+                    </Modal.Footer>
+                </Modal.Dialog>
+            </Modal>
+            <Accordion>
+                <AccordionItem>
+                    <AccordionHeader>CredentialSchema</AccordionHeader>
+                    <AccordionBody>
+                        <Row>
+                            The credentialSchema is a JSON schema describing the credential. The schema must be hosted
+                            at a public URL so that it is accessible to the wallet, which uses it, among other things,
+                            to render credentials.
+                        </Row>
+                        <Row>
+                            The schema consists of some metadata (name of the credential and description) together with
+                            a number of attributes. The form below supports inputting the necessary data and generating
+                            the JSON schema in the correct format.
+                        </Row>
+                        <Form>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Credential name</Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_CREDENTIAL_SCHEMA_OBJECT.name}
+                                    {...credentialSchemaForm.register('name', { required: true })}
+                                />
+                                <Form.Text />
+                                {credentialSchemaForm.formState.errors.name && (
+                                    <Alert key="info" variant="info">
+                                        {' '}
+                                        Credential name is required{' '}
+                                    </Alert>
                                 )}
-                            </div>
-                        </>
-                    )}
-                    {userInputErrorAttributes !== '' && (
-                        <div className="alert alert-danger" role="alert">
-                            Error: {userInputErrorAttributes}.
-                        </div>
-                    )}
-                </TestBox>
-                <br />
-                <br />
-                <button
-                    className="btn btn-primary"
-                    type="button"
-                    onClick={() => {
-                        setShowCredentialSchema(true);
-                    }}
-                >
-                    Create CredentialSchema
-                </button>
-                <button
-                    className="btn btn-primary"
-                    type="button"
-                    onClick={() => {
-                        setShowCredentialSchema(true);
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Credential description</Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_CREDENTIAL_SCHEMA_OBJECT.description}
+                                    {...credentialSchemaForm.register('description', { required: true })}
+                                />
+                                <Form.Text />
+                                {credentialSchemaForm.formState.errors.description && (
+                                    <Alert key="info" variant="info">
+                                        {' '}
+                                        Credential description is required{' '}
+                                    </Alert>
+                                )}
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Credential id</Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_CREDENTIAL_SCHEMA_OBJECT.$id}
+                                    {...credentialSchemaForm.register('$id', { required: true })}
+                                />
+                                <Form.Text>
+                                    The ID should be the URL where this schema will be hosted on the web.
+                                </Form.Text>
+                                {credentialSchemaForm.formState.errors.$id && (
+                                    <Alert key="info" variant="info">
+                                        {' '}
+                                        Credential id is required{' '}
+                                    </Alert>
+                                )}
+                            </Form.Group>
+                            <Form>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Attribute title</Form.Label>
+                                    <Form.Control {...attributeForm.register('title', { required: true })} />
+                                    <Form.Text />
+                                    {attributeForm.formState.errors.title && (
+                                        <Alert key="info" variant="info">
+                                            {' '}
+                                            Attribute title is required{' '}
+                                        </Alert>
+                                    )}
+                                </Form.Group>
 
-                        const fileName = 'credentialSchema.json';
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Attribute description</Form.Label>
+                                    <Form.Control {...attributeForm.register('description', { required: true })} />
+                                    <Form.Text />
+                                    {attributeForm.formState.errors.description && (
+                                        <Alert key="info" variant="info">
+                                            {' '}
+                                            Attribute description is required{' '}
+                                        </Alert>
+                                    )}
+                                </Form.Group>
 
-                        const fileToSave = new Blob([JSON.stringify(credentialSchema, null, 2)], {
-                            type: 'application/json',
-                        });
+                                <Form.Group>
+                                    <Form.Label>Attribute type</Form.Label>
+                                    <Form.Select aria-label="Attribute-type" {...attributeForm.register('type')}>
+                                        <option value="string">String</option>
+                                        <option value="integer">Integer</option>
+                                        <option value="date-time">Date-time</option>
+                                    </Form.Select>
+                                </Form.Group>
 
-                        saveAs(fileToSave, fileName);
-                    }}
-                >
-                    Download CredentialSchema
-                </button>
-                {showCredentialSchema && (
-                    <pre className="largeText">{JSON.stringify(credentialSchema, null, '\t')}</pre>
-                )}
-            </TestBox>
-            <TestBox>
-                <div>
-                    <h3>CredentialMetadata</h3>
-                    <p>
+                                <Form.Group className="mb-3">
+                                    <Form.Check
+                                        type="checkbox"
+                                        id="attribute-required"
+                                        label="Attribute is required"
+                                        {...attributeForm.register('required')}
+                                    />
+                                </Form.Group>
+                                <Button
+                                    variant="primary"
+                                    type="button"
+                                    onClick={attributeForm.handleSubmit((data) => {
+                                        addAttribute(
+                                            attributes,
+                                            setAttributes,
+                                            data.title,
+                                            data.description,
+                                            data.required,
+                                            data.type,
+                                            credentialSchema
+                                        ).catch((_: Error) => setShow(true));
+                                    })}
+                                >
+                                    Add attribute
+                                </Button>
+                                <Button variant="primary" type="button" onClick={() => setAttributes([])}>
+                                    Clear attributes
+                                </Button>
+                            </Form>
+
+                            <Button
+                                className="mt-3"
+                                variant="primary"
+                                type="button"
+                                onClick={credentialSchemaForm.handleSubmit((_) => {
+                                    setShowCredentialSchema(true);
+                                })}
+                            >
+                                Create credential schema
+                            </Button>
+                            <Button
+                                className="mt-3"
+                                variant="primary"
+                                type="button"
+                                onClick={credentialSchemaForm.handleSubmit((_) => {
+                                    setShowCredentialSchema(true);
+                                    const fileName = 'credentialSchema.json';
+
+                                    const fileToSave = new Blob([JSON.stringify(credentialSchema, null, 2)], {
+                                        type: 'application/json',
+                                    });
+
+                                    saveAs(fileToSave, fileName);
+                                })}
+                            >
+                                Create credential schema
+                            </Button>
+                        </Form>
+                        {attributes.length !== 0 && (
+                            <>
+                                <div>
+                                    <div>
+                                        You have added the following <strong>attributes</strong>:
+                                    </div>
+                                    <div>
+                                        <pre>{JSON.stringify(attributes, null, 2)}</pre>
+                                    </div>
+                                </div>
+                                <br />
+                                <br />
+                                <div>
+                                    {credentialSchema.properties.credentialSubject.properties.attributes.required
+                                        .length === 0 && <div>No required attribues.</div>}
+                                    {credentialSchema.properties.credentialSubject.properties.attributes.required
+                                        .length !== 0 && (
+                                        <>
+                                            <div>Required attributes:</div>
+                                            <div>
+                                                {credentialSchema.properties.credentialSubject.properties.attributes.required?.map(
+                                                    (element) => (
+                                                        <li key={element}>{element}</li>
+                                                    )
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                        {showCredentialSchema && (
+                            <pre className="largeText">{JSON.stringify(credentialSchema, null, 2)}</pre>
+                        )}
+                    </AccordionBody>
+                </AccordionItem>
+
+                <AccordionItem>
+                    <AccordionHeader>CredentialMetadata</AccordionHeader>
+                    <AccordionBody>
                         The credential metadata describes the details of a single credential, such as logo, background
                         image or color, and localization. Like the JSON schema, the credential metadata must be hosted
                         at a public URL and will also be used by the wallet to style the credential.
-                    </p>
-                </div>
-                <label htmlFor="title">Title</label>
-                <input className="inputFieldStyle" id="title" type="text" value={title} onChange={changeTitle} />
-                <br />
-                <br />
-                <label htmlFor="logoURL">Logo URL</label>
-                <input className="inputFieldStyle" id="logoURL" type="text" value={logo} onChange={changeLogoURL} />
-                <br />
-                <br />
-                <label htmlFor="backgroundColor">Background color</label>
-                <input
-                    className="inputFieldStyle"
-                    id="backgroundColor"
-                    type="text"
-                    value={backgroundColor}
-                    onChange={changeBackgroundColor}
-                />
-                <br />
-                <br />
-                <label htmlFor="backgroundImage">Background image (optional)</label>
-                <input
-                    className="inputFieldStyle"
-                    id="backgroundImage"
-                    type="text"
-                    value={backgroundImage !== undefined ? backgroundImage : ''}
-                    onChange={changeBackgroundImage}
-                />
-                <br />
-                <br />
-                <button
-                    className="btn btn-primary"
-                    type="button"
-                    onClick={() => {
-                        setShowCredentialMetadata(true);
-                    }}
-                >
-                    Create CredentialMetadata
-                </button>
-                <button
-                    className="btn btn-primary"
-                    type="button"
-                    onClick={() => {
-                        setShowCredentialMetadata(true);
+                        <Form>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Title</Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_CREDENTIAL_METADATA_OBJECT.title}
+                                    {...credentialMetadataForm.register('title', { required: true })}
+                                />
+                                <Form.Text />
+                                {credentialMetadataForm.formState.errors.title && (
+                                    <Alert key="info" variant="info">
+                                        {' '}
+                                        Title is required{' '}
+                                    </Alert>
+                                )}
+                            </Form.Group>
 
-                        const fileName = 'credentialMetadata.json';
+                            <Form.Group className="mb-3">
+                                <Form.Label>Logo URL</Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_CREDENTIAL_METADATA_OBJECT.logo.url}
+                                    {...credentialMetadataForm.register('logo.url', { required: true })}
+                                />
+                                <Form.Text />
+                                {credentialMetadataForm.formState.errors.logo && (
+                                    <Alert key="info" variant="info">
+                                        {' '}
+                                        Logo URL is required{' '}
+                                    </Alert>
+                                )}
+                            </Form.Group>
 
-                        const fileToSave = new Blob([JSON.stringify(credentialMetadata, null, 2)], {
-                            type: 'application/json',
-                        });
+                            <Form.Group className="mb-3">
+                                <Form.Label>Background color</Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_CREDENTIAL_METADATA_OBJECT.backgroundColor}
+                                    {...credentialMetadataForm.register('backgroundColor', { required: true })}
+                                />
+                                <Form.Text />
+                                {credentialMetadataForm.formState.errors.backgroundColor && (
+                                    <Alert key="info" variant="info">
+                                        {' '}
+                                        Background color is required{' '}
+                                    </Alert>
+                                )}
+                            </Form.Group>
 
-                        saveAs(fileToSave, fileName);
-                    }}
-                >
-                    Download CredentialMetadata
-                </button>
-                {showCredentialMetadata && (
-                    <pre className="largeText">{JSON.stringify(credentialMetadata, null, '\t')}</pre>
-                )}
-            </TestBox>
-            <TestBox>
-                <div>
-                    <h3>IssuerMetadata</h3>
-                    <p>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Background image (optional)</Form.Label>
+                                <Form.Control {...credentialMetadataForm.register('image.url', { required: false })} />
+                                <Form.Text />
+                            </Form.Group>
+                            <Button
+                                variant="primary"
+                                type="button"
+                                onClick={credentialMetadataForm.handleSubmit((data) => {
+                                    if (!data.image?.url) {
+                                        data.image = undefined;
+                                    }
+                                    setCredentialMetadata(data);
+                                    setShowCredentialMetadata(true);
+                                })}
+                            >
+                                Create credential metadata
+                            </Button>
+                            <Button
+                                variant="primary"
+                                type="button"
+                                onClick={credentialMetadataForm.handleSubmit((data) => {
+                                    if (!data.image?.url) {
+                                        data.image = undefined;
+                                    }
+                                    setCredentialMetadata(data);
+                                    setShowCredentialMetadata(true);
+
+                                    const fileName = 'credentialMetadata.json';
+
+                                    const fileToSave = new Blob([JSON.stringify(credentialMetadata, null, 2)], {
+                                        type: 'application/json',
+                                    });
+
+                                    saveAs(fileToSave, fileName);
+                                })}
+                            >
+                                Download credential metadata
+                            </Button>
+                        </Form>
+                        {showCredentialMetadata && (
+                            <pre className="largeText">{JSON.stringify(credentialMetadata, null, 2)}</pre>
+                        )}
+                    </AccordionBody>
+                </AccordionItem>
+                <AccordionItem>
+                    <AccordionHeader>IssuerMetadata</AccordionHeader>
+                    <AccordionBody>
                         The issuerMetadata is a JSON object describing the <strong>issuer</strong>, compared to the
                         credential. It allows for styling of the issuer.
-                    </p>
-                </div>
-                <br />
-                <br />
-                <label htmlFor="issuerName">Issuer name</label>
-                <input
-                    className="inputFieldStyle"
-                    id="issuerName"
-                    type="text"
-                    value={issuerName}
-                    onChange={changeIssuerName}
-                />
-                <br />
-                <br />
-                <label htmlFor="issuerDescription">Issuer description</label>
-                <input
-                    className="inputFieldStyle"
-                    id="issuerDescription"
-                    type="text"
-                    value={issuerDescription}
-                    onChange={changeIssuerDescription}
-                />
-                <br />
-                <br />
-                <label htmlFor="URL">Issuer URL</label>
-                <input className="inputFieldStyle" id="URL" type="text" value={URL} onChange={changeURL} />
-                <br />
-                <br />
-                <label htmlFor="iconURL">Issuer icon URL</label>
-                <input className="inputFieldStyle" id="iconURL" type="text" value={iconURL} onChange={changeIconURL} />
-                <br />
-                <br />
-                <button
-                    className="btn btn-primary"
-                    type="button"
-                    onClick={() => {
-                        setShowIssuerMetadata(true);
-                    }}
-                >
-                    Create IssuerMetadata
-                </button>
-                <button
-                    className="btn btn-primary"
-                    type="button"
-                    onClick={() => {
-                        setShowIssuerMetadata(true);
+                        <Form onSubmit={issuerMetadataForm.handleSubmit((x: any) => x)}>
+                            <Form.Group className="mb-3">
+                                <Form.Label> Issuer name </Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_ISSUER_METADATA_OBJECT.name}
+                                    {...issuerMetadataForm.register('name', { required: true })}
+                                />
+                                {issuerMetadataForm.formState.errors.name && 'Name is required'}
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label> Issuer description: </Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_ISSUER_METADATA_OBJECT.description}
+                                    {...issuerMetadataForm.register('description', { required: true })}
+                                />
+                                {issuerMetadataForm.formState.errors.description && 'Description is required'}
+                            </Form.Group>
 
-                        const fileName = 'issuerMetadata.json';
+                            <Form.Group className="mb-3">
+                                <Form.Label> URL: </Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_ISSUER_METADATA_OBJECT.url}
+                                    {...issuerMetadataForm.register('url', { required: true })}
+                                />
+                                {issuerMetadataForm.formState.errors.url && 'URL is required'}
+                            </Form.Group>
 
-                        const fileToSave = new Blob([JSON.stringify(issuerMetadata, null, 2)], {
-                            type: 'application/json',
-                        });
+                            <Form.Group className="mb-3">
+                                <Form.Label> Icon URL: </Form.Label>
+                                <Form.Control
+                                    defaultValue={EXAMPLE_ISSUER_METADATA_OBJECT.icon.url}
+                                    {...issuerMetadataForm.register('icon.url', { required: true })}
+                                />
+                                <Form.Text>
+                                    {' '}
+                                    The icon URL is used by the wallet to display the issuer to the user.{' '}
+                                </Form.Text>
+                                {issuerMetadataForm.formState.errors.icon && (
+                                    <Alert key="info" variant="info">
+                                        {' '}
+                                        Icon URL is required{' '}
+                                    </Alert>
+                                )}
+                            </Form.Group>
+                            <Button
+                                variant="primary"
+                                type="button"
+                                onClick={issuerMetadataForm.handleSubmit((data) => {
+                                    setIssuerMetadata(data);
+                                    setShowIssuerMetadata(true);
+                                })}
+                            >
+                                Create issuer metadata
+                            </Button>
+                            <Button
+                                variant="primary"
+                                type="button"
+                                onClick={issuerMetadataForm.handleSubmit((data) => {
+                                    setIssuerMetadata(data);
+                                    setShowIssuerMetadata(true);
 
-                        saveAs(fileToSave, fileName);
-                    }}
-                >
-                    Download IssuerMetadata
-                </button>
-                {showIssuerMetadata && <pre className="largeText">{JSON.stringify(issuerMetadata, null, '\t')}</pre>}
-            </TestBox>
+                                    const fileName = 'issuerMetadata.json';
+
+                                    const fileToSave = new Blob([JSON.stringify(issuerMetadata, null, 2)], {
+                                        type: 'application/json',
+                                    });
+
+                                    saveAs(fileToSave, fileName);
+                                })}
+                            >
+                                Download issuer metadata
+                            </Button>
+                        </Form>
+                        {showIssuerMetadata && (
+                            <pre className="largeText">{JSON.stringify(issuerMetadata, null, 2)}</pre>
+                        )}
+                    </AccordionBody>
+                </AccordionItem>
+            </Accordion>
         </>
     );
 }
