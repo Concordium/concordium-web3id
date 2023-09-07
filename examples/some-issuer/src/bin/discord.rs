@@ -30,7 +30,7 @@ use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
 const DISCORD_API_ENDPOINT: &str = "https://discord.com/api/v10";
-
+const HTML_TITLE: &str = "Discord web3 ID issuer";
 const OAUTH_TEMPLATE: &str = include_str!("../../templates/discord-oauth.hbs");
 
 #[derive(clap::Parser, Debug)]
@@ -43,46 +43,46 @@ struct App {
         default_value = "http://localhost:20000",
         env = "DISCORD_ISSUER_NODE"
     )]
-    endpoint:              v2::Endpoint,
+    endpoint: v2::Endpoint,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "DISCORD_ISSUER_LOG_LEVEL"
     )]
-    log_level:             tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "network",
         help = "The network of the issuer.",
         default_value = "testnet",
         env = "DISCORD_ISSUER_NETWORK"
     )]
-    network:               Network,
+    network: Network,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "DISCORD_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout:       u64,
+    request_timeout: u64,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "DISCORD_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry:              ContractAddress,
+    registry: ContractAddress,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "DISCORD_ISSUER_WALLET"
     )]
-    wallet:                PathBuf,
+    wallet: PathBuf,
     #[clap(
         long = "issuer-key",
         help = "Path to the issuer's key, used to sign commitments.",
         env = "DISCORD_ISSUER_KEY"
     )]
-    issuer_key:            PathBuf,
+    issuer_key: PathBuf,
     #[clap(
         long = "max-register-energy",
         help = "The amount of energy to allow for execution of the register credential \
@@ -91,13 +91,13 @@ struct App {
         default_value = "10000",
         env = "DISCORD_ISSUER_MAX_REGISTER_ENERGY"
     )]
-    max_register_energy:   Energy,
+    max_register_energy: Energy,
     #[clap(
         long = "discord-client-id",
         help = "Discord client ID for OAuth2.",
         env = "DISCORD_CLIENT_ID"
     )]
-    discord_client_id:     String,
+    discord_client_id: String,
     #[clap(
         long = "discord-client-secret",
         help = "Discord client secret for OAuth2.",
@@ -110,39 +110,39 @@ struct App {
         default_value = "0.0.0.0:8081",
         env = "DISCORD_ISSUER_LISTEN_ADDRESS"
     )]
-    listen_address:        SocketAddr,
+    listen_address: SocketAddr,
     #[clap(
         long = "url",
         help = "URL of the Discord issuer.",
         default_value = "http://127.0.0.1:8081/",
         env = "DISCORD_ISSUER_URL"
     )]
-    url:                   Url,
+    url: Url,
     #[clap(
         long = "dapp-domain",
         help = "The domain of the dApp, used for CORS.",
         default_value = "http://127.0.0.1:8081",
         env = "DISCORD_ISSUER_DAPP_URL"
     )]
-    dapp_domain:           String,
+    dapp_domain: String,
     #[clap(
         long = "frontend",
         default_value = "./frontend/dist/discord",
         help = "Path to the directory where frontend assets are located.",
         env = "DISCORD_ISSUER_FRONTEND"
     )]
-    frontend_assets:       std::path::PathBuf,
+    frontend_assets: std::path::PathBuf,
 }
 
 #[derive(Clone)]
 struct AppState {
-    issuer:                IssuerState,
-    discord_client_id:     Arc<str>,
+    issuer: IssuerState,
+    discord_client_id: Arc<str>,
     discord_client_secret: Arc<str>,
-    http_client:           reqwest::Client,
-    handlebars:            Arc<Handlebars<'static>>,
-    discord_redirect_uri:  Arc<Url>,
-    dapp_domain:           Arc<String>,
+    http_client: reqwest::Client,
+    handlebars: Arc<Handlebars<'static>>,
+    discord_redirect_uri: Arc<Url>,
+    dapp_domain: Arc<String>,
 }
 
 /// Request for issuance of Discord credential.
@@ -153,25 +153,25 @@ struct DiscordIssueRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 struct User {
-    id:            String,
-    username:      String,
+    id: String,
+    username: String,
     discriminator: String,
 }
 
 #[derive(Serialize)]
 struct AccessTokenRequestData<'a> {
-    client_id:     &'a str,
+    client_id: &'a str,
     client_secret: &'a str,
-    grant_type:    &'static str,
-    code:          &'a str,
-    redirect_uri:  &'a str,
+    grant_type: &'static str,
+    code: &'a str,
+    redirect_uri: &'a str,
 }
 
 #[derive(Deserialize)]
 struct AccessTokenResponse {
     access_token: String,
-    token_type:   String,
-    scope:        String,
+    token_type: String,
+    scope: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -181,22 +181,22 @@ struct Oauth2RedirectParams {
 
 #[derive(Serialize)]
 struct OauthTemplateParams<'a> {
-    id:          &'a str,
-    username:    &'a str,
+    id: &'a str,
+    username: &'a str,
     dapp_domain: &'a str,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ContractConfig {
-    index:    String,
+    index: String,
     subindex: String,
 }
 
 impl From<ContractAddress> for ContractConfig {
     fn from(value: ContractAddress) -> Self {
         Self {
-            index:    value.index.to_string(),
+            index: value.index.to_string(),
             subindex: value.subindex.to_string(),
         }
     }
@@ -206,10 +206,10 @@ impl From<ContractAddress> for ContractConfig {
 #[serde(rename_all = "camelCase")]
 struct FrontendConfig {
     #[serde(rename = "type")]
-    config_type:       String,
+    config_type: String,
     discord_client_id: String,
-    network:           Network,
-    contract:          ContractConfig,
+    network: Network,
+    contract: ContractConfig,
 }
 
 /// Handles OAuth2 redirects and inserts an id in the session.
@@ -336,8 +336,8 @@ impl AppState {
             .context("Cannot serialize username.")?;
 
         let params = OauthTemplateParams {
-            id:          &user.id,
-            username:    &username,
+            id: &user.id,
+            username: &username,
             dapp_domain: &self.dapp_domain,
         };
 
@@ -476,13 +476,13 @@ async fn main() -> anyhow::Result<()> {
     // Prevent handlebars from escaping inserted object
     reg.register_escape_fn(|s| s.into());
     let frontend_config = FrontendConfig {
-        config_type:       "discord".into(),
+        config_type: "discord".into(),
         discord_client_id: app.discord_client_id,
-        network:           app.network,
-        contract:          app.registry.into(),
+        network: app.network,
+        contract: app.registry.into(),
     };
     let config_string = serde_json::to_string(&frontend_config)?;
-    let index_html = reg.render_template(&index_template, &json!({ "config": config_string }))?;
+    let index_html = reg.render_template(&index_template, &json!({ "config": config_string, "title": HTML_TITLE }))?;
 
     let serve_dir_service = ServeDir::new(app.frontend_assets.join("assets"));
     let json_schema_service = ServeDir::new("json-schemas/discord");
@@ -505,7 +505,8 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)); // at most 100kB of data
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)) // at most 100kB of data
+        .layer(tower_http::compression::CompressionLayer::new());
 
     tracing::info!("Starting server on {}...", app.listen_address);
 

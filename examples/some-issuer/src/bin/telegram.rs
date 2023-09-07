@@ -25,6 +25,8 @@ use std::{fmt::Write, fs, net::SocketAddr, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
+const HTML_TITLE: &str = "Telegram web3 ID issuer";
+
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
 #[clap(version, author)]
@@ -35,46 +37,46 @@ struct App {
         default_value = "http://localhost:20000",
         env = "TELEGRAM_ISSUER_NODE"
     )]
-    endpoint:            v2::Endpoint,
+    endpoint: v2::Endpoint,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "TELEGRAM_ISSUER_LOG_LEVEL"
     )]
-    log_level:           tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "TELEGRAM_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout:     u64,
+    request_timeout: u64,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "TELEGRAM_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry:            ContractAddress,
+    registry: ContractAddress,
     #[clap(
         long = "network",
         help = "The network of the issuer.",
         default_value = "testnet",
         env = "TELEGRAM_ISSUER_NETWORK"
     )]
-    network:             Network,
+    network: Network,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "TELEGRAM_ISSUER_WALLET"
     )]
-    wallet:              PathBuf,
+    wallet: PathBuf,
     #[clap(
         long = "issuer-key",
         help = "Path to the issuer's key, used to sign commitments.",
         env = "TELEGRAM_ISSUER_KEY"
     )]
-    issuer_key:          PathBuf,
+    issuer_key: PathBuf,
     #[clap(
         long = "max-register-energy",
         help = "The amount of energy to allow for execution of the register credential \
@@ -89,58 +91,58 @@ struct App {
         help = "Bot token for Telegram.",
         env = "TELEGRAM_BOT_TOKEN"
     )]
-    telegram_bot_token:  String,
+    telegram_bot_token: String,
     #[clap(
         long = "listen-address",
         help = "Socket address for the Telegram issuer.",
         default_value = "0.0.0.0:80", // To test the frontend, default port (80) is needed when running locally, as otherwise the iframe providing the telegram login button does not work.
         env = "TELEGRAM_ISSUER_LISTEN_ADDRESS"
     )]
-    listen_address:      SocketAddr,
+    listen_address: SocketAddr,
     #[clap(
         long = "url",
         help = "URL of the Telegram issuer.",
         default_value = "http://127.0.0.1/",
         env = "TELEGRAM_ISSUER_URL"
     )]
-    url:                 Url,
+    url: Url,
     #[clap(
         long = "dapp-domain",
         help = "The domain of the dApp, used for CORS.",
         default_value = "http://127.0.0.1",
         env = "TELEGRAM_ISSUER_DAPP_URL"
     )]
-    dapp_domain:         String,
+    dapp_domain: String,
     #[clap(
         long = "telegram-bot-name",
         help = "The name (handle) of the Telegram bot.",
         env = "TELEGRAM_BOT_NAME"
     )]
-    telegram_bot_name:   String,
+    telegram_bot_name: String,
     #[clap(
         long = "frontend",
         default_value = "./frontend/dist/telegram",
         help = "Path to the directory where frontend assets are located.",
         env = "TELEGRAM_ISSUER_FRONTEND"
     )]
-    frontend_assets:     std::path::PathBuf,
+    frontend_assets: std::path::PathBuf,
 }
 
 #[derive(Clone)]
 struct AppState {
-    issuer:             IssuerState,
+    issuer: IssuerState,
     telegram_bot_token: Arc<String>,
 }
 
 #[derive(Deserialize, Debug)]
 struct User {
-    id:         u64,
+    id: u64,
     first_name: String,
-    last_name:  Option<String>,
-    username:   Option<String>,
-    photo_url:  Option<String>,
-    auth_date:  u64,
-    hash:       String,
+    last_name: Option<String>,
+    username: Option<String>,
+    photo_url: Option<String>,
+    auth_date: u64,
+    hash: String,
 }
 
 type HmacSha256 = Hmac<Sha256>;
@@ -183,21 +185,21 @@ impl User {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct TelegramIssueRequest {
-    credential:    CredentialInfo,
+    credential: CredentialInfo,
     telegram_user: User,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ContractConfig {
-    index:    String,
+    index: String,
     subindex: String,
 }
 
 impl From<ContractAddress> for ContractConfig {
     fn from(value: ContractAddress) -> Self {
         Self {
-            index:    value.index.to_string(),
+            index: value.index.to_string(),
             subindex: value.subindex.to_string(),
         }
     }
@@ -207,10 +209,10 @@ impl From<ContractAddress> for ContractConfig {
 #[serde(rename_all = "camelCase")]
 struct FrontendConfig {
     #[serde(rename = "type")]
-    config_type:       String,
+    config_type: String,
     telegram_bot_name: String,
-    network:           Network,
-    contract:          ContractConfig,
+    network: Network,
+    contract: ContractConfig,
 }
 
 #[tracing::instrument(level = "debug", skip_all, fields(holder_id = %request.credential.holder_id))]
@@ -343,13 +345,13 @@ async fn main() -> anyhow::Result<()> {
     // Prevent handlebars from escaping inserted object
     reg.register_escape_fn(|s| s.into());
     let frontend_config = FrontendConfig {
-        config_type:       "telegram".into(),
+        config_type: "telegram".into(),
         telegram_bot_name: app.telegram_bot_name,
-        network:           app.network,
-        contract:          app.registry.into(),
+        network: app.network,
+        contract: app.registry.into(),
     };
     let config_string = serde_json::to_string(&frontend_config)?;
-    let index_html = reg.render_template(&index_template, &json!({ "config": config_string }))?;
+    let index_html = reg.render_template(&index_template, &json!({ "config": config_string, "title": HTML_TITLE }))?;
 
     let serve_dir_service = ServeDir::new(app.frontend_assets.join("assets"));
 
@@ -369,7 +371,8 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)); // at most 100kB of data.
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)) // at most 100kB of data.
+        .layer(tower_http::compression::CompressionLayer::new());
 
     tracing::info!("Starting server on {}...", app.listen_address);
 
