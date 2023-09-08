@@ -51,12 +51,12 @@ const configs: { [p in Platform]: PlatformConfig } = {
     [Platform.Telegram]: {
         // If not served on default port (80), telegram login doesn't work due to iframe restrictions
         port: 80,
-        title: 'Telegram web3 ID issuer',
+        title: 'Telegram Web3 ID issuer',
         config: telegramConfig,
     },
     [Platform.Discord]: {
         port: 8081,
-        title: 'Discord web3 ID issuer',
+        title: 'Discord Web3 ID issuer',
         config: discordConfig,
     },
 };

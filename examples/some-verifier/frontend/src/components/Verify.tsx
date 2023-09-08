@@ -201,14 +201,16 @@ export default function Verify() {
           text={
             <>
               <p>
-                To verify with Concordia, you need web3 ID credentials for the
-                corresponding social media platforms in your wallet. If you
-                already have the credentials in your wallet, you can skip this
-                step
+                To verify with Concordia, you need Web3 ID credentials for the
+                corresponding social media platforms in your wallet.{' '}
+                <strong>
+                  If you already have the credentials in your wallet, you can
+                  skip this step.{' '}
+                </strong>
               </p>
               <p className="mb-0">
-                To add credentials to your wallet, please log to the platforms
-                below.
+                To add credentials to your wallet, please log in to the
+                platforms below.
               </p>
             </>
           }
@@ -272,7 +274,8 @@ export default function Verify() {
                     setChecked={setFullNameChecked}
                   >
                     <SVG className="me-1" src={ccdLogo} />
-                    Full name - Concordium {config.network} identity required
+                    Full name - Requires Concordium {config.network}&nbsp;{' '}
+                    <strong>identity and account</strong>
                   </PlatformOption>
                 </ListGroup>
               </Col>
