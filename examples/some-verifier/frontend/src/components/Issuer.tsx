@@ -134,7 +134,12 @@ function Issuer({
         ) : (
           <div className="some-btn-container">
             <DiscordLoginButton
-              style={{ margin: 0, marginBottom: 5, fontSize: '12pt' }}
+              style={{
+                width: '300px',
+                margin: 0,
+                marginBottom: 5,
+                fontSize: '12pt',
+              }}
               size="40px"
               onClick={openDiscordVerification}
             />
