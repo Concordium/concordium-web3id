@@ -122,6 +122,7 @@ function Issuer({
             botName={config.telegramBotName}
             dataOnauth={onTelegramAuth}
             cornerRadius={3}
+            requestAccess={''}
           />
         )}
       </ListGroupItem>
