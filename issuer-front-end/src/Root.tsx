@@ -15,47 +15,29 @@ export default function Root() {
     const [isPreviousButtonDisabled, setIsPreviousButtonDisabled] = useState<boolean>(true);
 
     const updateProgress = (activeValue: number) => {
-        const progressBar = document.getElementById('progress-bar');
-        const steps = document.querySelectorAll('.step');
+        if (activeValue === 2 && isConnected === false) {
+            setIsNextButtonDisabled(true);
+        }
 
-        // toggle active class on list items
-        steps.forEach((step, i) => {
-            if (i < activeValue) {
-                step.classList.add('active');
-            } else {
-                step.classList.remove('active');
-            }
-        });
-        if (progressBar !== null) {
-            // set progress bar width
-            progressBar.style.width = `${((activeValue - 1) / (steps.length - 1)) * 100}%`;
+        if (activeValue === 3) {
+            setIsNextButtonDisabled(true);
+        }
 
-            if (activeValue === 2 && isConnected === false) {
-                setIsNextButtonDisabled(true);
-            }
-
-            if (activeValue === 3) {
-                setIsNextButtonDisabled(true);
-            }
-
-            // enable/disable prev and next buttons
-            if (activeValue === 1) {
-                setIsPreviousButtonDisabled(true);
-                setIsNextButtonDisabled(false);
-            } else if (activeValue === steps.length) {
-                setIsNextButtonDisabled(true);
-            } else {
-                setIsPreviousButtonDisabled(false);
-                setIsNextButtonDisabled(false);
-            }
+        // enable/disable prev and next buttons
+        if (activeValue === 1) {
+            setIsPreviousButtonDisabled(true);
+            setIsNextButtonDisabled(false);
+        } else if (activeValue === 3) {
+            setIsNextButtonDisabled(true);
+        } else {
+            setIsPreviousButtonDisabled(false);
+            setIsNextButtonDisabled(false);
         }
     };
 
     const next = (activeValue: number, setActiveHook: (arg0: number) => void) => {
-        const steps = document.querySelectorAll('.step');
-
         let newActiveValue = 1;
-        if (activeValue + 1 <= steps.length) {
+        if (activeValue + 1 <= 3) {
             newActiveValue = activeValue + 1;
         } else {
             newActiveValue = activeValue;
@@ -92,15 +74,6 @@ export default function Root() {
                     Step {active}: {stepHeaders[active - 1]}
                 </h3>
                 <br />
-                <div id="progress">
-                    <div id="progress-bar" />
-                    <ul id="progress-num">
-                        <li className="step active">1</li>
-                        <li className="step">2</li>
-                        <li className="step">3</li>
-                    </ul>
-                </div>
-
                 {/* Step 1: Create schema and metadata files */}
                 {active === 1 && <CreateSchemaAndMetadataFiles />}
                 {/* Step 2: Select Network */}
@@ -129,24 +102,38 @@ export default function Root() {
                 )}
                 <br />
                 <br />
-                <button
-                    className="btn btn-primary"
-                    id="progress-prev"
-                    type="button"
-                    disabled={isPreviousButtonDisabled}
-                    onClick={() => previous(active, setActive)}
-                >
-                    {previousText}
-                </button>
-                <button
-                    className="btn btn-primary"
-                    id="progress-next"
-                    type="button"
-                    disabled={isNextButtonDisabled}
-                    onClick={() => next(active, setActive)}
-                >
-                    {nextText}
-                </button>
+                <br />
+                <br />
+                <nav aria-label="Page navigation example">
+                    <ul className="pagination">
+                        <button
+                            className="btn btn-primary"
+                            type="button"
+                            disabled={isPreviousButtonDisabled}
+                            onClick={() => previous(active, setActive)}
+                        >
+                            {previousText}
+                        </button>
+                        <li className={active === 1 ? 'page-item active' : 'page-item'}>
+                            <div className="page-link">Step 1</div>
+                        </li>
+                        <li className={active === 2 ? 'page-item active' : 'page-item'}>
+                            <div className="page-link">Step 2</div>
+                        </li>
+                        <li className={active === 3 ? 'page-item active' : 'page-item'}>
+                            <div className="page-link">Step 3</div>
+                        </li>
+                        <button
+                            className="btn btn-primary"
+                            type="button"
+                            disabled={isNextButtonDisabled}
+                            onClick={() => next(active, setActive)}
+                        >
+                            {nextText}
+                        </button>
+                    </ul>
+                </nav>
+
                 <div>
                     <br />
                     Version: {version} |{' '}

@@ -57,7 +57,7 @@ async function addAttribute(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     attributes.forEach((value: any) => {
         if (value[attributeTitle.replaceAll(' ', '')] !== undefined) {
-            throw new Error(`Duplicate attribute key: "${attributeTitle}"`);
+            throw new Error(`Duplicate attribute title: "${attributeTitle}"`);
         }
     });
 
@@ -126,26 +126,25 @@ export default function CreateSchemaAndMetadataFiles() {
     const [showIssuerMetadata, setShowIssuerMetadata] = useState(false);
 
     const [show, setShow] = useState(false);
+    const [error, setError] = useState();
 
     const handleClose = () => setShow(false);
 
     return (
         <>
             <Modal show={show}>
-                <Modal.Dialog>
-                    <Modal.Header closeButton>
-                        <Modal.Title>Duplicate attribute tags.</Modal.Title>
-                    </Modal.Header>
+                <Modal.Header>
+                    <Modal.Title>Error</Modal.Title>
+                </Modal.Header>
 
-                    <Modal.Body>
-                        <p>Cannot have duplicate attribute tags.</p>
-                    </Modal.Body>
-                    <Modal.Footer>
-                        <Button variant="secondary" onClick={handleClose}>
-                            Close
-                        </Button>
-                    </Modal.Footer>
-                </Modal.Dialog>
+                <Modal.Body>
+                    <p>{error}</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleClose}>
+                        Close
+                    </Button>
+                </Modal.Footer>
             </Modal>
             <Accordion>
                 <AccordionItem eventKey="CredentialSchema">
@@ -261,8 +260,8 @@ export default function CreateSchemaAndMetadataFiles() {
                                             data.type,
                                             credentialSchema
                                         ).catch((e) => {
-                                            alert(e)
-                                            setShow(true)
+                                            setError(e.message);
+                                            setShow(true);
                                         });
                                     })}
                                 >
@@ -318,17 +317,17 @@ export default function CreateSchemaAndMetadataFiles() {
                                         .length === 0 && <div>No required attribues.</div>}
                                     {credentialSchema.properties.credentialSubject.properties.attributes.required
                                         .length !== 0 && (
-                                            <>
-                                                <div>Required attributes:</div>
-                                                <div>
-                                                    {credentialSchema.properties.credentialSubject.properties.attributes.required?.map(
-                                                        (element) => (
-                                                            <li key={element}>{element}</li>
-                                                        )
-                                                    )}
-                                                </div>
-                                            </>
-                                        )}
+                                        <>
+                                            <div>Required attributes:</div>
+                                            <div>
+                                                {credentialSchema.properties.credentialSubject.properties.attributes.required?.map(
+                                                    (element) => (
+                                                        <li key={element}>{element}</li>
+                                                    )
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </>
                         )}

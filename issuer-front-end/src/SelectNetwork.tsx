@@ -45,9 +45,12 @@ export default function SelectNetwork(props: ConnectionProps) {
                 The registry contract will be created from the smart contract module{' '}
                 <strong>{MODULE_REFERENCE_CREDENTIAL_REGISTRY}</strong>.
             </p>
-
-            <br />
-            <select name="write" id="write" onChange={changeDropDownHandler}>
+            <select
+                className="btn btn-primary dropdown-toggle"
+                name="write"
+                id="write"
+                onChange={changeDropDownHandler}
+            >
                 <option value="choose" disabled selected>
                     Choose
                 </option>

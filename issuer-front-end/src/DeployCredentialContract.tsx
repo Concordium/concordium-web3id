@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { useGrpcClient, TESTNET, MAINNET, WalletConnection } from '@concordium/react-components';
-import { Button, Row, Form, Alert } from 'react-bootstrap';
+import { Button, Row, Form, Alert, Modal } from 'react-bootstrap';
 import { TransactionKindString, TransactionSummaryType } from '@concordium/web-sdk';
 import { TailSpin } from 'react-loader-spinner';
 
@@ -62,13 +62,13 @@ export default function DeployCredentialContract(props: ConnectionProps) {
     const [waitingForTransactionToFinialize, setWaitingForTransactionToFinialize] = useState(false);
 
     const [smartContractIndex, setSmartContractIndex] = useState('');
-    const [data, setData] = useState<DeployContractFormInterface | undefined>();
-
-    const [transactionError, setTransactionError] = useState('');
-
     const [txHash, setTxHash] = useState('');
-
     const [revocationKeys, setRevocationKeys] = useState<string[]>([]);
+
+    const [show, setShow] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleClose = () => setShow(false);
 
     const client = useGrpcClient(isTestnet ? TESTNET : MAINNET);
 
@@ -109,6 +109,20 @@ export default function DeployCredentialContract(props: ConnectionProps) {
 
     return (
         <>
+            <Modal show={show}>
+                <Modal.Header>
+                    <Modal.Title>Error</Modal.Title>
+                </Modal.Header>
+
+                <Modal.Body>
+                    <p>{error}</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleClose}>
+                        Close
+                    </Button>
+                </Modal.Footer>
+            </Modal>
             <Form>
                 <Form.Group className="mb-3">
                     <Form.Label>Issuer Public Key</Form.Label>
@@ -220,10 +234,8 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                     variant="primary"
                     type="button"
                     onClick={deployContractForm.handleSubmit((formData) => {
-                        setData(formData);
-
                         setTxHash('');
-                        setTransactionError('');
+                        setError('');
                         setSmartContractIndex('');
                         setWaitingForTransactionToFinialize(true);
 
@@ -237,7 +249,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                             formData.credentialType
                         );
                         tx.then(setTxHash).catch((err: Error) => {
-                            setTransactionError((err as Error).message);
+                            setError((err as Error).message);
                             setWaitingForTransactionToFinialize(false);
                         });
                     })}
@@ -245,13 +257,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                     Create New Issuer
                 </Button>
             </Form>
-            {revocationKeys && <pre className="largeText">{JSON.stringify(revocationKeys, null, 2)}</pre>}
-            {data && <pre className="largeText">{JSON.stringify(data, null, 2)}</pre>}
-            {!txHash && transactionError && (
-                <div className="alert alert-danger" role="alert">
-                    Error: {transactionError}.
-                </div>
-            )}
+            {revocationKeys.length !== 0 && <pre className="largeText">{JSON.stringify(revocationKeys, null, 2)}</pre>}
             {smartContractIndexError !== '' && (
                 <div className="alert alert-danger" role="alert">
                     Error: {smartContractIndexError}.
@@ -279,7 +285,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
             )}
             <Row />
             {waitingForTransactionToFinialize === true && (
-                <div className="containerTwoItems">
+                <div className="d-flex justify-content-center">
                     <TailSpin
                         height="30"
                         width="30"
