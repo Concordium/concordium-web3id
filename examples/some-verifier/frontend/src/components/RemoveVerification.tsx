@@ -99,7 +99,7 @@ export default function RemoveVerification() {
             <Col md={12}>
               <p>
                 The credentials linked in a verification are stored with a
-                reference to the <i>credential ID</i> they are created with.
+                reference to the <i>credential ID</i> used to create them.
               </p>
               <p>
                 The credential ID is the public key used to identify the holder
