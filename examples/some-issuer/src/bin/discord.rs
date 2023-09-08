@@ -450,7 +450,7 @@ async fn main() -> anyhow::Result<()> {
         http_client,
         discord_redirect_uri: Arc::new(discord_redirect_uri),
         handlebars: Arc::new(handlebars),
-        dapp_domain: Arc::new(app.url.into()),
+        dapp_domain: Arc::new(app.url),
         verifier_dapp_domain: Arc::new(app.verifier_dapp_domain.clone()),
     };
 

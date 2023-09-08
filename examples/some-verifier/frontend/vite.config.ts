@@ -6,7 +6,7 @@ import { Platform, Issuer } from './src/lib/types';
 const config = {
   discordClientId: process.env.DISCORD_CLIENT_ID,
   telegramBotName: process.env.TELEGRAM_BOT_NAME,
-  network: process.env.TELEGRAM_ISSUER_NETWORK ?? 'testnet',
+  network: process.env.SOME_VERIFIER_NETWORK ?? 'testnet',
   issuers: {
     [Platform.Telegram]: {
       url: process.env.TELEGRAM_ISSUER_URL ?? '127.0.0.1:8080',
@@ -14,8 +14,8 @@ const config = {
       subindex: '0',
     } as Issuer,
     [Platform.Discord]: {
-      url: process.env.TELEGRAM_ISSUER_URL ?? '127.0.0.1:8081',
-      index: process.env.TELEGRAM_ISSUER_INDEX ?? '0',
+      url: process.env.DISCORD_ISSUER_URL ?? '127.0.0.1:8081',
+      index: process.env.DISCORD_ISSUER_INDEX ?? '0',
       subindex: '0',
     } as Issuer,
   },
