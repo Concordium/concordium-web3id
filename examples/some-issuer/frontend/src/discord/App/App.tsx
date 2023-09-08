@@ -74,9 +74,7 @@ function App() {
         return () => removeEventListener('message', eventHandler);
     }, [onTransactionFinalized, onTransactionSubmit]);
 
-    return (
-        <DiscordLoginButton className="app__login" size="40px" onClick={openDiscordVerification} />
-    );
+    return <DiscordLoginButton className="app__login" size="40px" onClick={openDiscordVerification} />;
 }
 
 export default App;

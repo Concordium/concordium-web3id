@@ -9,13 +9,13 @@ function useSecondsWaited(done: boolean) {
 
     useEffect(() => {
         const i = setInterval(() => {
-            setSeconds(s => s + 1);
+            setSeconds((s) => s + 1);
         }, 1000);
 
         return () => {
             setSeconds(0);
             clearInterval(i);
-        }
+        };
     }, [done]);
 
     return seconds;
@@ -50,7 +50,9 @@ export default function StatusToast(props: Props) {
                         {transaction?.slice(0, 10)}
                     </a>
                 </p>
-                {transactionStatus === 'submitted' && <p className="mb-0">Awaiting finalization: {".".repeat(secondsWaited)}</p>}
+                {transactionStatus === 'submitted' && (
+                    <p className="mb-0">Awaiting finalization: {'.'.repeat(secondsWaited)}</p>
+                )}
                 {transactionStatus === 'finalized' && <p className="mb-0">Transaction finalized</p>}
             </Toast.Body>
         </Toast>

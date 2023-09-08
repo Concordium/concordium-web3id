@@ -30,9 +30,7 @@ function App() {
         }
     };
 
-    return (
-        <TelegramLoginButton botName={telegramBotName} dataOnauth={onTelegramAuth} cornerRadius={3} />
-    );
+    return <TelegramLoginButton botName={telegramBotName} dataOnauth={onTelegramAuth} cornerRadius={3} />;
 }
 
 export default App;
