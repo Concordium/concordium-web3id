@@ -201,8 +201,9 @@ export default function Verify() {
           text={
             <>
               <p>
-                To verify with Concordia, you need Web3 ID credentials for the
-                corresponding social media platforms in your wallet.{' '}
+                To verify with Concordia, you need verifiable credentials for
+                the corresponding social media platforms in your Concordium
+                Wallet for Web.{' '}
                 <strong>
                   If you already have the credentials in your wallet, you can
                   skip this step.{' '}
@@ -239,10 +240,10 @@ export default function Verify() {
           text={
             <>
               <p>
-                Select the platforms you want to verify with, essentially
-                proving ownership of the accounts referenced by the credentials
-                in your wallet. Additionally, you can also choose to reveal your
-                full name from an identity in your wallet.
+                Select the platforms you want to verify, essentially proving
+                ownership of the accounts referenced by the credentials in your
+                wallet. Additionally, you can also choose to reveal your full
+                name from an identity in your wallet.
               </p>
               <p className="mb-0">You must select at least 2 options.</p>
             </>
@@ -297,7 +298,7 @@ export default function Verify() {
           text={
             <>
               To check that the verification is completed successfully, you can
-              perform a <b>/check</b> on your own user, by interacting with the
+              perform a <b>/check</b> on your own user by interacting with the
               bot on either platform.
             </>
           }
