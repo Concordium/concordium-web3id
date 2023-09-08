@@ -6,7 +6,7 @@ import './scss/telegram.scss';
 import { Platform } from 'shared/types';
 import Layout from 'shared/Layout';
 
-if (config.type !== Platform.Discord) {
+if (config.type !== Platform.Telegram) {
     throw new Error('Expected telegram config');
 }
 
