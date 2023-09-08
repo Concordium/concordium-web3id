@@ -47,7 +47,11 @@ interface RpcError {
 const CONTRACT_DID = `$did:ccd:${config.network}:sci:${config.contract.index}:${config.contract.subindex}/issuer`;
 const ISSUER_URL = location.href;
 
-export async function requestCredential(req: TelegramRequest | DiscordRequest) {
+export async function requestCredential(
+    req: TelegramRequest | DiscordRequest,
+    onSubmit: (txHash: string) => void,
+    onFinalized: () => void
+) {
     const { id, username } = req.user;
 
     const credential = {
@@ -101,13 +105,14 @@ export async function requestCredential(req: TelegramRequest | DiscordRequest) {
         return { proof, randomness };
     });
 
-    console.log('Transaction submitted, hash:', txHash);
+    onSubmit(txHash!);
 
     // Loop until transaction has been finalized
     // eslint-disable-next-line no-constant-condition
     while (true) {
         try {
             await api.getGrpcClient().waitForTransactionFinalization(txHash!);
+            onFinalized();
             break;
         } catch (error) {
             // NOT_FOUND errors just mean that the transaction hasn't been propagated yet

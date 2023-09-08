@@ -1,11 +1,10 @@
-import discordLogo from 'assets/discord-logo-color.svg';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import { nanoid } from 'nanoid';
 import { DiscordConfig } from '../types';
-import Layout from 'shared/Layout';
 import { requestCredential } from 'shared/util';
 import { Platform } from 'shared/types';
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
+import { appState } from 'shared/app-state';
 
 interface DiscordWindowMessage {
     userId: string;
@@ -40,6 +39,7 @@ function openDiscordVerification() {
 }
 
 function App() {
+    const { onTransactionFinalized, onTransactionSubmit } = useContext(appState);
     // When Discord authentication happens, a window is opened
     // that sends a 'message' event back with the user id and username
     useEffect(() => {
@@ -54,10 +54,14 @@ function App() {
 
             console.log('receive message');
 
-            await requestCredential({
-                platform: Platform.Discord,
-                user: { id, username },
-            });
+            await requestCredential(
+                {
+                    platform: Platform.Discord,
+                    user: { id, username },
+                },
+                onTransactionSubmit,
+                onTransactionFinalized
+            );
         };
 
         const eventHandler = (event: MessageEvent) => {
@@ -68,12 +72,10 @@ function App() {
 
         addEventListener('message', eventHandler);
         return () => removeEventListener('message', eventHandler);
-    }, []);
+    }, [onTransactionFinalized, onTransactionSubmit]);
 
     return (
-        <Layout platform="Discord" logo={<img src={discordLogo} alt="Discord logo" />}>
-            <DiscordLoginButton className="app__login" size="40px" onClick={openDiscordVerification} />
-        </Layout>
+        <DiscordLoginButton className="app__login" size="40px" onClick={openDiscordVerification} />
     );
 }
 

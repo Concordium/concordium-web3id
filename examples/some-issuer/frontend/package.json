@@ -16,9 +16,11 @@
   "dependencies": {
     "@concordium/browser-wallet-api-helpers": "^2.5.0",
     "bootstrap": "^5.3.1",
+    "clsx": "^2.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "nanoid": "^4.0.2",
     "react": "^18.2.0",
+    "react-bootstrap": "^2.8.0",
     "react-dom": "^18.2.0",
     "react-social-login-buttons": "^3.9.1",
     "react-telegram-login": "^1.1.2"
