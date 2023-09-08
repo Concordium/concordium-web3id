@@ -126,16 +126,10 @@ export default function Verify() {
   const issueTelegram = () => {
     setTelegramChecked(true);
     setTelegramIssued(true);
-    const url = new URL(window.location.href);
-    url.searchParams.set(Platform.Telegram, 'true');
-    window.history.replaceState(null, '', url);
   };
   const issueDiscord = () => {
     setDiscordChecked(true);
     setDiscordIssued(true);
-    const url = new URL(window.location.href);
-    url.searchParams.set(Platform.Discord, 'true');
-    window.history.replaceState(null, '', url);
   };
 
   const prove = async (event: FormEvent) => {
@@ -278,7 +272,7 @@ export default function Verify() {
                     setChecked={setFullNameChecked}
                   >
                     <SVG className="me-1" src={ccdLogo} />
-                    Full name
+                    Full name - Concordium {config.network} identity required
                   </PlatformOption>
                 </ListGroup>
               </Col>
