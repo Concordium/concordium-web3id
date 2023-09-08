@@ -16,7 +16,6 @@ import { REFRESH_INTERVAL_IN_MILLI_SECONDS } from './constants';
 async function addRevokationKey(
     revocationKeys: string[],
     setRevocationKeys: (value: string[]) => void,
-    //  setRevoationKeyInput: (value: string) => void,
     newRevocationKey: string | undefined
 ) {
     if (newRevocationKey === undefined) {
@@ -30,7 +29,6 @@ async function addRevokationKey(
     }
     if (newRevocationKey) {
         setRevocationKeys([...revocationKeys, newRevocationKey]);
-        //  setRevoationKeyInput('');
     }
 }
 
@@ -47,7 +45,6 @@ interface DeployContractFormInterface {
     credentialType: string;
 }
 
-// 'EC73BDE849ED13680F4CDB09C13D29D3E7B93ABDED30F19705C1D8F01AB79C74'
 interface RevocationKeyInterface {
     revokationKey: string;
 }
@@ -184,16 +181,10 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                     <Form.Text />
                 </Form.Group>
 
-                <Form className="border">
+                <Form className="border p-4">
                     <Form.Group className="mb-3">
                         <Form.Label>Revocation keys (optional)</Form.Label>
                         <Form.Control {...attributes.register('revokationKey', { required: true })} />
-                        {/* {attributes.formState.errors.revokationKey && (
-                            <Alert key="info" variant="info">
-                                {' '}
-                                Issuer metadata URL is required{' '}
-                            </Alert>
-                        )} */}
                         <Form.Text>
                             The keys inserted here can revoke any credential that the issuer issues. You can leave this
                             an empty array if you don&apos;t want to grant such permissions to special revocation keys.
@@ -228,7 +219,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                         Clear Revocation Keys
                     </Button>
                 </Form>
-                <Row />
+                <br />
 
                 <Button
                     variant="primary"
@@ -257,7 +248,12 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                     Create New Issuer
                 </Button>
             </Form>
-            {revocationKeys.length !== 0 && <pre className="largeText">{JSON.stringify(revocationKeys, null, 2)}</pre>}
+            {revocationKeys.length !== 0 && (
+                <>
+                    <br />
+                    <pre className="largeText">{JSON.stringify(revocationKeys, null, 2)}</pre>
+                </>
+            )}
             {smartContractIndexError !== '' && (
                 <div className="alert alert-danger" role="alert">
                     Error: {smartContractIndexError}.
@@ -283,7 +279,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                     </a>
                 </div>
             )}
-            <Row />
+            <br />
             {waitingForTransactionToFinialize === true && (
                 <div className="d-flex justify-content-center">
                     <TailSpin

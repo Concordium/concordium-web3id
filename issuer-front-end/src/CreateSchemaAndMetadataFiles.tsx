@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 
 import { saveAs } from 'file-saver';
 
-import { Accordion, Alert, Button, Form, Modal, Row } from 'react-bootstrap';
+import { Accordion, Alert, Button, Form, Modal } from 'react-bootstrap';
 import AccordionItem from 'react-bootstrap/esm/AccordionItem';
 import AccordionHeader from 'react-bootstrap/esm/AccordionHeader';
 import AccordionBody from 'react-bootstrap/esm/AccordionBody';
@@ -150,16 +150,13 @@ export default function CreateSchemaAndMetadataFiles() {
                 <AccordionItem eventKey="CredentialSchema">
                     <AccordionHeader>CredentialSchema</AccordionHeader>
                     <AccordionBody>
-                        <Row>
-                            The credentialSchema is a JSON schema describing the credential. The schema must be hosted
-                            at a public URL so that it is accessible to the wallet, which uses it, among other things,
-                            to render credentials.
-                        </Row>
-                        <Row>
-                            The schema consists of some metadata (name of the credential and description) together with
-                            a number of attributes. The form below supports inputting the necessary data and generating
-                            the JSON schema in the correct format.
-                        </Row>
+                        The credentialSchema is a JSON schema describing the credential. The schema must be hosted at a
+                        public URL so that it is accessible to the wallet, which uses it, among other things, to render
+                        credentials. The schema consists of some metadata (name of the credential and description)
+                        together with a number of attributes. The form below supports inputting the necessary data and
+                        generating the JSON schema in the correct format.
+                        <br />
+                        <br />
                         <Form>
                             <Form.Group className="mb-3">
                                 <Form.Label>Credential name</Form.Label>
@@ -205,7 +202,8 @@ export default function CreateSchemaAndMetadataFiles() {
                                     The ID should be the URL where this schema will be hosted on the web.
                                 </Form.Text>
                             </Form.Group>
-                            <Form className="border">
+
+                            <Form className="border p-4">
                                 <Form.Group className="mb-3">
                                     <Form.Label>Attribute title</Form.Label>
                                     <Form.Control {...attributeForm.register('title', { required: true })} />
@@ -238,7 +236,7 @@ export default function CreateSchemaAndMetadataFiles() {
                                         <option value="date-time">Date-time</option>
                                     </Form.Select>
                                 </Form.Group>
-
+                                <br />
                                 <Form.Group className="mb-3">
                                     <Form.Check
                                         type="checkbox"
@@ -247,6 +245,7 @@ export default function CreateSchemaAndMetadataFiles() {
                                         {...attributeForm.register('required')}
                                     />
                                 </Form.Group>
+
                                 <Button
                                     variant="primary"
                                     type="button"
@@ -302,6 +301,8 @@ export default function CreateSchemaAndMetadataFiles() {
                         </Form>
                         {attributes.length !== 0 && (
                             <>
+                                <br />
+                                <br />
                                 <div>
                                     <div>
                                         You have added the following <strong>attributes</strong>:
@@ -310,7 +311,6 @@ export default function CreateSchemaAndMetadataFiles() {
                                         <pre>{JSON.stringify(attributes, null, 2)}</pre>
                                     </div>
                                 </div>
-                                <br />
                                 <br />
                                 <div>
                                     {credentialSchema.properties.credentialSubject.properties.attributes.required
@@ -329,6 +329,8 @@ export default function CreateSchemaAndMetadataFiles() {
                                         </>
                                     )}
                                 </div>
+                                <br />
+                                <br />
                             </>
                         )}
                         {showCredentialSchema && (
@@ -430,7 +432,11 @@ export default function CreateSchemaAndMetadataFiles() {
                             </Button>
                         </Form>
                         {showCredentialMetadata && (
-                            <pre className="largeText">{JSON.stringify(credentialMetadata, null, 2)}</pre>
+                            <>
+                                <br />
+                                <br />
+                                <pre className="largeText">{JSON.stringify(credentialMetadata, null, 2)}</pre>
+                            </>
                         )}
                     </AccordionBody>
                 </AccordionItem>
@@ -513,7 +519,11 @@ export default function CreateSchemaAndMetadataFiles() {
                             </Button>
                         </Form>
                         {showIssuerMetadata && (
-                            <pre className="largeText">{JSON.stringify(issuerMetadata, null, 2)}</pre>
+                            <>
+                                <br />
+                                <br />
+                                <pre className="largeText">{JSON.stringify(issuerMetadata, null, 2)}</pre>
+                            </>
                         )}
                     </AccordionBody>
                 </AccordionItem>
