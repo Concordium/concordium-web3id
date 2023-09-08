@@ -36,7 +36,7 @@ const parseContractAddress = (address: string | undefined) => {
 const telegramConfig: TelegramConfig = {
     type: Platform.Telegram,
     network: process.env.TELEGRAM_ISSUER_NETWORK ?? DEFAULT_NETWORK,
-    telegramBotName: process.env.TELEGRAM_BOT_NAME!,
+    telegramBotName: process.env.TELEGRAM_ISSUER_TELEGRAM_BOT_NAME!,
     contract: parseContractAddress(process.env.TELEGRAM_ISSUER_REGISTRY_ADDRESS),
 };
 

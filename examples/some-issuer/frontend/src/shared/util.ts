@@ -107,13 +107,12 @@ export async function requestCredential(req: TelegramRequest | DiscordRequest) {
     // eslint-disable-next-line no-constant-condition
     while (true) {
         try {
-            const itemSummary = await api.getGrpcClient().waitForTransactionFinalization(txHash!);
-            console.log('Transaction completed.', itemSummary);
+            await api.getGrpcClient().waitForTransactionFinalization(txHash!);
             break;
         } catch (error) {
             // NOT_FOUND errors just mean that the transaction hasn't been propagated yet
             if ((error as RpcError).code !== 'NOT_FOUND') throw error;
-            // Sleep for half a second and try again
+            // Sleep for 200ms and try again
             console.log('Transaction not found. Retrying in 200ms...');
             await new Promise((r) => setTimeout(r, 200));
         }
