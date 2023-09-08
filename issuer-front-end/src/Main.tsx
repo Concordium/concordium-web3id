@@ -138,7 +138,7 @@ export default function Main(props: ConnectionProps) {
                 )}
             </div>
             {account && (
-                <div className="row">
+                <>
                     {connection && account !== undefined && (
                         <div>
                             <br />
@@ -176,7 +176,7 @@ export default function Main(props: ConnectionProps) {
                             )}
                         </div>
                     )}
-                </div>
+                </>
             )}
         </main>
     );

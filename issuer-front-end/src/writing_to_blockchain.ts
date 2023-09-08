@@ -11,7 +11,7 @@ export async function createNewIssuer(
     account: string,
     issuerMetaData: string | undefined,
     issuerKey: string | undefined,
-    credentialSchema: object | undefined,
+    credentialSchema: string | undefined,
     revocationKeys: string,
     credentialType: string | undefined
 ) {
@@ -46,7 +46,14 @@ export async function createNewIssuer(
             credential_type: credentialType,
         },
         issuer_key: issuerKey,
-        schema: credentialSchema,
+        schema: {
+            schema_ref: {
+                hash: {
+                    None: [],
+                },
+                url: credentialSchema,
+            },
+        },
         issuer_account: {
             Some: [account],
         },

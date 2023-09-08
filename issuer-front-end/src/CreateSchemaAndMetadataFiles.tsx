@@ -1,7 +1,7 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
-import React, { useState, PropsWithChildren } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { saveAs } from 'file-saver';
@@ -107,7 +107,7 @@ async function addAttribute(
 }
 
 export default function CreateSchemaAndMetadataFiles() {
-    const [credentialSchema, _] = useState(EXAMPLE_CREDENTIAL_SCHEMA_OBJECT);
+    const [credentialSchema] = useState(EXAMPLE_CREDENTIAL_SCHEMA_OBJECT);
     const [credentialMetadata, setCredentialMetadata] = useState(EXAMPLE_CREDENTIAL_METADATA_OBJECT);
     const [issuerMetadata, setIssuerMetadata] = useState(EXAMPLE_ISSUER_METADATA_OBJECT);
     const issuerMetadataForm = useForm<typeof EXAMPLE_ISSUER_METADATA_OBJECT>();
@@ -148,7 +148,7 @@ export default function CreateSchemaAndMetadataFiles() {
                 </Modal.Dialog>
             </Modal>
             <Accordion>
-                <AccordionItem>
+                <AccordionItem eventKey="CredentialSchema">
                     <AccordionHeader>CredentialSchema</AccordionHeader>
                     <AccordionBody>
                         <Row>
@@ -168,13 +168,13 @@ export default function CreateSchemaAndMetadataFiles() {
                                     defaultValue={EXAMPLE_CREDENTIAL_SCHEMA_OBJECT.name}
                                     {...credentialSchemaForm.register('name', { required: true })}
                                 />
-                                <Form.Text />
                                 {credentialSchemaForm.formState.errors.name && (
                                     <Alert key="info" variant="info">
                                         {' '}
                                         Credential name is required{' '}
                                     </Alert>
                                 )}
+                                <Form.Text />
                             </Form.Group>
                             <Form.Group className="mb-3">
                                 <Form.Label>Credential description</Form.Label>
@@ -182,13 +182,13 @@ export default function CreateSchemaAndMetadataFiles() {
                                     defaultValue={EXAMPLE_CREDENTIAL_SCHEMA_OBJECT.description}
                                     {...credentialSchemaForm.register('description', { required: true })}
                                 />
-                                <Form.Text />
                                 {credentialSchemaForm.formState.errors.description && (
                                     <Alert key="info" variant="info">
                                         {' '}
                                         Credential description is required{' '}
                                     </Alert>
                                 )}
+                                <Form.Text />
                             </Form.Group>
                             <Form.Group className="mb-3">
                                 <Form.Label>Credential id</Form.Label>
@@ -196,17 +196,17 @@ export default function CreateSchemaAndMetadataFiles() {
                                     defaultValue={EXAMPLE_CREDENTIAL_SCHEMA_OBJECT.$id}
                                     {...credentialSchemaForm.register('$id', { required: true })}
                                 />
-                                <Form.Text>
-                                    The ID should be the URL where this schema will be hosted on the web.
-                                </Form.Text>
                                 {credentialSchemaForm.formState.errors.$id && (
                                     <Alert key="info" variant="info">
                                         {' '}
                                         Credential id is required{' '}
                                     </Alert>
                                 )}
+                                <Form.Text>
+                                    The ID should be the URL where this schema will be hosted on the web.
+                                </Form.Text>
                             </Form.Group>
-                            <Form>
+                            <Form className="border">
                                 <Form.Group className="mb-3">
                                     <Form.Label>Attribute title</Form.Label>
                                     <Form.Control {...attributeForm.register('title', { required: true })} />
@@ -222,13 +222,13 @@ export default function CreateSchemaAndMetadataFiles() {
                                 <Form.Group className="mb-3">
                                     <Form.Label>Attribute description</Form.Label>
                                     <Form.Control {...attributeForm.register('description', { required: true })} />
-                                    <Form.Text />
                                     {attributeForm.formState.errors.description && (
                                         <Alert key="info" variant="info">
                                             {' '}
                                             Attribute description is required{' '}
                                         </Alert>
                                     )}
+                                    <Form.Text />
                                 </Form.Group>
 
                                 <Form.Group>
@@ -260,7 +260,10 @@ export default function CreateSchemaAndMetadataFiles() {
                                             data.required,
                                             data.type,
                                             credentialSchema
-                                        ).catch((_: Error) => setShow(true));
+                                        ).catch((e) => {
+                                            alert(e)
+                                            setShow(true)
+                                        });
                                     })}
                                 >
                                     Add attribute
@@ -274,7 +277,7 @@ export default function CreateSchemaAndMetadataFiles() {
                                 className="mt-3"
                                 variant="primary"
                                 type="button"
-                                onClick={credentialSchemaForm.handleSubmit((_) => {
+                                onClick={credentialSchemaForm.handleSubmit(() => {
                                     setShowCredentialSchema(true);
                                 })}
                             >
@@ -284,7 +287,7 @@ export default function CreateSchemaAndMetadataFiles() {
                                 className="mt-3"
                                 variant="primary"
                                 type="button"
-                                onClick={credentialSchemaForm.handleSubmit((_) => {
+                                onClick={credentialSchemaForm.handleSubmit(() => {
                                     setShowCredentialSchema(true);
                                     const fileName = 'credentialSchema.json';
 
@@ -295,7 +298,7 @@ export default function CreateSchemaAndMetadataFiles() {
                                     saveAs(fileToSave, fileName);
                                 })}
                             >
-                                Create credential schema
+                                Download credential schema
                             </Button>
                         </Form>
                         {attributes.length !== 0 && (
@@ -315,17 +318,17 @@ export default function CreateSchemaAndMetadataFiles() {
                                         .length === 0 && <div>No required attribues.</div>}
                                     {credentialSchema.properties.credentialSubject.properties.attributes.required
                                         .length !== 0 && (
-                                        <>
-                                            <div>Required attributes:</div>
-                                            <div>
-                                                {credentialSchema.properties.credentialSubject.properties.attributes.required?.map(
-                                                    (element) => (
-                                                        <li key={element}>{element}</li>
-                                                    )
-                                                )}
-                                            </div>
-                                        </>
-                                    )}
+                                            <>
+                                                <div>Required attributes:</div>
+                                                <div>
+                                                    {credentialSchema.properties.credentialSubject.properties.attributes.required?.map(
+                                                        (element) => (
+                                                            <li key={element}>{element}</li>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                 </div>
                             </>
                         )}
@@ -335,7 +338,7 @@ export default function CreateSchemaAndMetadataFiles() {
                     </AccordionBody>
                 </AccordionItem>
 
-                <AccordionItem>
+                <AccordionItem eventKey="CredentialMetadata">
                     <AccordionHeader>CredentialMetadata</AccordionHeader>
                     <AccordionBody>
                         The credential metadata describes the details of a single credential, such as logo, background
@@ -348,13 +351,13 @@ export default function CreateSchemaAndMetadataFiles() {
                                     defaultValue={EXAMPLE_CREDENTIAL_METADATA_OBJECT.title}
                                     {...credentialMetadataForm.register('title', { required: true })}
                                 />
-                                <Form.Text />
                                 {credentialMetadataForm.formState.errors.title && (
                                     <Alert key="info" variant="info">
                                         {' '}
                                         Title is required{' '}
                                     </Alert>
                                 )}
+                                <Form.Text />
                             </Form.Group>
 
                             <Form.Group className="mb-3">
@@ -363,13 +366,13 @@ export default function CreateSchemaAndMetadataFiles() {
                                     defaultValue={EXAMPLE_CREDENTIAL_METADATA_OBJECT.logo.url}
                                     {...credentialMetadataForm.register('logo.url', { required: true })}
                                 />
-                                <Form.Text />
                                 {credentialMetadataForm.formState.errors.logo && (
                                     <Alert key="info" variant="info">
                                         {' '}
                                         Logo URL is required{' '}
                                     </Alert>
                                 )}
+                                <Form.Text />
                             </Form.Group>
 
                             <Form.Group className="mb-3">
@@ -432,7 +435,7 @@ export default function CreateSchemaAndMetadataFiles() {
                         )}
                     </AccordionBody>
                 </AccordionItem>
-                <AccordionItem>
+                <AccordionItem eventKey="IssuerMetadata">
                     <AccordionHeader>IssuerMetadata</AccordionHeader>
                     <AccordionBody>
                         The issuerMetadata is a JSON object describing the <strong>issuer</strong>, compared to the
@@ -470,16 +473,16 @@ export default function CreateSchemaAndMetadataFiles() {
                                     defaultValue={EXAMPLE_ISSUER_METADATA_OBJECT.icon.url}
                                     {...issuerMetadataForm.register('icon.url', { required: true })}
                                 />
-                                <Form.Text>
-                                    {' '}
-                                    The icon URL is used by the wallet to display the issuer to the user.{' '}
-                                </Form.Text>
                                 {issuerMetadataForm.formState.errors.icon && (
                                     <Alert key="info" variant="info">
                                         {' '}
                                         Icon URL is required{' '}
                                     </Alert>
                                 )}
+                                <Form.Text>
+                                    {' '}
+                                    The icon URL is used by the wallet to display the issuer to the user.{' '}
+                                </Form.Text>
                             </Form.Group>
                             <Button
                                 variant="primary"
