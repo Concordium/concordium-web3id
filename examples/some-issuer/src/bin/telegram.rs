@@ -89,9 +89,11 @@ struct App {
     #[clap(
         long = "telegram-token",
         help = "Bot token for Telegram.",
-        env = "TELEGRAM_ISSUER_TELEGRAM_BOT_TOKEN"
+        env = "TELEGRAM_ISSUER_TELEGRAM_BOT_TOKENS",
+        use_value_delimiter = true,
+        value_delimiter = ','
     )]
-    telegram_bot_token:   String,
+    telegram_bot_tokens:  Vec<String>,
     #[clap(
         long = "listen-address",
         help = "Socket address for the Telegram issuer.",
@@ -130,8 +132,8 @@ struct App {
 
 #[derive(Clone)]
 struct AppState {
-    issuer:             IssuerState,
-    telegram_bot_token: Arc<String>,
+    issuer:              IssuerState,
+    telegram_bot_tokens: Arc<[String]>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -220,8 +222,14 @@ async fn issue_telegram_credential(
     State(state): State<AppState>,
     Json(request): Json<TelegramIssueRequest>,
 ) -> Result<Json<IssueResponse>, StatusCode> {
-    if let Err(err) = request.telegram_user.check(&state.telegram_bot_token) {
-        tracing::warn!("Invalid Telegram user in request: {err}");
+    println!("{:?}", &state
+        .telegram_bot_tokens);
+    if state
+        .telegram_bot_tokens
+        .iter()
+        .all(|token| request.telegram_user.check(token).is_err())
+    {
+        tracing::warn!("Invalid Telegram user in request.");
         return Err(StatusCode::BAD_REQUEST);
     }
 
@@ -326,7 +334,7 @@ async fn main() -> anyhow::Result<()> {
     };
     let state = AppState {
         issuer,
-        telegram_bot_token: Arc::new(app.telegram_bot_token),
+        telegram_bot_tokens: Arc::from(app.telegram_bot_tokens),
     };
 
     let cors = CorsLayer::new()
