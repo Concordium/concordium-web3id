@@ -272,7 +272,7 @@ export default function Verify() {
                     setChecked={setFullNameChecked}
                   >
                     <SVG className="me-1" src={ccdLogo} />
-                    Full name
+                    Full name - Concordium {config.network} identity required
                   </PlatformOption>
                 </ListGroup>
               </Col>
