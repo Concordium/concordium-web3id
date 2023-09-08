@@ -1,0 +1,20 @@
+html {
+  height: 100%;
+}
+
+body {
+  background-image: $bg-gradient;
+  background-repeat: no-repeat;
+  min-height: 100%;
+}
+
+#root {
+  max-width: 550px;
+  margin: 0 auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  justify-content: center;
+  align-items: center; text-align: center;
+}

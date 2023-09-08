@@ -23,13 +23,14 @@ use http::{HeaderValue, StatusCode};
 use rand::Rng;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use some_issuer::{set_shutdown, IssueResponse, IssuerState};
-use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
 const DISCORD_API_ENDPOINT: &str = "https://discord.com/api/v10";
-
+const HTML_TITLE: &str = "Discord Web3 ID issuer";
 const OAUTH_TEMPLATE: &str = include_str!("../../templates/discord-oauth.hbs");
 
 #[derive(clap::Parser, Debug)]
@@ -118,12 +119,19 @@ struct App {
     )]
     url:                   Url,
     #[clap(
-        long = "dapp-domain",
-        help = "The domain of the dApp, used for CORS.",
+        long = "verifier-dapp-domain",
+        help = "The domain of the verifier dApp, used for CORS.",
         default_value = "http://127.0.0.1",
-        env = "DISCORD_ISSUER_DAPP_URL"
+        env = "DISCORD_ISSUER_VERIFIER_DAPP_URL"
     )]
-    dapp_domain:           String,
+    verifier_dapp_domain:  String,
+    #[clap(
+        long = "frontend",
+        default_value = "./frontend/dist/discord",
+        help = "Path to the directory where frontend assets are located.",
+        env = "DISCORD_ISSUER_FRONTEND"
+    )]
+    frontend_assets:       std::path::PathBuf,
 }
 
 #[derive(Clone)]
@@ -134,7 +142,8 @@ struct AppState {
     http_client:           reqwest::Client,
     handlebars:            Arc<Handlebars<'static>>,
     discord_redirect_uri:  Arc<Url>,
-    dapp_domain:           Arc<String>,
+    dapp_domain:           Arc<Url>,
+    verifier_dapp_domain:  Arc<String>,
 }
 
 /// Request for issuance of Discord credential.
@@ -173,9 +182,36 @@ struct Oauth2RedirectParams {
 
 #[derive(Serialize)]
 struct OauthTemplateParams<'a> {
-    id:          &'a str,
-    username:    &'a str,
-    dapp_domain: &'a str,
+    id:                   &'a str,
+    username:             &'a str,
+    dapp_domain:          &'a str,
+    verifier_dapp_domain: &'a str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ContractConfig {
+    index:    String,
+    subindex: String,
+}
+
+impl From<ContractAddress> for ContractConfig {
+    fn from(value: ContractAddress) -> Self {
+        Self {
+            index:    value.index.to_string(),
+            subindex: value.subindex.to_string(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FrontendConfig {
+    #[serde(rename = "type")]
+    config_type:       String,
+    discord_client_id: String,
+    network:           Network,
+    contract:          ContractConfig,
 }
 
 /// Handles OAuth2 redirects and inserts an id in the session.
@@ -302,9 +338,10 @@ impl AppState {
             .context("Cannot serialize username.")?;
 
         let params = OauthTemplateParams {
-            id:          &user.id,
-            username:    &username,
-            dapp_domain: &self.dapp_domain,
+            id:                   &user.id,
+            username:             &username,
+            dapp_domain:          &self.dapp_domain.to_string(),
+            verifier_dapp_domain: &self.verifier_dapp_domain,
         };
 
         let output = self
@@ -408,12 +445,13 @@ async fn main() -> anyhow::Result<()> {
     let discord_redirect_uri = app.url.join("discord-oauth2")?;
     let state = AppState {
         issuer,
-        discord_client_id: app.discord_client_id.into(),
+        discord_client_id: app.discord_client_id.clone().into(),
         discord_client_secret: app.discord_client_secret.into(),
         http_client,
         discord_redirect_uri: Arc::new(discord_redirect_uri),
         handlebars: Arc::new(handlebars),
-        dapp_domain: Arc::new(app.dapp_domain.clone()),
+        dapp_domain: Arc::new(app.url.into()),
+        verifier_dapp_domain: Arc::new(app.verifier_dapp_domain.clone()),
     };
 
     let session_store = CookieStore::new();
@@ -428,15 +466,38 @@ async fn main() -> anyhow::Result<()> {
     let cors = CorsLayer::new()
         .allow_methods([http::Method::GET, http::Method::POST])
         .allow_origin(
-            app.dapp_domain
+            app.verifier_dapp_domain
                 .parse::<HeaderValue>()
                 .context("dApp domain was not valid.")?,
         )
         .allow_credentials(true)
         .allow_headers([http::header::CONTENT_TYPE]);
 
+    // Render index.html with config
+    let index_template = fs::read_to_string(app.frontend_assets.join("index.html"))
+        .context("Frontend was not built.")?;
+    let mut reg = Handlebars::new();
+    // Prevent handlebars from escaping inserted object
+    reg.register_escape_fn(|s| s.into());
+    let frontend_config = FrontendConfig {
+        config_type:       "discord".into(),
+        discord_client_id: app.discord_client_id,
+        network:           app.network,
+        contract:          app.registry.into(),
+    };
+    let config_string = serde_json::to_string(&frontend_config)?;
+    let index_html = reg.render_template(
+        &index_template,
+        &json!({ "config": config_string, "title": HTML_TITLE }),
+    )?;
+
+    let serve_dir_service = ServeDir::new(app.frontend_assets.join("assets"));
     let json_schema_service = ServeDir::new("json-schemas/discord");
+
+    tracing::info!("Starting server...");
     let router = Router::new()
+        .route("/", get(|| async { Html(index_html) }))
+        .nest_service("/assets", serve_dir_service)
         .route("/credential", post(issue_discord_credential))
         .route("/discord-oauth2", get(handle_oauth_redirect))
         .route_layer(session_layer)
@@ -451,7 +512,8 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)); // at most 100kB of data
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)) // at most 100kB of data
+        .layer(tower_http::compression::CompressionLayer::new());
 
     tracing::info!("Starting server on {}...", app.listen_address);
 

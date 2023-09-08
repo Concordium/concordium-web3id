@@ -1,5 +1,10 @@
 use anyhow::Context;
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{
+    extract::State,
+    response::Html,
+    routing::{get, post},
+    Json, Router,
+};
 use clap::Parser;
 use concordium_rust_sdk::{
     cis4::Cis4Contract,
@@ -8,15 +13,19 @@ use concordium_rust_sdk::{
     v2::{self, BlockIdentifier},
     web3id::did::Network,
 };
+use handlebars::Handlebars;
 use hmac::{Hmac, Mac};
 use http::{HeaderValue, StatusCode};
 use reqwest::Url;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sha2::{Digest, Sha256};
 use some_issuer::{set_shutdown, IssueResponse, IssuerState};
-use std::{fmt::Write, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{fmt::Write, fs, net::SocketAddr, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
+
+const HTML_TITLE: &str = "Telegram Web3 ID issuer";
 
 #[derive(clap::Parser, Debug)]
 #[clap(arg_required_else_help(true))]
@@ -28,46 +37,46 @@ struct App {
         default_value = "http://localhost:20000",
         env = "TELEGRAM_ISSUER_NODE"
     )]
-    endpoint:            v2::Endpoint,
+    endpoint:             v2::Endpoint,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "TELEGRAM_ISSUER_LOG_LEVEL"
     )]
-    log_level:           tracing_subscriber::filter::LevelFilter,
+    log_level:            tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "TELEGRAM_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout:     u64,
+    request_timeout:      u64,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "TELEGRAM_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry:            ContractAddress,
+    registry:             ContractAddress,
     #[clap(
         long = "network",
         help = "The network of the issuer.",
         default_value = "testnet",
         env = "TELEGRAM_ISSUER_NETWORK"
     )]
-    network:             Network,
+    network:              Network,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "TELEGRAM_ISSUER_WALLET"
     )]
-    wallet:              PathBuf,
+    wallet:               PathBuf,
     #[clap(
         long = "issuer-key",
         help = "Path to the issuer's key, used to sign commitments.",
         env = "TELEGRAM_ISSUER_KEY"
     )]
-    issuer_key:          PathBuf,
+    issuer_key:           PathBuf,
     #[clap(
         long = "max-register-energy",
         help = "The amount of energy to allow for execution of the register credential \
@@ -76,34 +85,47 @@ struct App {
         default_value = "10000",
         env = "TELEGRAM_ISSUER_MAX_REGISTER_ENERGY"
     )]
-    max_register_energy: Energy,
+    max_register_energy:  Energy,
     #[clap(
         long = "telegram-token",
         help = "Bot token for Telegram.",
-        env = "TELEGRAM_BOT_TOKEN"
+        env = "TELEGRAM_ISSUER_TELEGRAM_BOT_TOKEN"
     )]
-    telegram_bot_token:  String,
+    telegram_bot_token:   String,
     #[clap(
         long = "listen-address",
-        help = "Socket addres for the Telegram issuer.",
-        default_value = "0.0.0.0:8080",
+        help = "Socket address for the Telegram issuer.",
+        default_value = "0.0.0.0:80", // To test the frontend, default port (80) is needed when running locally, as otherwise the iframe providing the telegram login button does not work.
         env = "TELEGRAM_ISSUER_LISTEN_ADDRESS"
     )]
-    listen_address:      SocketAddr,
+    listen_address:       SocketAddr,
     #[clap(
         long = "url",
         help = "URL of the Telegram issuer.",
-        default_value = "http://127.0.0.1:8080/",
+        default_value = "http://127.0.0.1/",
         env = "TELEGRAM_ISSUER_URL"
     )]
-    url:                 Url,
+    url:                  Url,
     #[clap(
-        long = "dapp-domain",
-        help = "The domain of the dApp, used for CORS.",
+        long = "verifier-dapp-domain",
+        help = "The domain of the verifier dApp, used for CORS.",
         default_value = "http://127.0.0.1",
-        env = "TELEGRAM_ISSUER_DAPP_URL"
+        env = "TELEGRAM_ISSUER_VERIFIER_DAPP_URL"
     )]
-    dapp_domain:         String,
+    verifier_dapp_domain: String,
+    #[clap(
+        long = "telegram-bot-name",
+        help = "The name (handle) of the Telegram bot.",
+        env = "TELEGRAM_ISSUER_TELEGRAM_BOT_NAME"
+    )]
+    telegram_bot_name:    String,
+    #[clap(
+        long = "frontend",
+        default_value = "./frontend/dist/telegram",
+        help = "Path to the directory where frontend assets are located.",
+        env = "TELEGRAM_ISSUER_FRONTEND"
+    )]
+    frontend_assets:      std::path::PathBuf,
 }
 
 #[derive(Clone)]
@@ -165,6 +187,32 @@ impl User {
 struct TelegramIssueRequest {
     credential:    CredentialInfo,
     telegram_user: User,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ContractConfig {
+    index:    String,
+    subindex: String,
+}
+
+impl From<ContractAddress> for ContractConfig {
+    fn from(value: ContractAddress) -> Self {
+        Self {
+            index:    value.index.to_string(),
+            subindex: value.subindex.to_string(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FrontendConfig {
+    #[serde(rename = "type")]
+    config_type:       String,
+    telegram_bot_name: String,
+    network:           Network,
+    contract:          ContractConfig,
 }
 
 #[tracing::instrument(level = "debug", skip_all, fields(holder_id = %request.credential.holder_id))]
@@ -284,15 +332,36 @@ async fn main() -> anyhow::Result<()> {
     let cors = CorsLayer::new()
         .allow_methods([http::Method::GET, http::Method::POST])
         .allow_origin(
-            app.dapp_domain
+            app.verifier_dapp_domain
                 .parse::<HeaderValue>()
                 .context("dApp domain was not valid.")?,
         )
         .allow_credentials(true)
         .allow_headers([http::header::CONTENT_TYPE]);
+    // Render index.html with config
+    let index_template = fs::read_to_string(app.frontend_assets.join("index.html"))
+        .context("Frontend was not built.")?;
+    let mut reg = Handlebars::new();
+    // Prevent handlebars from escaping inserted object
+    reg.register_escape_fn(|s| s.into());
+    let frontend_config = FrontendConfig {
+        config_type:       "telegram".into(),
+        telegram_bot_name: app.telegram_bot_name,
+        network:           app.network,
+        contract:          app.registry.into(),
+    };
+    let config_string = serde_json::to_string(&frontend_config)?;
+    let index_html = reg.render_template(
+        &index_template,
+        &json!({ "config": config_string, "title": HTML_TITLE }),
+    )?;
+
+    let serve_dir_service = ServeDir::new(app.frontend_assets.join("assets"));
 
     let json_schema_service = ServeDir::new("json-schemas/telegram");
     let router = Router::new()
+        .route("/", get(|| async { Html(index_html) }))
+        .nest_service("/assets", serve_dir_service)
         .route("/credential", post(issue_telegram_credential))
         .nest_service("/json-schemas", json_schema_service)
         .with_state(state)
@@ -305,7 +374,8 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)); // at most 100kB of data.
+        .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)) // at most 100kB of data.
+        .layer(tower_http::compression::CompressionLayer::new());
 
     tracing::info!("Starting server on {}...", app.listen_address);
 

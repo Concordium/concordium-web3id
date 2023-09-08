@@ -10,7 +10,8 @@
         username: '{{username}}',
         state,
       };
-      window.opener.postMessage(message, '{{dapp_domain}}/');
+      window.opener.postMessage(message, '{{dapp_domain}}');
+      window.opener.postMessage(message, '{{verifier_dapp_domain}}');
       window.close();
     </script>
   </head>

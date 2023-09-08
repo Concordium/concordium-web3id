@@ -1,0 +1,47 @@
+{
+  "name": "frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "dev-telegram": "VITE_SOME_ISSUER_PLATFORM=telegram yarn dev",
+    "dev-discord": "VITE_SOME_ISSUER_PLATFORM=discord yarn dev",
+    "build": "tsc && vite build",
+    "build-telegram": "VITE_SOME_ISSUER_PLATFORM=telegram yarn build",
+    "build-discord": "VITE_SOME_ISSUER_PLATFORM=discord yarn build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@concordium/browser-wallet-api-helpers": "^2.5.0",
+    "bootstrap": "^5.3.1",
+    "clsx": "^2.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "nanoid": "^4.0.2",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.8.0",
+    "react-dom": "^18.2.0",
+    "react-social-login-buttons": "^3.9.1",
+    "react-telegram-login": "^1.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.9",
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.3",
+    "eslint": "^8.45.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "prettier": "^3.0.3",
+    "sass": "^1.66.1",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vite-tsconfig-paths": "^4.2.0"
+  },
+  "packageManager": "yarn@3.2.0"
+}
