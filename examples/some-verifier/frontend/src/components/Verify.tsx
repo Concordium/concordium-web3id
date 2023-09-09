@@ -308,7 +308,7 @@ export default function Verify() {
               <Button
                 tag="a"
                 className="some-btn"
-                href="https://t.me/+lT6h2k5ZGBw2ZGZk"
+                href={config.telegramInviteLink}
                 color="secondary"
               >
                 <SVG src={telegram} />
@@ -319,7 +319,7 @@ export default function Verify() {
               <Button
                 tag="a"
                 className="some-btn"
-                href="https://discord.gg/jpYES7RYF"
+                href={config.discordInviteLink}
                 color="secondary"
               >
                 <SVG src={discord} />

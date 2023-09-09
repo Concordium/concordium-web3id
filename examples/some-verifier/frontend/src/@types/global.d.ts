@@ -5,6 +5,8 @@ declare global {
     discordClientId: string;
     telegramBotName: string;
     network: string;
+    telegramInviteLink: string;
+    discordInviteLink: string;
     issuers: Record<Platform, Issuer>;
   };
 }
