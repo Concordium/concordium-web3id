@@ -34,6 +34,8 @@ export default function StatusToast(props: Props) {
         return null;
     }
 
+    const ccdscanDomain = config.network === 'mainnet' ? 'ccdscan.io' : `${config.network}.ccdscan.io`;
+
     return (
         <Toast {...props}>
             <Toast.Header>
@@ -45,7 +47,7 @@ export default function StatusToast(props: Props) {
                     Transaction submitted:{' '}
                     <a
                         className="fs-6"
-                        href={`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${transaction}`}
+                        href={`https://${ccdscanDomain}/?dcount=1&dentity=transaction&dhash=${transaction}`}
                     >
                         {transaction?.slice(0, 10)}
                     </a>

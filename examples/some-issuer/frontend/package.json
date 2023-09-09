@@ -11,7 +11,8 @@
     "build-telegram": "VITE_SOME_ISSUER_PLATFORM=telegram yarn build",
     "build-discord": "VITE_SOME_ISSUER_PLATFORM=discord yarn build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "fmt": "prettier -w ."
   },
   "dependencies": {
     "@concordium/browser-wallet-api-helpers": "^2.5.0",
