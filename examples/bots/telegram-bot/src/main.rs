@@ -55,9 +55,12 @@ enum Command {
     Start,
     #[command(description = "show available commands.")]
     Help,
-    #[command(description = "verify with Concordia.")]
+    #[command(description = "get verified with Concordia.")]
     Verify,
-    #[command(description = "use in reply to a message, checks if account is verified.")]
+    #[command(
+        description = "check if the sender of a message is verified. Must be used in reply to a \
+                       message."
+    )]
     Check,
 }
 
@@ -128,8 +131,12 @@ fn schema() -> UpdateHandler<RequestError> {
 /// Handlers for the `/help` and `/start` commands.
 #[tracing::instrument(level = "debug", skip_all)]
 async fn help(bot: Bot, msg: Message) -> ResponseResult<()> {
-    bot.send_message(msg.chat.id, Command::descriptions().to_string())
-        .await?;
+    let response = format!(
+        "Concordia version {}.\n\n{}",
+        env!("CARGO_PKG_VERSION"),
+        Command::descriptions()
+    );
+    bot.send_message(msg.chat.id, response).await?;
     Ok(())
 }
 

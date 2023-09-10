@@ -58,18 +58,22 @@ async fn help(
     #[autocomplete = "poise::builtins::autocomplete_command"]
     command: Option<String>,
 ) -> anyhow::Result<()> {
-    poise::builtins::help(
-        ctx,
-        command.as_deref(),
-        poise::builtins::HelpConfiguration::default(),
-    )
-    .await?;
+    let extra_text_at_bottom = if command.is_none() {
+        format!("Concordia version {}.", env!("CARGO_PKG_VERSION"))
+    } else {
+        "".into()
+    };
+    let help_config = poise::builtins::HelpConfiguration {
+        extra_text_at_bottom: extra_text_at_bottom.as_str(),
+        ..poise::builtins::HelpConfiguration::default()
+    };
+    poise::builtins::help(ctx, command.as_deref(), help_config).await?;
 
     Ok(())
 }
 
 // Ephemeral: only the recipient can see the message
-/// Verify with Concordia
+/// Get verified with Concordia
 #[poise::command(slash_command, prefix_command, ephemeral)]
 async fn verify(ctx: Context<'_>) -> anyhow::Result<()> {
     ctx.send(|reply| {
