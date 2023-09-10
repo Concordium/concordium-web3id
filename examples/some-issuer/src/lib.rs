@@ -1,8 +1,7 @@
-use anyhow::Context;
 use axum::Json;
 use axum_sessions::async_session::chrono::{self, TimeZone};
 use concordium_rust_sdk::{
-    cis4::{Cis4Contract, Cis4TransactionMetadata},
+    cis4::{Cis4Contract, Cis4TransactionError, Cis4TransactionMetadata},
     common::types::{KeyPair, TransactionTime},
     contract_client::{CredentialInfo, CredentialType},
     id::{
@@ -18,7 +17,60 @@ use concordium_rust_sdk::{
 };
 use reqwest::{StatusCode, Url};
 use serde::Serialize;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap, VecDeque},
+    sync::Arc,
+};
+
+pub struct SyncState {
+    nonce: Nonce,
+    limit: RateLimiter,
+}
+
+struct RateLimiter {
+    multiplicity:   usize,
+    max_queue_size: usize,
+    queue:          VecDeque<Arc<str>>,
+    mapping:        HashMap<Arc<str>, usize>,
+}
+
+impl RateLimiter {
+    pub fn check_limit(&self, new: &str) -> bool {
+        let multiplicity = self.mapping.get(new).unwrap_or(&0);
+        *multiplicity < self.multiplicity
+    }
+
+    pub fn update_limit(&mut self, new: &str) {
+        let new = Arc::from(new);
+        let multiplicity = self.mapping.entry(Arc::clone(&new)).or_insert(0);
+        *multiplicity += 1;
+        if self.queue.len() >= self.max_queue_size {
+            if let Some(last) = self.queue.pop_back() {
+                if let Some(occupied) = self.mapping.get_mut(&last) {
+                    *occupied -= 1;
+                    if *occupied == 0 {
+                        self.mapping.remove(&last);
+                    }
+                }
+            }
+        };
+        self.queue.push_front(new);
+    }
+}
+
+impl SyncState {
+    pub fn new(nonce: Nonce, max_queue_size: usize, multiplicity: usize) -> Self {
+        Self {
+            nonce,
+            limit: RateLimiter {
+                queue: VecDeque::new(),
+                mapping: HashMap::new(),
+                multiplicity,
+                max_queue_size,
+            },
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct IssuerState {
@@ -28,7 +80,7 @@ pub struct IssuerState {
     pub issuer:                Arc<WalletAccount>,
     pub issuer_key:            Arc<KeyPair>,
     pub credential_type:       CredentialType,
-    pub nonce_counter:         Arc<tokio::sync::Mutex<Nonce>>,
+    pub state:                 Arc<tokio::sync::Mutex<SyncState>>,
     pub max_register_energy:   Energy,
     pub metadata_url:          Arc<Url>,
     pub credential_schema_url: Arc<str>,
@@ -39,6 +91,27 @@ pub struct IssuerState {
 pub struct IssueResponse {
     tx_hash:    TransactionHash,
     credential: Web3IdCredential<ArCurve, Web3IdAttribute>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum RegisterCredentialError {
+    #[error("Limit of credentials for id {user_id} exceeded.")]
+    LimitExceeded { user_id: String },
+    #[error("Error sending transaction: {0}")]
+    Chain(#[from] Cis4TransactionError),
+    #[error("Internal issue error: {0}")]
+    Internal(#[from] MakeSecretsError),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum MakeSecretsError {
+    #[error("Incompatible number of values and randomness: {values} != {randomness}.")]
+    IncompatibleValuesAndRandomness {
+        values:     usize,
+        randomness: usize,
+    },
+    #[error("Invalid timestamp.")]
+    InvalidTimestamp,
 }
 
 impl IssuerState {
@@ -92,6 +165,10 @@ impl IssuerState {
                 );
                 Ok(Json(res))
             }
+            Err(RegisterCredentialError::LimitExceeded { user_id }) => {
+                tracing::info!("Rejecting credential for user id {user_id} due to rate limit.");
+                Err(StatusCode::TOO_MANY_REQUESTS)
+            }
             Err(err) => {
                 tracing::error!("Failed to register credential: {err}");
                 Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -105,16 +182,19 @@ impl IssuerState {
         credential: &CredentialInfo,
         user_id: String,
         username: String,
-    ) -> anyhow::Result<IssueResponse> {
+    ) -> Result<IssueResponse, RegisterCredentialError> {
         tracing::debug!("Registering a credential.");
-        let mut nonce_guard = self.nonce_counter.lock().await;
+        let mut state_guard = self.state.lock().await;
+        if !state_guard.limit.check_limit(user_id.as_str()) {
+            return Err(RegisterCredentialError::LimitExceeded { user_id });
+        }
         // Compute expiry after acquiring the lock to make sure we don't wait
         // too long before acquiring the lock, rendering expiry problematic
         let expiry = TransactionTime::minutes_after(5);
-        tracing::debug!("Using nonce {} to send the transaction.", *nonce_guard);
+        tracing::debug!("Using nonce {} to send the transaction.", state_guard.nonce);
         let metadata = Cis4TransactionMetadata {
             sender_address: self.issuer.address,
-            nonce: *nonce_guard,
+            nonce: state_guard.nonce,
             expiry,
             energy: GivenEnergy::Add(self.max_register_energy),
             amount: Amount::zero(),
@@ -124,8 +204,9 @@ impl IssuerState {
             .contract_client
             .register_credential(&*self.issuer, &metadata, credential, &[])
             .await?;
-        nonce_guard.next_mut();
-        drop(nonce_guard);
+        state_guard.nonce.next_mut();
+        state_guard.limit.update_limit(user_id.as_str());
+        drop(state_guard);
         let values: BTreeMap<_, _> = BTreeMap::from([
             (
                 String::from("userId"),
@@ -148,7 +229,7 @@ impl IssuerState {
         &self,
         values: BTreeMap<String, Web3IdAttribute>,
         credential: &CredentialInfo,
-    ) -> anyhow::Result<Web3IdCredential<ArCurve, Web3IdAttribute>> {
+    ) -> Result<Web3IdCredential<ArCurve, Web3IdAttribute>, MakeSecretsError> {
         let mut randomness = BTreeMap::new();
         {
             let mut rng = rand::thread_rng();
@@ -168,12 +249,15 @@ impl IssuerState {
             self.issuer_key.as_ref(),
             self.contract_client.address,
         )
-        .context("Incorrect number of values vs. randomness. This should not happen.")?;
+        .ok_or(MakeSecretsError::IncompatibleValuesAndRandomness {
+            values:     values.len(),
+            randomness: randomness.len(),
+        })?;
 
         let valid_from = chrono::Utc
             .timestamp_millis_opt(credential.valid_from.timestamp_millis() as i64)
             .single()
-            .context("Failed to convert valid_from time.")?;
+            .ok_or(MakeSecretsError::InvalidTimestamp)?;
 
         Ok(Web3IdCredential {
             holder_id: credential.holder_id,
