@@ -86,7 +86,7 @@ jobs:
           command: clippy
           args: --manifest-path ${{ matrix.crates }} --locked -- -D warnings
 
-  "frontend":
+  "frontend:verifier":
     name: lint:check-frontends
     # Don't run on draft pull requests
     if: ${{ !github.event.pull_request.draft }}
@@ -94,7 +94,6 @@ jobs:
     strategy:
       matrix:
         dirs:
-          - examples/some-issuer/frontend
           - examples/some-verifier/frontend
     steps:
       - name: Checkout
@@ -108,3 +107,25 @@ jobs:
       - name: Build
         working-directory: ${{ matrix.dirs }}
         run: yarn && yarn build
+
+  "frontend:issuer":
+    name: lint:check-frontends
+    # Don't run on draft pull requests
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dirs:
+          - examples/some-issuer/frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Format
+        working-directory: ${{ matrix.dirs }}
+        run: yarn && yarn fmt-check
+      - name: Lint
+        working-directory: ${{ matrix.dirs }}
+        run: yarn && yarn lint
+      - name: Build
+        working-directory: ${{ matrix.dirs }}
+        run: yarn && yarn build-telegram && yarn build-discord
