@@ -11,6 +11,7 @@
     "build-telegram": "VITE_SOME_ISSUER_PLATFORM=telegram yarn build",
     "build-discord": "VITE_SOME_ISSUER_PLATFORM=discord yarn build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint-and-fix": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
     "preview": "vite preview",
     "fmt": "prettier -w .",
     "fmt-check": "prettier --check ."
