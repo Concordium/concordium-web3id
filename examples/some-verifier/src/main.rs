@@ -290,6 +290,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/verifications", post(add_verification))
         .route("/verifications", patch(remove_verification))
         .route("/verifications/:platform/:id", get(get_verification))
+        .route("/health", get(health))
         .with_state(state)
         .layer(
             tower_http::trace::TraceLayer::new_for_http()
@@ -608,6 +609,18 @@ impl AppState {
 
         Ok(request)
     }
+}
+
+#[derive(serde::Serialize)]
+struct Health {
+    version: &'static str,
+}
+
+#[tracing::instrument(level = "info")]
+async fn health() -> Json<Health> {
+    Json(Health {
+        version: env!("CARGO_PKG_VERSION"),
+    })
 }
 
 #[tracing::instrument(level = "info", skip_all)]

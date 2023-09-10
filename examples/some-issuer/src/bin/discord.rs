@@ -388,6 +388,18 @@ impl AppState {
     }
 }
 
+#[derive(serde::Serialize)]
+struct Health {
+    version: &'static str,
+}
+
+#[tracing::instrument(level = "info")]
+async fn health() -> Json<Health> {
+    Json(Health {
+        version: env!("CARGO_PKG_VERSION"),
+    })
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app = App::parse();
@@ -540,6 +552,7 @@ async fn main() -> anyhow::Result<()> {
         .nest_service("/assets", serve_dir_service)
         .route("/credential", post(issue_discord_credential))
         .route("/discord-oauth2", get(handle_oauth_redirect))
+        .route("/health", get(health))
         .route_layer(session_layer)
         .nest_service("/json-schemas", json_schema_service)
         .with_state(state)

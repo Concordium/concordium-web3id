@@ -263,6 +263,18 @@ async fn issue_telegram_credential(
     }
 }
 
+#[derive(serde::Serialize)]
+struct Health {
+    version: &'static str,
+}
+
+#[tracing::instrument(level = "info")]
+async fn health() -> Json<Health> {
+    Json(Health {
+        version: env!("CARGO_PKG_VERSION"),
+    })
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app = App::parse();
@@ -387,6 +399,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(|| async { Html(index_html) }))
         .nest_service("/assets", serve_dir_service)
         .route("/credential", post(issue_telegram_credential))
+        .route("/health", get(health))
         .nest_service("/json-schemas", json_schema_service)
         .with_state(state)
         .layer(cors)
