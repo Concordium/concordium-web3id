@@ -236,7 +236,6 @@ async fn issue_telegram_credential(
     State(state): State<AppState>,
     Json(request): Json<TelegramIssueRequest>,
 ) -> Result<Json<IssueResponse>, StatusCode> {
-    println!("{:?}", &state.telegram_bot_tokens);
     if state
         .telegram_bot_tokens
         .iter()
