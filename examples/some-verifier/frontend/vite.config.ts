@@ -21,8 +21,7 @@ const config = {
   },
 };
 
-console.log(JSON.stringify(config));
-const transformHtml: (data: any) => Plugin = (data) => ({
+const transformHtml: (data: typeof config) => Plugin = (data) => ({
   name: 'transform-html',
   transformIndexHtml: {
     enforce: 'pre',
