@@ -6,11 +6,12 @@ import { Platform } from 'shared/types';
 import { useContext, useEffect } from 'react';
 import { appState } from 'shared/app-state';
 
-interface DiscordWindowMessage {
+type DiscordWindowMessage = {
+    type: 'success';
     userId: string;
     username: string;
     state: string | null;
-}
+} | { type: 'error'; error: string, state: string | null }
 
 const ISSUER_URL = location.href;
 const { discordClientId } = config as DiscordConfig;
@@ -46,22 +47,25 @@ function App() {
         const onDiscordWindowMessage = async (event: MessageEvent) => {
             if (event.origin + '/' !== ISSUER_URL) return;
 
-            const { userId: id, username, state } = event.data as DiscordWindowMessage;
+            const data = event.data as DiscordWindowMessage;
 
             // Prevents CSRF attacks,
             // see https://auth0.com/docs/secure/attack-protection/state-parameters
-            if (state !== oAuth2State) return;
+            if (data.state !== oAuth2State) return;
 
-            console.log('receive message');
-
-            await requestCredential(
-                {
-                    platform: Platform.Discord,
-                    user: { id, username },
-                },
-                onTransactionSubmit,
-                onTransactionFinalized
-            );
+            if (data.type === 'error') {
+                // Do nothing for now.
+                // At some point we can handle different error types.
+            } else {
+                await requestCredential(
+                    {
+                        platform: Platform.Discord,
+                        user: { id: data.userId, username: data.username },
+                    },
+                    onTransactionSubmit,
+                    onTransactionFinalized
+                );
+            }
         };
 
         const eventHandler = (event: MessageEvent) => {

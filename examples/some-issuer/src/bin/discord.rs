@@ -177,13 +177,21 @@ struct AccessTokenResponse {
 
 #[derive(Deserialize, Debug)]
 struct Oauth2RedirectParams {
-    pub(crate) code: String,
+    pub(crate) code:  Option<String>,
+    pub(crate) error: Option<String>,
 }
 
 #[derive(Serialize)]
 struct OauthTemplateParams<'a> {
     id:                   &'a str,
     username:             &'a str,
+    dapp_domain:          &'a str,
+    verifier_dapp_domain: &'a str,
+}
+
+#[derive(Serialize)]
+struct OauthErrorParams<'a> {
+    error:                &'a str,
     dapp_domain:          &'a str,
     verifier_dapp_domain: &'a str,
 }
@@ -221,15 +229,29 @@ async fn handle_oauth_redirect(
     Query(params): Query<Oauth2RedirectParams>,
     session: WritableSession,
 ) -> Result<Html<String>, StatusCode> {
-    match state
-        .make_oauth_redirect_response(params.code, session)
-        .await
-    {
-        Ok(response) => Ok(Html(response)),
-        Err(err) => {
-            tracing::warn!("Unsuccessful OAuth2 redirect: {err}");
-            Err(StatusCode::BAD_REQUEST)
+    if let Some(code) = params.code {
+        match state.make_oauth_redirect_response(code, session).await {
+            Ok(response) => Ok(Html(response)),
+            Err(err) => {
+                tracing::warn!("Unsuccessful OAuth2 redirect: {err}");
+                Err(StatusCode::BAD_REQUEST)
+            }
         }
+    } else if let Some(error) = params.error {
+        let params = OauthErrorParams {
+            error:                error.as_str(),
+            dapp_domain:          &state.dapp_domain.to_string(),
+            verifier_dapp_domain: &state.verifier_dapp_domain,
+        };
+
+        let output = state.handlebars.render("oauth", &params).map_err(|e| {
+            tracing::warn!("Unable to render oauth template with an error: {e}.");
+            StatusCode::BAD_REQUEST
+        })?;
+        Ok(Html(output))
+    } else {
+        tracing::warn!("Neither code nor error parameters are present.");
+        Err(StatusCode::BAD_REQUEST)
     }
 }
 
