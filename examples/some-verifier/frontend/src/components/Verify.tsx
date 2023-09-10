@@ -336,6 +336,15 @@ export default function Verify() {
         <span className="m-1 text-body text-opacity-25">
           v{manifest.version}
         </span>
+        <span className="m-1 text-body text-opacity-25">
+          <a
+            href="https://developer.concordium.software/en/mainnet/net/resources/terms-and-conditions-concordia.html"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Terms of use
+          </a>
+        </span>
       </div>
     </>
   );
