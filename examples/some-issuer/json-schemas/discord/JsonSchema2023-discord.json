@@ -1,0 +1,45 @@
+{
+  "$id": "https://some-issuer.com/discord/json-schemas/JsonSchema2023-discord.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "Discord account verification",
+  "description": "A credential for a Discord user id.",
+  "type": "object",
+  "properties": {
+    "credentialSubject": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "title": "Credential subject id",
+          "type": "string",
+          "description": "Credential subject identifier"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "userId": {
+              "title": "User id",
+              "type": "string",
+              "description": "Discord user id"
+            },
+            "username": {
+              "title": "Username",
+              "type": "string",
+              "description": "Discord username"
+            }
+          },
+          "required": [
+            "userId",
+            "username"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "attributes"
+      ]
+    }
+  },
+  "required": [
+    "credentialSubject"
+  ]
+}

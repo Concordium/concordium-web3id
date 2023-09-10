@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Discord OAuth2 Redirect</title>
+    <script>
+      const query = new URLSearchParams(window.location.search);
+      const state = query.get('state');
+      {{#if error }}
+      const message = {
+        type: 'error',
+        error: '{{error}}',
+        state,
+      };
+      {{else}}
+      const message = {
+        type: 'success',
+        userId: '{{id}}',
+        username: '{{username}}',
+        state,
+      };
+      {{/if}}
+      window.opener.postMessage(message, '{{dapp_domain}}');
+      window.opener.postMessage(message, '{{verifier_dapp_domain}}');
+      window.close();
+    </script>
+  </head>
+  <body></body>
+</html>
