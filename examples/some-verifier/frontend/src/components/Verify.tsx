@@ -32,6 +32,8 @@ import RemoveVerification from './RemoveVerification';
 import { hash, requestProof } from '../lib/util';
 import { appState } from '../lib/app-state';
 import { WalletApi } from '@concordium/browser-wallet-api-helpers';
+import manifest from '../../package.json';
+
 enum VerificationStep {
   Issue = '0',
   Verify = '1',
@@ -329,7 +331,12 @@ export default function Verify() {
           </Row>
         </Step>
       </Accordion>
-      <RemoveVerification />
+      <div className="d-flex align-items-center flex-wrap">
+        <RemoveVerification className="me-auto" />
+        <span className="m-1 text-body text-opacity-25">
+          v{manifest.version}
+        </span>
+      </div>
     </>
   );
 }
