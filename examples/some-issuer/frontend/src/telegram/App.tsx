@@ -8,29 +8,38 @@ import { appState } from 'shared/app-state';
 const { telegramBotName } = config as TelegramConfig;
 
 function App() {
-    const { onTransactionFinalized, onTransactionSubmit } = useContext(appState);
+  const { onTransactionFinalized, onTransactionSubmit } = useContext(appState);
 
-    const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
-        try {
-            if (!username) {
-                throw new Error('A telegram username must be available to create a credential.');
-            }
+  const onTelegramAuth = async ({ username, ...user }: TelegramUser) => {
+    try {
+      if (!username) {
+        throw new Error(
+          'A telegram username must be available to create a credential.',
+        );
+      }
 
-            await requestCredential(
-                {
-                    platform: Platform.Telegram,
-                    user: { username, ...user },
-                },
-                onTransactionSubmit,
-                onTransactionFinalized
-            );
-        } catch (error) {
-            alert(`An error occured: ${(error as Error).message ?? error}`);
-            return;
-        }
-    };
+      await requestCredential(
+        {
+          platform: Platform.Telegram,
+          user: { username, ...user },
+        },
+        onTransactionSubmit,
+        onTransactionFinalized,
+      );
+    } catch (error) {
+      alert(`An error occured: ${(error as Error).message ?? error}`);
+      return;
+    }
+  };
 
-    return <TelegramLoginButton botName={telegramBotName} dataOnauth={onTelegramAuth} cornerRadius={3} requestAccess={''}/>;
+  return (
+    <TelegramLoginButton
+      botName={telegramBotName}
+      dataOnauth={onTelegramAuth}
+      cornerRadius={3}
+      requestAccess={''}
+    />
+  );
 }
 
 export default App;

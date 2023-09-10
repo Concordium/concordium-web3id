@@ -7,13 +7,16 @@ import { Platform } from 'shared/types';
 import Layout from 'shared/Layout';
 
 if (config.type !== Platform.Telegram) {
-    throw new Error('Expected telegram config');
+  throw new Error('Expected telegram config');
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-        <Layout platform="Telegram" logo={<img src={telegramLogo} alt="Telegram logo" />}>
-            <App />
-        </Layout>
-    </React.StrictMode>
+  <React.StrictMode>
+    <Layout
+      platform="Telegram"
+      logo={<img src={telegramLogo} alt="Telegram logo" />}
+    >
+      <App />
+    </Layout>
+  </React.StrictMode>,
 );
