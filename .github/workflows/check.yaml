@@ -86,7 +86,7 @@ jobs:
           command: clippy
           args: --manifest-path ${{ matrix.crates }} --locked -- -D warnings
 
-  "frontend:verifier":
+  "frontend_verifier":
     name: lint:check-frontends
     # Don't run on draft pull requests
     if: ${{ !github.event.pull_request.draft }}
@@ -108,7 +108,7 @@ jobs:
         working-directory: ${{ matrix.dirs }}
         run: yarn && yarn build
 
-  "frontend:issuer":
+  "frontend_issuer":
     name: lint:check-frontends
     # Don't run on draft pull requests
     if: ${{ !github.event.pull_request.draft }}
