@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{title}}</title>
+    <script>
+      // Config is injected
+      const config = {{config}};
+    </script>
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/%VITE_SOME_ISSUER_PLATFORM%.tsx"></script>
-    <script>
-      // Config is injected
-      const config = {{config}};
-    </script>
   </body>
 </html>
