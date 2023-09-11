@@ -139,7 +139,7 @@ export default function Root() {
                         target="_blank"
                         rel="noreferrer"
                     >
-                        Learn more about web3ID here
+                        Learn more about Web3 ID here.
                     </a>
                     <br />
                 </div>
