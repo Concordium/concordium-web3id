@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 
 import { saveAs } from 'file-saver';
 
-import { Accordion, Alert, Button, Form, Modal } from 'react-bootstrap';
+import { Container, Row, Accordion, Alert, Button, Form, Modal } from 'react-bootstrap';
 import AccordionItem from 'react-bootstrap/esm/AccordionItem';
 import AccordionHeader from 'react-bootstrap/esm/AccordionHeader';
 import AccordionBody from 'react-bootstrap/esm/AccordionBody';
@@ -146,6 +146,28 @@ export default function CreateSchemaAndMetadataFiles() {
                     </Button>
                 </Modal.Footer>
             </Modal>
+            <Container>
+                <Row>
+                    <p>
+                        An issuer of verifiable credentials must define information about itself, and about the
+                        credentials. This information is used by verifiers to establish trust into the issuer, and by
+                        the wallet to display the credentials.
+                    </p>
+
+                    <p>
+                        This page helps defining the information in the formats that are expected. More information
+                        about an issuer can be found on Concordium&#39;s{' '}
+                        <a
+                            href="https://developer.concordium.software/en/mainnet/net/web3-id/issuer.html"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            developer website
+                        </a>
+                        .
+                    </p>
+                </Row>
+            </Container>
             <Accordion>
                 <AccordionItem eventKey="CredentialSchema">
                     <AccordionHeader>CredentialSchema</AccordionHeader>

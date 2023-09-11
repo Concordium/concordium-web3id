@@ -8,7 +8,7 @@ import SelectNetwork from './SelectNetwork';
 import CreateSchemaAndMetadataFiles from './CreateSchemaAndMetadataFiles';
 
 export default function Root() {
-    const [isTestnet, setIsTestnet] = useState<boolean | undefined>(undefined);
+    const [isTestnet, setIsTestnet] = useState<boolean>(true);
     const [active, setActive] = useState(1);
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [isNextButtonDisabled, setIsNextButtonDisabled] = useState<boolean>(false);
@@ -62,14 +62,13 @@ export default function Root() {
     const previousText = `<<<<<<`;
     const nextText = `>>>>>>`;
 
-    const stepHeaders = ['Create MetaData Files', 'Select Network', 'Connect Wallet', 'Deploy Issuer Smart Contract'];
+    const stepHeaders = ['Create Metadata Files', 'Select Network', 'Connect Wallet', 'Deploy Issuer Smart Contract'];
 
     return (
         <div>
             <main id="#root">
                 <br />
-                {isTestnet === undefined && <h1>Web3Id Issuer Front End</h1>}
-                {isTestnet !== undefined && <h1>Web3Id Issuer Front End {isTestnet ? '(Testnet)' : '(Mainnet)'}</h1>}
+                <h1>Web3Id Issuer Front End {isTestnet ? '(Testnet)' : '(Mainnet)'}</h1>
                 <h3>
                     Step {active}: {stepHeaders[active - 1]}
                 </h3>
@@ -77,9 +76,7 @@ export default function Root() {
                 {/* Step 1: Create schema and metadata files */}
                 {active === 1 && <CreateSchemaAndMetadataFiles />}
                 {/* Step 2: Select Network */}
-                {active === 2 && (
-                    <SelectNetwork setIsNextButtonDisabled={setIsNextButtonDisabled} setIsTestnet={setIsTestnet} />
-                )}
+                {active === 2 && <SelectNetwork isTestnet={isTestnet} setIsTestnet={setIsTestnet} />}
                 {/* Step 3 */}
                 {active === 3 && isTestnet !== undefined && (
                     <>
