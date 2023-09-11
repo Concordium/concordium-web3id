@@ -242,6 +242,20 @@ export default function Verify() {
                 wallet. Additionally, you can also choose to reveal your full
                 name from an identity in your wallet.
               </p>
+              <p>
+                <strong>
+                  If these credentials do not exists in you wallet yet, go the
+                  the{' '}
+                  <Button
+                    color="link"
+                    className="m-0 border-0 p-0 d-inline align-baseline"
+                    onClick={() => setOpen(VerificationStep.Issue)}
+                  >
+                    {stepTitleMap[VerificationStep.Issue]}
+                  </Button>{' '}
+                  step to add these
+                </strong>
+              </p>
               <p className="mb-0">You must select at least 2 options.</p>
             </>
           }
@@ -327,21 +341,25 @@ export default function Verify() {
         </Step>
       </Accordion>
       <div className="d-flex align-items-start align-items-md-center justify-content-between flex-wrap text-opacity-25 text-body m-1">
-        <RemoveVerification className='p-0 border-top-0' />
-        <div className='d-flex flex-column flex-md-row align-items-end align-items-md-center'>
+        <RemoveVerification className="p-0 border-top-0" />
+        <div className="d-flex flex-column flex-md-row align-items-end align-items-md-center">
           <a
-            href="https://developer.concordium.software/en/mainnet/net/resources/terms-and-conditions-concordia.html"
+            href="https://developer.concordium.software/en/mainnet/net/resources/terms-and-conditions-concordia.html#about-concordia"
+            target="_blank"
+            rel="noreferrer"
+          >
+            About Concordia
+          </a>
+          <span className="d-none d-md-inline mx-2">|</span>
+          <a
+            href="https://developer.concordium.software/en/mainnet/net/resources/terms-and-conditions-concordia.html#terms-of-service"
             target="_blank"
             rel="noreferrer"
           >
             Terms of use
           </a>
-          <span className='d-none d-md-inline mx-2'>
-            |
-          </span>
-          <span>
-            v{manifest.version}
-          </span>
+          <span className="d-none d-md-inline mx-2">|</span>
+          <span>v{manifest.version}</span>
         </div>
       </div>
     </>
