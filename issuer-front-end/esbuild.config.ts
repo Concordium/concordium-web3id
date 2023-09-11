@@ -3,6 +3,7 @@
 import esbuild, { BuildOptions } from 'esbuild';
 import { htmlPlugin } from '@craftamap/esbuild-plugin-html';
 import svgrPlugin from 'esbuild-plugin-svgr';
+import { sassPlugin } from 'esbuild-sass-plugin';
 import fs from 'fs';
 
 const watch = Boolean(process.env.WATCH);
@@ -33,6 +34,7 @@ const config: BuildOptions = {
             ],
         }),
         svgrPlugin(),
+        sassPlugin(),
     ],
     define: {
         global: 'window',

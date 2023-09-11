@@ -1,39 +1,21 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { useGrpcClient, TESTNET, MAINNET, WalletConnection } from '@concordium/react-components';
-import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
+import { Button, Row, Form, Alert, Modal } from 'react-bootstrap';
 import { TransactionKindString, TransactionSummaryType } from '@concordium/web-sdk';
 import { TailSpin } from 'react-loader-spinner';
 
+import { useForm } from 'react-hook-form';
 import { createNewIssuer } from './writing_to_blockchain';
 
 import { REFRESH_INTERVAL_IN_MILLI_SECONDS } from './constants';
 
-type SchemaRef = {
-    schema_ref: {
-        hash: {
-            None: [];
-        };
-        url: string;
-    };
-};
-
-function TestBox({ children }: PropsWithChildren) {
-    return (
-        <fieldset className="testBox">
-            <div className="testBoxFields">{children}</div>
-            <br />
-        </fieldset>
-    );
-}
-
 async function addRevokationKey(
     revocationKeys: string[],
     setRevocationKeys: (value: string[]) => void,
-    setRevoationKeyInput: (value: string) => void,
     newRevocationKey: string | undefined
 ) {
     if (newRevocationKey === undefined) {
@@ -47,7 +29,6 @@ async function addRevokationKey(
     }
     if (newRevocationKey) {
         setRevocationKeys([...revocationKeys, newRevocationKey]);
-        setRevoationKeyInput('');
     }
 }
 
@@ -57,57 +38,36 @@ interface ConnectionProps {
     isTestnet: boolean;
 }
 
+interface DeployContractFormInterface {
+    issuerPublicKey: string;
+    issuerMetadataURL: string;
+    credentialSchemaURL: string;
+    credentialType: string;
+}
+
+interface RevocationKeyInterface {
+    revokationKey: string;
+}
+
 export default function DeployCredentialContract(props: ConnectionProps) {
     const { connection, account, isTestnet } = props;
+    const deployContractForm = useForm<DeployContractFormInterface>();
+    const attributes = useForm<RevocationKeyInterface>();
 
     const [smartContractIndexError, setSmartContractIndexError] = useState('');
     const [viewErrorModuleReference, setViewErrorModuleReference] = useState('');
     const [waitingForTransactionToFinialize, setWaitingForTransactionToFinialize] = useState(false);
 
     const [smartContractIndex, setSmartContractIndex] = useState('');
-
-    const [transactionError, setTransactionError] = useState('');
-    const [userInputError, setUserInputError] = useState('');
-
-    const [issuerKey, setIssuerKey] = useState<string | undefined>(undefined);
     const [txHash, setTxHash] = useState('');
-
-    const [issuerMetaData, setIssuerMetaData] = useState<string | undefined>(undefined);
-
-    const [credentialType, setCredentialType] = useState<string | undefined>(undefined);
-    const [schemaCredential, setSchemaCredential] = useState<SchemaRef | undefined>(undefined);
-
     const [revocationKeys, setRevocationKeys] = useState<string[]>([]);
-    const [revocationKeyInput, setRevocationKeyInput] = useState<string | undefined>(undefined);
 
-    const changeIssuerMetaDataURLHandler = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setIssuerMetaData(target.value);
-    }, []);
+    const [show, setShow] = useState(false);
+    const [error, setError] = useState('');
 
-    const changeIssuerKeyHandler = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setIssuerKey(target.value);
-    }, []);
+    const handleClose = () => setShow(false);
 
     const client = useGrpcClient(isTestnet ? TESTNET : MAINNET);
-
-    const changeCredentialSchemaURLHandler = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setSchemaCredential({
-            schema_ref: {
-                hash: {
-                    None: [],
-                },
-                url: target.value,
-            },
-        });
-    }, []);
-
-    const changeCredentialTypeHandler = useCallback((event: ChangeEvent) => {
-        const target = event.target as HTMLTextAreaElement;
-        setCredentialType(target.value);
-    }, []);
 
     // Refresh smartContractIndex periodically.
     // eslint-disable-next-line consistent-return
@@ -145,165 +105,154 @@ export default function DeployCredentialContract(props: ConnectionProps) {
     }, [connection, account, client, txHash]);
 
     return (
-        <TestBox>
-            <label htmlFor="issuerKey">Issuer public key</label>
-            <p>
-                If you become an issuer, you will need to sign the credentials with your issuer{' '}
-                <strong>private key</strong> (ed25519 signature scheme). The public key must be registered in the
-                contract. For <strong>testing purposes</strong> on testnet, you can create a public-private key pair
-                with an{' '}
-                <a href="https://cyphr.me/ed25519_tool/ed.html" target="_blank" rel="noreferrer">
-                    online tool
-                </a>{' '}
-                and use the <strong>public key</strong> here.
-            </p>
-            <input
-                className="inputFieldStyle"
-                id="issuerKey"
-                type="text"
-                value={issuerKey}
-                onChange={changeIssuerKeyHandler}
-            />
-            <br />
-            <br />
-            <label htmlFor="issuerMetaDataURL">Issuer metadata URL</label>
-            <p> The URL pointing at the issuer metadata file that you created in the previous step. </p>
-            <input
-                className="inputFieldStyle"
-                id="issuerMetaDataURL"
-                type="text"
-                value={issuerMetaData}
-                onChange={changeIssuerMetaDataURLHandler}
-            />
-            <br />
-            <br />
-            <label htmlFor="credentialType">Credential type</label>
-            <p>You should define a type for your credential (e.g. `myCredentialType` or `EducationalCertificate`).</p>
-            <input
-                className="inputFieldStyle"
-                id="credentialType"
-                type="text"
-                value={credentialType}
-                onChange={changeCredentialTypeHandler}
-            />
-            <br />
-            <br />
-            <label htmlFor="credentialSchemaURL">Credential schema URL</label>
-            <p> The URL of the credential schema file that you created in the previous step. </p>
-            <input
-                className="inputFieldStyle"
-                id="credentialSchemaURL"
-                type="text"
-                value={schemaCredential?.schema_ref.url}
-                onChange={changeCredentialSchemaURLHandler}
-            />
-            <br />
-            <br />
+        <>
+            <Modal show={show}>
+                <Modal.Header>
+                    <Modal.Title>Error</Modal.Title>
+                </Modal.Header>
+
+                <Modal.Body>
+                    <p>{error}</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleClose}>
+                        Close
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+            <Form>
+                <Form.Group className="mb-3">
+                    <Form.Label>Issuer Public Key</Form.Label>
+                    <Form.Control {...deployContractForm.register('issuerPublicKey', { required: true })} />
+                    {deployContractForm.formState.errors.issuerPublicKey && (
+                        <Alert key="info" variant="info">
+                            {' '}
+                            Issuer Public Key is required{' '}
+                        </Alert>
+                    )}
+                    <Form.Text>
+                        If you become an issuer, you will need to sign the credentials with your issuer{' '}
+                        <strong>private key</strong> (ed25519 signature scheme). The public key must be registered in
+                        the contract. For <strong>testing purposes</strong> on testnet, you can create a public-private
+                        key pair with an{' '}
+                        <a href="https://cyphr.me/ed25519_tool/ed.html" target="_blank" rel="noreferrer">
+                            online tool
+                        </a>{' '}
+                        and use the <strong>public key</strong> here.
+                    </Form.Text>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Issuer metadata URL</Form.Label>
+                    <Form.Control {...deployContractForm.register('issuerMetadataURL', { required: true })} />
+                    {deployContractForm.formState.errors.issuerMetadataURL && (
+                        <Alert key="info" variant="info">
+                            {' '}
+                            Issuer metadata URL is required{' '}
+                        </Alert>
+                    )}
+                    <Form.Text />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Credential type</Form.Label>
+                    <Form.Control {...deployContractForm.register('credentialType', { required: true })} />
+                    {deployContractForm.formState.errors.credentialType && (
+                        <Alert key="info" variant="info">
+                            {' '}
+                            Credential type is required{' '}
+                        </Alert>
+                    )}
+                    <Form.Text>
+                        You should define a type for your credential (e.g. `myCredentialType` or
+                        `EducationalCertificate`).
+                    </Form.Text>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Label>Credential schema URL</Form.Label>
+                    <Form.Control {...deployContractForm.register('credentialSchemaURL', { required: true })} />
+                    {deployContractForm.formState.errors.credentialSchemaURL && (
+                        <Alert key="info" variant="info">
+                            {' '}
+                            Credential schema URL is required{' '}
+                        </Alert>
+                    )}
+                    <Form.Text />
+                </Form.Group>
+
+                <Form className="border p-4">
+                    <Form.Group className="mb-3">
+                        <Form.Label>Revocation keys (optional)</Form.Label>
+                        <Form.Control {...attributes.register('revokationKey', { required: true })} />
+                        <Form.Text>
+                            The keys inserted here can revoke any credential that the issuer issues. You can leave this
+                            an empty array if you don&apos;t want to grant such permissions to special revocation keys.
+                            For testing purposes on testnet, you can create public-private key pairs with an{' '}
+                            <a href="https://cyphr.me/ed25519_tool/ed.html" target="_blank" rel="noreferrer">
+                                {' '}
+                                online tool{' '}
+                            </a>
+                            and use the <strong>public keys</strong> here.
+                        </Form.Text>
+                    </Form.Group>
+
+                    <Button
+                        variant="primary"
+                        type="button"
+                        onClick={attributes.handleSubmit((formData) => {
+                            addRevokationKey(revocationKeys, setRevocationKeys, formData.revokationKey).catch(
+                                (err: Error) => alert((err as Error).message)
+                            );
+                        })}
+                    >
+                        Add Revocation Keys
+                    </Button>
+
+                    <Button
+                        variant="primary"
+                        type="button"
+                        onClick={attributes.handleSubmit(() => {
+                            setRevocationKeys([]);
+                        })}
+                    >
+                        Clear Revocation Keys
+                    </Button>
+                </Form>
+                <br />
+
+                <Button
+                    variant="primary"
+                    type="button"
+                    onClick={deployContractForm.handleSubmit((formData) => {
+                        setTxHash('');
+                        setError('');
+                        setSmartContractIndex('');
+                        setWaitingForTransactionToFinialize(true);
+
+                        const tx = createNewIssuer(
+                            connection,
+                            account,
+                            formData.issuerMetadataURL,
+                            formData.issuerPublicKey,
+                            formData.credentialSchemaURL,
+                            JSON.stringify(revocationKeys),
+                            formData.credentialType
+                        );
+                        tx.then(setTxHash).catch((err: Error) => {
+                            setError((err as Error).message);
+                            setWaitingForTransactionToFinialize(false);
+                        });
+                    })}
+                >
+                    Create New Issuer
+                </Button>
+            </Form>
             {revocationKeys.length !== 0 && (
                 <>
-                    <div className="actionResultBox">
-                        <div>
-                            You have added the following <strong>revocationKeys</strong>:
-                        </div>
-                        <div>
-                            {revocationKeys?.map((element) => (
-                                <li key={element}>{element}</li>
-                            ))}
-                        </div>
-                    </div>
                     <br />
-                    <br />
+                    <pre className="largeText">{JSON.stringify(revocationKeys, null, 2)}</pre>
                 </>
-            )}
-            {userInputError !== '' && (
-                <div className="alert alert-danger" role="alert">
-                    Error: {userInputError}.
-                </div>
-            )}
-            <Form
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    setUserInputError('');
-                    addRevokationKey(
-                        revocationKeys,
-                        setRevocationKeys,
-                        setRevocationKeyInput,
-                        revocationKeyInput
-                    ).catch((err: Error) => setUserInputError((err as Error).message));
-                }}
-            >
-                <div>
-                    <label htmlFor="credentialType">Revocation keys</label>
-                    <p>
-                        The keys inserted here can revoke any credential that the issuer issues. You can leave this an
-                        empty array if you don&apos;t want to grant such permissions to special revocation keys. For
-                        testing purposes on testnet, you can create public-private key pairs with an{' '}
-                        <a href="https://cyphr.me/ed25519_tool/ed.html" target="_blank" rel="noreferrer">
-                            {' '}
-                            online tool{' '}
-                        </a>
-                        and use the <strong>public keys</strong> here.
-                    </p>
-                </div>
-                <br />
-                <Row>
-                    <Col sm={10}>
-                        <InputGroup className="mb-3">
-                            <Form.Control
-                                value={revocationKeyInput}
-                                onChange={(e) => setRevocationKeyInput(e.target.value)}
-                            />
-                            <Button type="submit" variant="outline-secondary">
-                                Add
-                            </Button>
-                        </InputGroup>
-                    </Col>
-                    <Col sm={1}>
-                        <Button
-                            variant="outline-secondary"
-                            onClick={() => {
-                                setRevocationKeys([]);
-                                setRevocationKeyInput('');
-                                setUserInputError('');
-                            }}
-                        >
-                            Clear
-                        </Button>
-                    </Col>
-                </Row>
-            </Form>
-            <button
-                className="btn btn-primary"
-                type="button"
-                onClick={() => {
-                    setTxHash('');
-                    setTransactionError('');
-                    setSmartContractIndex('');
-                    setWaitingForTransactionToFinialize(true);
-
-                    const tx = createNewIssuer(
-                        connection,
-                        account,
-                        issuerMetaData,
-                        issuerKey,
-                        schemaCredential,
-                        JSON.stringify(revocationKeys),
-                        credentialType
-                    );
-                    tx.then(setTxHash).catch((err: Error) => {
-                        setTransactionError((err as Error).message);
-                        setWaitingForTransactionToFinialize(false);
-                    });
-                }}
-            >
-                Create New Issuer
-            </button>
-            <br />
-            <br />
-            {!txHash && transactionError && (
-                <div className="alert alert-danger" role="alert">
-                    Error: {transactionError}.
-                </div>
             )}
             {smartContractIndexError !== '' && (
                 <div className="alert alert-danger" role="alert">
@@ -331,9 +280,8 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                 </div>
             )}
             <br />
-            <br />
             {waitingForTransactionToFinialize === true && (
-                <div className="containerTwoItems">
+                <div className="d-flex justify-content-center">
                     <TailSpin
                         height="30"
                         width="30"
@@ -347,12 +295,13 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                     <div>Waiting for transaction to finalize</div>
                 </div>
             )}
+            <Row />
             {smartContractIndex !== '' && (
                 <div className="actionResultBox">
                     Smart Contract Index:
                     <div>{smartContractIndex}</div>
                 </div>
             )}
-        </TestBox>
+        </>
     );
 }

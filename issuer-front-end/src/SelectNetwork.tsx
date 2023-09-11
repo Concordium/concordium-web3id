@@ -1,37 +1,16 @@
 /* eslint-disable no-console */
 /* eslint-disable no-alert */
-import React, { ChangeEvent, Dispatch, SetStateAction, useEffect } from 'react';
+import React, { Dispatch, SetStateAction } from 'react';
+import { Form } from 'react-bootstrap';
 import { MODULE_REFERENCE_CREDENTIAL_REGISTRY } from './constants';
 
 interface ConnectionProps {
-    setIsTestnet: Dispatch<SetStateAction<boolean | undefined>>;
-    setIsNextButtonDisabled: Dispatch<SetStateAction<boolean>>;
+    isTestnet: boolean;
+    setIsTestnet: Dispatch<SetStateAction<boolean>>;
 }
 
 export default function SelectNetwork(props: ConnectionProps) {
-    const { setIsTestnet, setIsNextButtonDisabled } = props;
-
-    const changeDropDownHandler = (e: ChangeEvent) => {
-        const element = e.target as HTMLSelectElement;
-        const { value } = element;
-
-        if (value === 'Testnet') {
-            setIsTestnet(true);
-        } else if (value === 'Mainnet') {
-            setIsTestnet(false);
-        } else {
-            console.error('Select a network');
-            alert('Select a network');
-            return;
-        }
-
-        setIsNextButtonDisabled(false);
-    };
-
-    useEffect(() => {
-        setIsTestnet(undefined);
-        setIsNextButtonDisabled(true);
-    }, []);
+    const { isTestnet, setIsTestnet } = props;
 
     return (
         <>
@@ -45,15 +24,24 @@ export default function SelectNetwork(props: ConnectionProps) {
                 The registry contract will be created from the smart contract module{' '}
                 <strong>{MODULE_REFERENCE_CREDENTIAL_REGISTRY}</strong>.
             </p>
-
-            <br />
-            <select name="write" id="write" onChange={changeDropDownHandler}>
-                <option value="choose" disabled selected>
-                    Choose
-                </option>
-                <option value="Testnet">Testnet</option>
-                <option value="Mainnet">Mainnet</option>
-            </select>
+            <Form>
+                <Form.Check
+                    type="switch"
+                    id="testnet-check"
+                    label="Testnet"
+                    active={isTestnet}
+                    checked={isTestnet}
+                    onClick={() => setIsTestnet(true)}
+                />
+                <Form.Check
+                    type="switch"
+                    id="mainnet-check"
+                    label="Mainnet"
+                    active={isTestnet}
+                    checked={!isTestnet}
+                    onClick={() => setIsTestnet(false)}
+                />
+            </Form>
         </>
     );
 }

@@ -11,6 +11,7 @@ import {
     MAINNET,
     useWalletConnectorSelector,
 } from '@concordium/react-components';
+import './scss/index.scss';
 
 import { AccountAddress } from '@concordium/web-sdk';
 
@@ -136,44 +137,37 @@ export default function Main(props: ConnectionProps) {
                     </>
                 )}
             </div>
-            {account && (
-                <div className="row">
-                    {connection && account !== undefined && (
+
+            {connection && account !== undefined && (
+                <div>
+                    <br />
+                    <div className="label">Connected account:</div>
+                    <div>
                         <div>
-                            <br />
-                            <div className="label">Connected account:</div>
-                            <div>
-                                <div>
-                                    <a
-                                        className="link"
-                                        href={`https://${
-                                            isTestnet ? `testnet.` : ``
-                                        }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >
-                                        {account}
-                                    </a>
-                                </div>
-                            </div>
-                            <br />
-                            <div className="label">Your account balance:</div>
-                            <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
-                            <br />
-                            {viewErrorAccountBalance && (
-                                <div className="alert alert-danger" role="alert">
-                                    Error: {viewErrorAccountBalance}.
-                                </div>
-                            )}
-                            {/* Step 4: Deploy issuer smart contract */}
-                            {isConnected && (
-                                <DeployCredentialContract
-                                    account={account}
-                                    isTestnet={isTestnet}
-                                    connection={connection}
-                                />
-                            )}
+                            <a
+                                className="link"
+                                href={`https://${
+                                    isTestnet ? `testnet.` : ``
+                                }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                {account}
+                            </a>
                         </div>
+                    </div>
+                    <br />
+                    <div className="label">Your account balance:</div>
+                    <div>{accountBalance.replace(/(\d)(?=(\d\d\d\d\d\d)+(?!\d))/g, '$1.')} CCD</div>
+                    <br />
+                    {viewErrorAccountBalance && (
+                        <div className="alert alert-danger" role="alert">
+                            Error: {viewErrorAccountBalance}.
+                        </div>
+                    )}
+                    {/* Step 4: Deploy issuer smart contract */}
+                    {isConnected && (
+                        <DeployCredentialContract account={account} isTestnet={isTestnet} connection={connection} />
                     )}
                 </div>
             )}
