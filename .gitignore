@@ -7,6 +7,8 @@ target/
 
 # Yarn
 node_modules
+**/*/.yarn/cache/*
+**/*/.yarn/install-state.gz
 .pnp.*
 yarn-error.log
 **/.yarn/*

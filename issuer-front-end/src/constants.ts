@@ -1,36 +1,58 @@
 import { BrowserWalletConnector, ephemeralConnectorType } from '@concordium/react-components';
-import moment from 'moment';
-
-export const EXAMPLE_CREDENTIAL_SCHEMA =
-    'https://raw.githubusercontent.com/Concordium/concordium-web3id/522248d445cea0362f2c8f40c2a64a794f39b2c9/examples/json-schemas/education-certificate/JsonSchema2023-education-certificate.json';
-
-export const EXAMPLE_CREDENTIAL_METADATA = `https://gist.githubusercontent.com/abizjak/ff1e90d82c5446c0e001ee6d4e33ea6b/raw/4528363aff42e3ff36b50a1d873287f2f520d610/metadata.json`;
-
-export const EXAMPLE_ISSUER_METADATA = `https://gist.githubusercontent.com/DOBEN/d12deee42e06601efb72859da9be5759/raw/137a9a4b9623dfe16fa8e9bb7ab07f5858d92c53/gistfile1.txt`;
 
 export const DEFAULT_CREDENTIAL_TYPES = ['VerifiableCredential', 'ConcordiumVerifiableCredential'];
 
-export function getBackendApi(): string {
-    if (process.env.BACKEND_API) {
-        return process.env.BACKEND_API;
-    }
-    return window.location.origin;
-}
+export const EXAMPLE_ISSUER_METADATA_OBJECT = {
+    name: 'Concordium',
+    icon: {
+        url: 'https://concordium.com/wp-content/uploads/2022/07/Concordium-1.png',
+        hash: undefined as undefined | string,
+    },
+    description: 'A public-layer 1, science-backed blockchain',
+    url: 'https://concordium.com',
+};
 
-export const REFRESH_INTERVAL = moment.duration(4, 'seconds');
+export const EXAMPLE_CREDENTIAL_METADATA_OBJECT = {
+    title: 'Example Title',
+    logo: {
+        url: 'https://avatars.githubusercontent.com/u/39614219?s=200&v=4',
+    },
+    backgroundColor: '#92a8d1',
+    image: undefined as { url: string } | undefined,
+};
+
+export const EXAMPLE_CREDENTIAL_SCHEMA_OBJECT = {
+    name: 'Education certificate',
+    description: 'Simple representation of an education certificate.',
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+    $id: 'https://example-university.com/certificates/JsonSchema2023-education-certificate.json',
+    type: 'object',
+    properties: {
+        credentialSubject: {
+            type: 'object',
+            properties: {
+                id: {
+                    title: 'Credential subject id',
+                    type: 'string',
+                    description: 'Credential subject identifier',
+                },
+                attributes: {
+                    title: 'Attributes',
+                    description: 'Credential attributes',
+                    type: 'object',
+                    properties: {},
+                    required: [],
+                },
+            },
+            required: ['id', 'attributes'],
+        },
+    },
+    required: ['credentialSubject'],
+};
+
+export const REFRESH_INTERVAL_IN_MILLI_SECONDS = 2000;
 
 export const BROWSER_WALLET = ephemeralConnectorType(BrowserWalletConnector.create);
-
-// The 'PARAMETER'/'RETURN_VALUE' schemas are created by running the command `cargo concordium --schema-json-out ./` in the `smart-contract` folder.
-// This produces an output file in the same folder which those schemas.
-
-export const REGISTRY_CONTRACT_CREDENTIAL_ENTRY_PARAMETER_SCHEMA = 'HiAAAAA';
-
-export const REGISTRY_CONTRACT_CREDENTIAL_ENTRY_RETURN_VALUE_SCHEMA =
-    'FAADAAAADwAAAGNyZWRlbnRpYWxfaW5mbxQABQAAAAkAAABob2xkZXJfaWQeIAAAABAAAABob2xkZXJfcmV2b2NhYmxlAQoAAAB2YWxpZF9mcm9tDQsAAAB2YWxpZF91bnRpbBUCAAAABAAAAE5vbmUCBAAAAFNvbWUBAQAAAA0MAAAAbWV0YWRhdGFfdXJsFAACAAAAAwAAAHVybBYBBAAAAGhhc2gVAgAAAAQAAABOb25lAgQAAABTb21lAQEAAAAeIAAAAAoAAABzY2hlbWFfcmVmFAABAAAACgAAAHNjaGVtYV9yZWYUAAIAAAADAAAAdXJsFgEEAAAAaGFzaBUCAAAABAAAAE5vbmUCBAAAAFNvbWUBAQAAAB4gAAAAEAAAAHJldm9jYXRpb25fbm9uY2UF';
-
-export const REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA =
-    'FAADAAAADwAAAGlzc3Vlcl9tZXRhZGF0YRQAAgAAAAMAAAB1cmwWAQQAAABoYXNoFQIAAAAEAAAATm9uZQIEAAAAU29tZQEBAAAAHiAAAAAPAAAAY3JlZGVudGlhbF90eXBlFAABAAAADwAAAGNyZWRlbnRpYWxfdHlwZRYAEQAAAGNyZWRlbnRpYWxfc2NoZW1hFAABAAAACgAAAHNjaGVtYV9yZWYUAAIAAAADAAAAdXJsFgEEAAAAaGFzaBUCAAAABAAAAE5vbmUCBAAAAFNvbWUBAQAAAB4gAAAA';
 
 // The 'BASE_64_SCHEMA' is created by running the command `cargo concordium --schema-base64-out -` in the `smart-contract` folder.
 // This command prints the below schema to the console.
