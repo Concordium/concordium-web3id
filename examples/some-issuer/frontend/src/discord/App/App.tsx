@@ -20,6 +20,8 @@ const { discordClientId } = config as DiscordConfig;
 
 let oAuth2State: string | undefined;
 
+let oAuthWindow: Window | null;
+
 function openDiscordVerification() {
   oAuth2State = nanoid();
 
@@ -39,7 +41,7 @@ function openDiscordVerification() {
   const left = window.screenX + width / 2;
   const top = window.screenY + height / 2;
 
-  window.open(
+  oAuthWindow = window.open(
     oAuth2URL,
     undefined,
     `popup,width=${width},height=${height},left=${left},top=${top}`,
@@ -52,10 +54,10 @@ function App() {
   // that sends a 'message' event back with the user id and username
   useEffect(() => {
     const onDiscordWindowMessage = async (event: MessageEvent) => {
+      // Check that the message is coming from the window we just created.
+      if (!oAuthWindow || event.source !== oAuthWindow) return;
       if (event.origin + '/' !== ISSUER_URL) return;
-
       const data = event.data as DiscordWindowMessage;
-
       // Prevents CSRF attacks,
       // see https://auth0.com/docs/secure/attack-protection/state-parameters
       if (data.state !== oAuth2State) return;
@@ -63,7 +65,7 @@ function App() {
       if (data.type === 'error') {
         // Do nothing for now.
         // At some point we can handle different error types.
-      } else {
+      } else if (data.type === 'success') {
         await requestCredential(
           {
             platform: Platform.Discord,
