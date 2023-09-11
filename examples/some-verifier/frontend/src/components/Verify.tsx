@@ -244,7 +244,7 @@ export default function Verify() {
               </p>
               <p>
                 <strong>
-                  If these credentials do not exists in you wallet yet, go the
+                  If these credentials do not exists in you wallet yet, go to
                   the{' '}
                   <Button
                     color="link"
