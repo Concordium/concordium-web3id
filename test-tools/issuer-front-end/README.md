@@ -1,6 +1,6 @@
 # Issuer Front End Wallet Testing
 
-This front end is used for testing the new browser wallet functionalities concerning the web3ID infrastructure.
+This front end is used for testing the new browser wallet functionalities concerning the Web3 ID infrastructure.
 You can manually issue/create credentials using this front end. Only the browser wallet (no walletConnect) is supported in the first version.
 The front end initializes and interacts with the [`credential_registry` smart contract](https://github.com/Concordium/concordium-rust-smart-contracts/tree/main/examples/credential-registry).
 

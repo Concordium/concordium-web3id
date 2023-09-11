@@ -1,0 +1,14 @@
+.layout {
+  &__plus {
+    font-size: rfs-value(30px);
+  }
+
+  &__logo {
+    height: 6em;
+    padding: 1.5em;
+
+    img {
+      height: 100%;
+    }
+  }
+}

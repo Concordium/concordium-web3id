@@ -1,0 +1,48 @@
+{
+  "name": "some-verifier",
+  "private": true,
+  "packageManager": "yarn@3.2.0",
+  "version": "1.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "fmt": "prettier -w .",
+    "fmt-check": "prettier --check .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@concordium/browser-wallet-api-helpers": "2.6.0",
+    "@concordium/web-sdk": "^6.1.1",
+    "bootstrap": "^5.3.0",
+    "bootstrap-icons": "^1.10.5",
+    "nanoid": "^4.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-inlinesvg": "^3.0.2",
+    "react-social-login-buttons": "^3.9.1",
+    "react-telegram-login": "^1.1.2",
+    "reactstrap": "^9.2.0"
+  },
+  "resolutions": {
+    "@concordium/web-sdk": "^6.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react-swc": "^3.3.2",
+    "eslint": "^8.45.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "prettier": "^3.0.0",
+    "sass": "^1.64.0",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vite-tsconfig-paths": "^4.2.0"
+  }
+}
