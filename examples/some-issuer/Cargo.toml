@@ -1,6 +1,6 @@
 [package]
 name = "some-issuer"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 
@@ -34,3 +34,4 @@ http = "0.2"
 tonic = { version = "0.8", features = ["tls", "tls-roots"] }
 handlebars = "4.3"
 futures = "0.3"
+thiserror = "1.0.48"

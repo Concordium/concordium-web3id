@@ -19,11 +19,14 @@ declare type NotOptional<T> = {
 };
 type MakeRequired<T, K extends keyof T> = NotOptional<Pick<T, K>> & Omit<T, K>;
 
-interface DiscordWindowMessage {
-  userId: string;
-  username: string;
-  state: string | null;
-}
+type DiscordWindowMessage =
+  | {
+      type: 'success';
+      userId: string;
+      username: string;
+      state: string | null;
+    }
+  | { type: 'error'; error: string; state: string | null };
 
 // This is set when Discord verification is started and read upon a message back
 let oAuth2State: string | undefined = undefined;
@@ -51,27 +54,29 @@ function Issuer({
     const onDiscordWindowMessage = async (event: MessageEvent) => {
       if (event.origin + '/' !== config.issuers.discord.url) return;
 
-      const {
-        userId: id,
-        username,
-        state,
-      } = event.data as DiscordWindowMessage;
-      // Prevents CSRF attacks,
-      // see https://auth0.com/docs/secure/attack-protection/state-parameters
-      if (state !== oAuth2State)
-        throw new Error('State parameter did not match.');
+      const data = event.data as DiscordWindowMessage;
 
-      const api = await concordiumProvider();
-      await requestCredential(
-        api,
-        {
-          platform: Platform.Discord,
-          user: { id, username },
-        },
-        () => setDiscordPending(true),
-      );
+      if (data.type === 'error') {
+        // Do nothing for now, at some point maybe we message something.
+      } else {
+        const { userId: id, username, state } = data;
+        // Prevents CSRF attacks,
+        // see https://auth0.com/docs/secure/attack-protection/state-parameters
+        if (state !== oAuth2State)
+          throw new Error('State parameter did not match.');
 
-      setDiscordIssued();
+        const api = await concordiumProvider();
+        await requestCredential(
+          api,
+          {
+            platform: Platform.Discord,
+            user: { id, username },
+          },
+          () => setDiscordPending(true),
+        );
+
+        setDiscordIssued();
+      }
     };
 
     const eventHandler = (event: MessageEvent) => {
@@ -122,6 +127,7 @@ function Issuer({
             botName={config.telegramBotName}
             dataOnauth={onTelegramAuth}
             cornerRadius={3}
+            requestAccess={''}
           />
         )}
       </ListGroupItem>
@@ -134,7 +140,12 @@ function Issuer({
         ) : (
           <div className="some-btn-container">
             <DiscordLoginButton
-              style={{ margin: 0, marginBottom: 5, fontSize: '12pt' }}
+              style={{
+                width: '300px',
+                margin: 0,
+                marginBottom: 5,
+                fontSize: '12pt',
+              }}
               size="40px"
               onClick={openDiscordVerification}
             />
@@ -240,8 +251,13 @@ async function requestCredential(
       body: JSON.stringify(body),
     });
 
-    if (!response.ok)
+    if (!response.ok) {
+      if (response.status == 429)
+        throw new Error(
+          'Sorry, too many credentials have been issued for this account.',
+        );
       throw new Error('Error getting credential: ' + (await response.text()));
+    }
 
     const { txHash: hash, credential } =
       (await response.json()) as IssuerResponse;

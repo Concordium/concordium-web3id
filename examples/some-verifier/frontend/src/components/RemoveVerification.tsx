@@ -18,7 +18,13 @@ import { hash, requestProof } from '../lib/util';
 import { WalletApi } from '@concordium/browser-wallet-api-helpers';
 import { appState } from '../lib/app-state';
 
-export default function RemoveVerification() {
+interface RemoveVerificationProps {
+  className: string;
+}
+
+export default function RemoveVerification({
+  className,
+}: RemoveVerificationProps) {
   const { concordiumProvider } = useContext(appState);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -89,7 +95,7 @@ export default function RemoveVerification() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} color="link">
+      <Button onClick={() => setOpen(true)} className={className} color="link">
         Remove verification?
       </Button>
       <Modal isOpen={open} toggle={toggle} onClosed={reset}>
@@ -99,7 +105,7 @@ export default function RemoveVerification() {
             <Col md={12}>
               <p>
                 The credentials linked in a verification are stored with a
-                reference to the <i>credential ID</i> they are created with.
+                reference to the <i>credential ID</i> used to create them.
               </p>
               <p>
                 The credential ID is the public key used to identify the holder

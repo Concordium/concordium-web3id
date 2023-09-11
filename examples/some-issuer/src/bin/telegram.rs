@@ -20,7 +20,7 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use some_issuer::{set_shutdown, IssueResponse, IssuerState};
+use some_issuer::{set_shutdown, IssueResponse, IssuerState, SyncState};
 use std::{fmt::Write, fs, net::SocketAddr, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -37,46 +37,46 @@ struct App {
         default_value = "http://localhost:20000",
         env = "TELEGRAM_ISSUER_NODE"
     )]
-    endpoint:             v2::Endpoint,
+    endpoint: v2::Endpoint,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "TELEGRAM_ISSUER_LOG_LEVEL"
     )]
-    log_level:            tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "TELEGRAM_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout:      u64,
+    request_timeout: u64,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "TELEGRAM_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry:             ContractAddress,
+    registry: ContractAddress,
     #[clap(
         long = "network",
         help = "The network of the issuer.",
         default_value = "testnet",
         env = "TELEGRAM_ISSUER_NETWORK"
     )]
-    network:              Network,
+    network: Network,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "TELEGRAM_ISSUER_WALLET"
     )]
-    wallet:               PathBuf,
+    wallet: PathBuf,
     #[clap(
         long = "issuer-key",
         help = "Path to the issuer's key, used to sign commitments.",
         env = "TELEGRAM_ISSUER_KEY"
     )]
-    issuer_key:           PathBuf,
+    issuer_key: PathBuf,
     #[clap(
         long = "max-register-energy",
         help = "The amount of energy to allow for execution of the register credential \
@@ -85,27 +85,29 @@ struct App {
         default_value = "10000",
         env = "TELEGRAM_ISSUER_MAX_REGISTER_ENERGY"
     )]
-    max_register_energy:  Energy,
+    max_register_energy: Energy,
     #[clap(
         long = "telegram-token",
         help = "Bot token for Telegram.",
-        env = "TELEGRAM_ISSUER_TELEGRAM_BOT_TOKEN"
+        env = "TELEGRAM_ISSUER_TELEGRAM_BOT_TOKENS",
+        use_value_delimiter = true,
+        value_delimiter = ','
     )]
-    telegram_bot_token:   String,
+    telegram_bot_tokens: Vec<String>,
     #[clap(
         long = "listen-address",
         help = "Socket address for the Telegram issuer.",
         default_value = "0.0.0.0:80", // To test the frontend, default port (80) is needed when running locally, as otherwise the iframe providing the telegram login button does not work.
         env = "TELEGRAM_ISSUER_LISTEN_ADDRESS"
     )]
-    listen_address:       SocketAddr,
+    listen_address: SocketAddr,
     #[clap(
         long = "url",
         help = "URL of the Telegram issuer.",
         default_value = "http://127.0.0.1/",
         env = "TELEGRAM_ISSUER_URL"
     )]
-    url:                  Url,
+    url: Url,
     #[clap(
         long = "verifier-dapp-domain",
         help = "The domain of the verifier dApp, used for CORS.",
@@ -118,20 +120,34 @@ struct App {
         help = "The name (handle) of the Telegram bot.",
         env = "TELEGRAM_ISSUER_TELEGRAM_BOT_NAME"
     )]
-    telegram_bot_name:    String,
+    telegram_bot_name: String,
     #[clap(
         long = "frontend",
         default_value = "./frontend/dist/telegram",
         help = "Path to the directory where frontend assets are located.",
         env = "TELEGRAM_ISSUER_FRONTEND"
     )]
-    frontend_assets:      std::path::PathBuf,
+    frontend_assets: std::path::PathBuf,
+    #[clap(
+        long = "rate-limit-capacity",
+        help = "The number of issued credentials that we remember for rate limiting.",
+        default_value = "50000",
+        env = "TELEGRAM_ISSUER_RATE_LIMIT_CAPACITY"
+    )]
+    rate_limit_queue_capacity: usize,
+    #[clap(
+        long = "rate-limit-repeats",
+        help = "The number of times the same user id can be issued before being rate limited.",
+        default_value = "5",
+        env = "TELEGRAM_ISSUER_RATE_LIMIT_REPEATS"
+    )]
+    rate_limit_max_repeats: usize,
 }
 
 #[derive(Clone)]
 struct AppState {
-    issuer:             IssuerState,
-    telegram_bot_token: Arc<String>,
+    issuer:              IssuerState,
+    telegram_bot_tokens: Arc<[String]>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -220,8 +236,12 @@ async fn issue_telegram_credential(
     State(state): State<AppState>,
     Json(request): Json<TelegramIssueRequest>,
 ) -> Result<Json<IssueResponse>, StatusCode> {
-    if let Err(err) = request.telegram_user.check(&state.telegram_bot_token) {
-        tracing::warn!("Invalid Telegram user in request: {err}");
+    if state
+        .telegram_bot_tokens
+        .iter()
+        .all(|token| request.telegram_user.check(token).is_err())
+    {
+        tracing::warn!("Invalid Telegram user in request.");
         return Err(StatusCode::BAD_REQUEST);
     }
 
@@ -241,6 +261,18 @@ async fn issue_telegram_credential(
                 .await
         }
     }
+}
+
+#[derive(serde::Serialize)]
+struct Health {
+    version: &'static str,
+}
+
+#[tracing::instrument(level = "info")]
+async fn health() -> Json<Health> {
+    Json(Health {
+        version: env!("CARGO_PKG_VERSION"),
+    })
 }
 
 #[tokio::main]
@@ -318,7 +350,11 @@ async fn main() -> anyhow::Result<()> {
         network: app.network,
         issuer: Arc::new(issuer_account),
         issuer_key: Arc::new(issuer_key),
-        nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
+        state: Arc::new(tokio::sync::Mutex::new(SyncState::new(
+            nonce.nonce,
+            app.rate_limit_queue_capacity,
+            app.rate_limit_max_repeats,
+        ))),
         max_register_energy: app.max_register_energy,
         metadata_url: Arc::new(metadata_url),
         credential_type: registry_metadata.credential_type,
@@ -326,7 +362,7 @@ async fn main() -> anyhow::Result<()> {
     };
     let state = AppState {
         issuer,
-        telegram_bot_token: Arc::new(app.telegram_bot_token),
+        telegram_bot_tokens: Arc::from(app.telegram_bot_tokens),
     };
 
     let cors = CorsLayer::new()
@@ -363,6 +399,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(|| async { Html(index_html) }))
         .nest_service("/assets", serve_dir_service)
         .route("/credential", post(issue_telegram_credential))
+        .route("/health", get(health))
         .nest_service("/json-schemas", json_schema_service)
         .with_state(state)
         .layer(cors)

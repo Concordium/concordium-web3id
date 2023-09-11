@@ -46,58 +46,58 @@ struct App {
         default_value = "http://localhost:20000",
         env = "SOME_VERIFIER_NODE"
     )]
-    endpoint:            v2::Endpoint,
+    endpoint:             v2::Endpoint,
     #[clap(
         long = "network",
         help = "Network to which the verifier is connected.",
         default_value = "testnet",
         env = "SOME_VERIFIER_NETWORK"
     )]
-    network:             Network,
+    network:              Network,
     #[clap(
         long = "telegram-registry",
         help = "Address of the Telegram registry smart contract.",
         env = "SOME_VERIFIER_TELEGRAM_REGISTRY_ADDRESS"
     )]
-    telegram_registry:   ContractAddress,
+    telegram_registry:    ContractAddress,
     #[clap(
         long = "discord-registry",
         help = "Address of the Discord registry smart contract.",
         env = "SOME_VERIFIER_DISCORD_REGISTRY_ADDRESS"
     )]
-    discord_registry:    ContractAddress,
+    discord_registry:     ContractAddress,
     #[clap(
         long = "telegram-bot-name",
         help = "The name (handle) of the Telegram bot.",
         env = "SOME_VERIFIER_TELEGRAM_BOT_NAME"
     )]
-    telegram_bot_name:   String,
+    telegram_bot_name:    String,
     #[clap(
         long = "discord-bot-token",
         help = "Discord bot token for looking up usernames.",
         env = "SOME_VERIFIER_DISCORD_BOT_TOKEN"
     )]
-    discord_bot_token:   String,
+    discord_bot_token:    String,
     #[clap(
         long = "discord-client-id",
         help = "Discord client id for OAuth2.",
         env = "SOME_VERIFIER_DISCORD_CLIENT_ID"
     )]
-    discord_client_id:   String,
+    discord_client_id:    String,
     #[clap(
         long = "telegram-issuer-url",
         default_value = "http://127.0.0.1:8080",
         help = "URL of the Telegram Issuer.",
         env = "SOME_VERIFIER_TELEGRAM_ISSUER_URL"
     )]
-    telegram_issuer_url: Url,
+    telegram_issuer_url:  Url,
     #[clap(
         long = "discord-issuer-url",
         default_value = "http://127.0.0.1:8081",
         help = "URL of the Discord Issuer.",
         env = "SOME_VERIFIER_DISCORD_ISSUER_URL"
     )]
-    discord_issuer_url:  Url,
+    discord_issuer_url:   Url,
     #[clap(
         long = "db",
         default_value = "host=localhost dbname=some-verifier user=postgres password=password \
@@ -105,42 +105,56 @@ struct App {
         help = "Database connection string.",
         env = "SOME_VERIFIER_DB_STRING"
     )]
-    db_config:           tokio_postgres::Config,
+    db_config:            tokio_postgres::Config,
     #[clap(
         long = "db-pool-size",
         default_value = "16",
         help = "Maximum size of the database connection pool.",
         env = "SOME_VERIFIER_DB_POOL_SIZE"
     )]
-    pool_size:           usize,
+    pool_size:            usize,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "SOME_VERIFIER_LOG_LEVEL"
     )]
-    log_level:           tracing_subscriber::filter::LevelFilter,
+    log_level:            tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout (both of request to the node and server requests) in milliseconds.",
         default_value = "5000",
         env = "SOME_VERIFIER_REQUEST_TIMEOUT"
     )]
-    request_timeout:     u64,
+    request_timeout:      u64,
     #[clap(
         long = "port",
         default_value = "0.0.0.0:80",
         help = "Address where the server will listen on.",
         env = "SOME_VERIFIER_LISTEN_ADDRESS"
     )]
-    listen_address:      std::net::SocketAddr,
+    listen_address:       std::net::SocketAddr,
     #[clap(
         long = "frontend",
         default_value = "./frontend/dist",
         help = "Path to the directory where frontend assets are located.",
         env = "SOME_VERIFIER_FRONTEND"
     )]
-    frontend_assets:     std::path::PathBuf,
+    frontend_assets:      std::path::PathBuf,
+    #[clap(
+        long = "telegram-invite-link",
+        default_value = "https://t.me/",
+        help = "Link to a group where the Telegram bot is active.",
+        env = "SOME_VERIFIER_TELEGRAM_INVITE_LINK"
+    )]
+    telegram_invite_link: Url,
+    #[clap(
+        long = "discord-invite-link",
+        default_value = "https://discord.gg/",
+        help = "Link to a server where the Discord bot is active.",
+        env = "SOME_VERIFIER_DISCORD_INVITE_LINK"
+    )]
+    discord_invite_link:  Url,
 }
 
 #[derive(Clone)]
@@ -160,10 +174,12 @@ struct AppState {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct FrontendConfig {
-    discord_client_id: String,
-    telegram_bot_name: String,
-    network:           Network,
-    issuers:           HashMap<String, IssuerConfig>,
+    discord_client_id:    String,
+    telegram_bot_name:    String,
+    network:              Network,
+    telegram_invite_link: Url,
+    discord_invite_link:  Url,
+    issuers:              HashMap<String, IssuerConfig>,
 }
 
 #[derive(Serialize)]
@@ -244,10 +260,12 @@ async fn main() -> anyhow::Result<()> {
     // Prevent handlebars from escaping inserted object
     reg.register_escape_fn(|s| s.into());
     let frontend_config = FrontendConfig {
-        discord_client_id: app.discord_client_id,
-        telegram_bot_name: app.telegram_bot_name,
-        network:           app.network,
-        issuers:           [
+        discord_client_id:    app.discord_client_id,
+        telegram_bot_name:    app.telegram_bot_name,
+        network:              app.network,
+        telegram_invite_link: app.telegram_invite_link,
+        discord_invite_link:  app.discord_invite_link,
+        issuers:              [
             ("telegram".to_string(), IssuerConfig {
                 url:      app.telegram_issuer_url.to_string(),
                 index:    app.telegram_registry.index.to_string(),
@@ -272,6 +290,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/verifications", post(add_verification))
         .route("/verifications", patch(remove_verification))
         .route("/verifications/:platform/:id", get(get_verification))
+        .route("/health", get(health))
         .with_state(state)
         .layer(
             tower_http::trace::TraceLayer::new_for_http()
@@ -590,6 +609,18 @@ impl AppState {
 
         Ok(request)
     }
+}
+
+#[derive(serde::Serialize)]
+struct Health {
+    version: &'static str,
+}
+
+#[tracing::instrument(level = "info")]
+async fn health() -> Json<Health> {
+    Json(Health {
+        version: env!("CARGO_PKG_VERSION"),
+    })
 }
 
 #[tracing::instrument(level = "info", skip_all)]

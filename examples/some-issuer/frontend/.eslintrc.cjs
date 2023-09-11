@@ -2,13 +2,13 @@ module.exports = {
   root: true,
   env: { browser: true, es2020: true },
   extends: [
-    'plugin:prettier/recommended',
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended-type-checked',
     'plugin:@typescript-eslint/stylistic-type-checked',
     'plugin:react-hooks/recommended',
     'plugin:react/recommended',
     'plugin:react/jsx-runtime',
+    'prettier',
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs'],
   parser: '@typescript-eslint/parser',
@@ -25,15 +25,6 @@ module.exports = {
         checksVoidReturn: {
           attributes: false,
         },
-      },
-    ],
-    'prettier/prettier': [
-      'error',
-      {
-        trailingComma: 'es5',
-        singleQuote: true,
-        printWidth: 120,
-        tabWidth: 4,
       },
     ],
   },

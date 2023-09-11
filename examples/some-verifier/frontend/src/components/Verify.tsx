@@ -32,6 +32,8 @@ import RemoveVerification from './RemoveVerification';
 import { hash, requestProof } from '../lib/util';
 import { appState } from '../lib/app-state';
 import { WalletApi } from '@concordium/browser-wallet-api-helpers';
+import manifest from '../../package.json';
+
 enum VerificationStep {
   Issue = '0',
   Verify = '1',
@@ -201,14 +203,17 @@ export default function Verify() {
           text={
             <>
               <p>
-                To verify with Concordia, you need web3 ID credentials for the
-                corresponding social media platforms in your wallet. If you
-                already have the credentials in your wallet, you can skip this
-                step
+                To verify with Concordia, you need verifiable credentials for
+                the corresponding social media platforms in your Concordium
+                Wallet for Web.{' '}
+                <strong>
+                  If you already have the credentials in your wallet, you can
+                  skip this step.{' '}
+                </strong>
               </p>
               <p className="mb-0">
-                To add credentials to your wallet, please log to the platforms
-                below.
+                To add credentials to your wallet, please log in to the
+                platforms below.
               </p>
             </>
           }
@@ -237,10 +242,10 @@ export default function Verify() {
           text={
             <>
               <p>
-                Select the platforms you want to verify with, essentially
-                proving ownership of the accounts referenced by the credentials
-                in your wallet. Additionally, you can also choose to reveal your
-                full name from an identity in your wallet.
+                Select the platforms you want to verify, essentially proving
+                ownership of the accounts referenced by the credentials in your
+                wallet. Additionally, you can also choose to reveal your full
+                name from an identity in your wallet.
               </p>
               <p className="mb-0">You must select at least 2 options.</p>
             </>
@@ -272,7 +277,8 @@ export default function Verify() {
                     setChecked={setFullNameChecked}
                   >
                     <SVG className="me-1" src={ccdLogo} />
-                    Full name - Concordium {config.network} identity required
+                    Full name - Requires Concordium {config.network}&nbsp;{' '}
+                    <strong>identity and account</strong>
                   </PlatformOption>
                 </ListGroup>
               </Col>
@@ -294,7 +300,7 @@ export default function Verify() {
           text={
             <>
               To check that the verification is completed successfully, you can
-              perform a <b>/check</b> on your own user, by interacting with the
+              perform a <b>/check</b> on your own user by interacting with the
               bot on either platform.
             </>
           }
@@ -304,7 +310,7 @@ export default function Verify() {
               <Button
                 tag="a"
                 className="some-btn"
-                href="https://t.me/+lT6h2k5ZGBw2ZGZk"
+                href={config.telegramInviteLink}
                 color="secondary"
               >
                 <SVG src={telegram} />
@@ -315,7 +321,7 @@ export default function Verify() {
               <Button
                 tag="a"
                 className="some-btn"
-                href="https://discord.gg/jpYES7RYF"
+                href={config.discordInviteLink}
                 color="secondary"
               >
                 <SVG src={discord} />
@@ -325,7 +331,21 @@ export default function Verify() {
           </Row>
         </Step>
       </Accordion>
-      <RemoveVerification />
+      <div className="d-flex align-items-center flex-wrap">
+        <RemoveVerification className="me-auto" />
+        <span className="m-1 text-body text-opacity-25">
+          v{manifest.version}
+        </span>
+        <span className="m-1 text-body text-opacity-25">
+          <a
+            href="https://developer.concordium.software/en/mainnet/net/resources/terms-and-conditions-concordia.html"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Terms of use
+          </a>
+        </span>
+      </div>
     </>
   );
 }

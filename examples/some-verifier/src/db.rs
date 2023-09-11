@@ -143,7 +143,12 @@ impl Database {
     ) -> DbResult<Option<DbVerification>> {
         tracing::debug!("Looking up verifications.");
         let mut client = self.pool.get().await?;
-        let tx = client.transaction().await?;
+        let tx = client
+            .build_transaction()
+            .isolation_level(tokio_postgres::IsolationLevel::RepeatableRead)
+            .read_only(true)
+            .start()
+            .await?;
 
         let table_name = platform.table_name();
         let select_verification_id = format!(

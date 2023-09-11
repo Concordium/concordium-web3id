@@ -28,8 +28,8 @@ impl Display for Platform {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Account {
-    pub platform: Platform,
-    pub username: String,
+    pub platform:    Platform,
+    pub username:    String,
     pub cred_status: CredentialStatus,
 }
 
@@ -38,7 +38,7 @@ pub struct Account {
 #[serde(rename_all = "camelCase")]
 pub struct FullName {
     pub first_name: String,
-    pub last_name: String,
+    pub last_name:  String,
 }
 
 impl Display for FullName {
@@ -52,6 +52,6 @@ impl Display for FullName {
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Verification {
-    pub accounts: Vec<Account>,
+    pub accounts:  Vec<Account>,
     pub full_name: Option<FullName>,
 }

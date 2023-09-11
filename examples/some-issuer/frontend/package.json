@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -11,7 +11,10 @@
     "build-telegram": "VITE_SOME_ISSUER_PLATFORM=telegram yarn build",
     "build-discord": "VITE_SOME_ISSUER_PLATFORM=discord yarn build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "lint-and-fix": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
+    "preview": "vite preview",
+    "fmt": "prettier -w .",
+    "fmt-check": "prettier --check ."
   },
   "dependencies": {
     "@concordium/browser-wallet-api-helpers": "^2.5.0",

@@ -24,7 +24,7 @@ use rand::Rng;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use some_issuer::{set_shutdown, IssueResponse, IssuerState};
+use some_issuer::{set_shutdown, IssueResponse, IssuerState, SyncState};
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -43,46 +43,46 @@ struct App {
         default_value = "http://localhost:20000",
         env = "DISCORD_ISSUER_NODE"
     )]
-    endpoint:              v2::Endpoint,
+    endpoint: v2::Endpoint,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "DISCORD_ISSUER_LOG_LEVEL"
     )]
-    log_level:             tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "network",
         help = "The network of the issuer.",
         default_value = "testnet",
         env = "DISCORD_ISSUER_NETWORK"
     )]
-    network:               Network,
+    network: Network,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "DISCORD_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout:       u64,
+    request_timeout: u64,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "DISCORD_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry:              ContractAddress,
+    registry: ContractAddress,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "DISCORD_ISSUER_WALLET"
     )]
-    wallet:                PathBuf,
+    wallet: PathBuf,
     #[clap(
         long = "issuer-key",
         help = "Path to the issuer's key, used to sign commitments.",
         env = "DISCORD_ISSUER_KEY"
     )]
-    issuer_key:            PathBuf,
+    issuer_key: PathBuf,
     #[clap(
         long = "max-register-energy",
         help = "The amount of energy to allow for execution of the register credential \
@@ -91,13 +91,13 @@ struct App {
         default_value = "10000",
         env = "DISCORD_ISSUER_MAX_REGISTER_ENERGY"
     )]
-    max_register_energy:   Energy,
+    max_register_energy: Energy,
     #[clap(
         long = "discord-client-id",
         help = "Discord client ID for OAuth2.",
         env = "DISCORD_CLIENT_ID"
     )]
-    discord_client_id:     String,
+    discord_client_id: String,
     #[clap(
         long = "discord-client-secret",
         help = "Discord client secret for OAuth2.",
@@ -110,28 +110,42 @@ struct App {
         default_value = "0.0.0.0:8081",
         env = "DISCORD_ISSUER_LISTEN_ADDRESS"
     )]
-    listen_address:        SocketAddr,
+    listen_address: SocketAddr,
     #[clap(
         long = "url",
         help = "URL of the Discord issuer.",
         default_value = "http://127.0.0.1:8081/",
         env = "DISCORD_ISSUER_URL"
     )]
-    url:                   Url,
+    url: Url,
     #[clap(
         long = "verifier-dapp-domain",
         help = "The domain of the verifier dApp, used for CORS.",
         default_value = "http://127.0.0.1",
         env = "DISCORD_ISSUER_VERIFIER_DAPP_URL"
     )]
-    verifier_dapp_domain:  String,
+    verifier_dapp_domain: String,
     #[clap(
         long = "frontend",
         default_value = "./frontend/dist/discord",
         help = "Path to the directory where frontend assets are located.",
         env = "DISCORD_ISSUER_FRONTEND"
     )]
-    frontend_assets:       std::path::PathBuf,
+    frontend_assets: std::path::PathBuf,
+    #[clap(
+        long = "rate-limit-capacity",
+        help = "The number of issued credentials that we remember for rate limiting.",
+        default_value = "50000",
+        env = "DISCORD_ISSUER_RATE_LIMIT_CAPACITY"
+    )]
+    rate_limit_queue_capacity: usize,
+    #[clap(
+        long = "rate-limit-repeats",
+        help = "The number of times the same user id can be issued before being rate limited.",
+        default_value = "5",
+        env = "DISCORD_ISSUER_RATE_LIMIT_REPEATS"
+    )]
+    rate_limit_max_repeats: usize,
 }
 
 #[derive(Clone)]
@@ -177,13 +191,21 @@ struct AccessTokenResponse {
 
 #[derive(Deserialize, Debug)]
 struct Oauth2RedirectParams {
-    pub(crate) code: String,
+    pub(crate) code:  Option<String>,
+    pub(crate) error: Option<String>,
 }
 
 #[derive(Serialize)]
 struct OauthTemplateParams<'a> {
     id:                   &'a str,
     username:             &'a str,
+    dapp_domain:          &'a str,
+    verifier_dapp_domain: &'a str,
+}
+
+#[derive(Serialize)]
+struct OauthErrorParams<'a> {
+    error:                &'a str,
     dapp_domain:          &'a str,
     verifier_dapp_domain: &'a str,
 }
@@ -221,15 +243,29 @@ async fn handle_oauth_redirect(
     Query(params): Query<Oauth2RedirectParams>,
     session: WritableSession,
 ) -> Result<Html<String>, StatusCode> {
-    match state
-        .make_oauth_redirect_response(params.code, session)
-        .await
-    {
-        Ok(response) => Ok(Html(response)),
-        Err(err) => {
-            tracing::warn!("Unsuccessful OAuth2 redirect: {err}");
-            Err(StatusCode::BAD_REQUEST)
+    if let Some(code) = params.code {
+        match state.make_oauth_redirect_response(code, session).await {
+            Ok(response) => Ok(Html(response)),
+            Err(err) => {
+                tracing::warn!("Unsuccessful OAuth2 redirect: {err}");
+                Err(StatusCode::BAD_REQUEST)
+            }
         }
+    } else if let Some(error) = params.error {
+        let params = OauthErrorParams {
+            error:                error.as_str(),
+            dapp_domain:          &state.dapp_domain.to_string(),
+            verifier_dapp_domain: &state.verifier_dapp_domain,
+        };
+
+        let output = state.handlebars.render("oauth", &params).map_err(|e| {
+            tracing::warn!("Unable to render oauth template with an error: {e}.");
+            StatusCode::BAD_REQUEST
+        })?;
+        Ok(Html(output))
+    } else {
+        tracing::warn!("Neither code nor error parameters are present.");
+        Err(StatusCode::BAD_REQUEST)
     }
 }
 
@@ -352,6 +388,18 @@ impl AppState {
     }
 }
 
+#[derive(serde::Serialize)]
+struct Health {
+    version: &'static str,
+}
+
+#[tracing::instrument(level = "info")]
+async fn health() -> Json<Health> {
+    Json(Health {
+        version: env!("CARGO_PKG_VERSION"),
+    })
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app = App::parse();
@@ -436,7 +484,11 @@ async fn main() -> anyhow::Result<()> {
         network: app.network,
         issuer: Arc::new(issuer_account),
         issuer_key: Arc::new(issuer_key),
-        nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
+        state: Arc::new(tokio::sync::Mutex::new(SyncState::new(
+            nonce.nonce,
+            app.rate_limit_queue_capacity,
+            app.rate_limit_max_repeats,
+        ))),
         max_register_energy: app.max_register_energy,
         metadata_url: Arc::new(metadata_url),
         credential_schema_url: registry_metadata.credential_schema.schema_ref.url().into(),
@@ -450,7 +502,7 @@ async fn main() -> anyhow::Result<()> {
         http_client,
         discord_redirect_uri: Arc::new(discord_redirect_uri),
         handlebars: Arc::new(handlebars),
-        dapp_domain: Arc::new(app.url.into()),
+        dapp_domain: Arc::new(app.url),
         verifier_dapp_domain: Arc::new(app.verifier_dapp_domain.clone()),
     };
 
@@ -461,7 +513,7 @@ async fn main() -> anyhow::Result<()> {
         .with_persistence_policy(axum_sessions::PersistencePolicy::ChangedOnly)
         .with_same_site_policy(axum_sessions::SameSite::None)
         .with_http_only(true)
-        .with_secure(true); // TODO: Test to make sure it also works locally.
+        .with_secure(true);
 
     let cors = CorsLayer::new()
         .allow_methods([http::Method::GET, http::Method::POST])
@@ -500,6 +552,7 @@ async fn main() -> anyhow::Result<()> {
         .nest_service("/assets", serve_dir_service)
         .route("/credential", post(issue_discord_credential))
         .route("/discord-oauth2", get(handle_oauth_redirect))
+        .route("/health", get(health))
         .route_layer(session_layer)
         .nest_service("/json-schemas", json_schema_service)
         .with_state(state)
