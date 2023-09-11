@@ -19,11 +19,11 @@ import { WalletApi } from '@concordium/browser-wallet-api-helpers';
 import { appState } from '../lib/app-state';
 
 interface RemoveVerificationProps {
-  className: string;
+  className?: string;
 }
 
 export default function RemoveVerification({
-  className,
+  className = '',
 }: RemoveVerificationProps) {
   const { concordiumProvider } = useContext(appState);
   const [open, setOpen] = useState(false);

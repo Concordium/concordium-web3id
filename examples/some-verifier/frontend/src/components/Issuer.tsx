@@ -21,11 +21,11 @@ type MakeRequired<T, K extends keyof T> = NotOptional<Pick<T, K>> & Omit<T, K>;
 
 type DiscordWindowMessage =
   | {
-      type: 'success';
-      userId: string;
-      username: string;
-      state: string | null;
-    }
+    type: 'success';
+    userId: string;
+    username: string;
+    state: string | null;
+  }
   | { type: 'error'; error: string; state: string | null };
 
 // This is set when Discord verification is started and read upon a message back
@@ -141,7 +141,7 @@ function Issuer({
           <div className="some-btn-container">
             <DiscordLoginButton
               style={{
-                width: '300px',
+                width: '200px',
                 margin: 0,
                 marginBottom: 5,
                 fontSize: '12pt',
