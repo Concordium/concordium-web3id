@@ -365,7 +365,7 @@ export default function CreateSchemaAndMetadataFiles() {
                     <AccordionHeader>CredentialMetadata</AccordionHeader>
                     <AccordionBody>
                         The credential metadata describes the details of a single credential, such as logo, background
-                        image or color, and localization. Like the JSON schema, the credential metadata must be hosted
+                        image or color. Like the JSON schema, the credential metadata must be hosted
                         at a public URL and will also be used by the wallet to style the credential.
                         <Form>
                             <Form.Group className="mb-3">

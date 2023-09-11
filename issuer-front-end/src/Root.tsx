@@ -68,7 +68,7 @@ export default function Root() {
         <div>
             <main id="#root">
                 <br />
-                <h1>Web3Id Issuer Front End {isTestnet ? '(Testnet)' : '(Mainnet)'}</h1>
+                <h1>Web3 ID Issuer Front End {isTestnet ? '(Testnet)' : '(Mainnet)'}</h1>
                 <h3>
                     Step {active}: {stepHeaders[active - 1]}
                 </h3>
