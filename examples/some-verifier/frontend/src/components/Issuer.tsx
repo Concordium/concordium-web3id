@@ -141,7 +141,7 @@ function Issuer({
           <div className="some-btn-container">
             <DiscordLoginButton
               style={{
-                width: '300px',
+                width: '200px',
                 margin: 0,
                 marginBottom: 5,
                 fontSize: '12pt',
