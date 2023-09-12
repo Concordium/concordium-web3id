@@ -106,7 +106,7 @@ export async function requestProof(
   }
 
   if (revealName) {
-    builder = builder.addForIdentityCredentials([0, 1, 3], (b) =>
+    builder = builder.addForIdentityCredentials([0, 1, 2, 3], (b) =>
       b
         .revealAttribute(AttributeKeyString.firstName)
         .revealAttribute(AttributeKeyString.lastName),
