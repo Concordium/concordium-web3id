@@ -2108,6 +2108,19 @@ export default function Main(props: WalletConnectionProps) {
                     </div>
                 </div>
             )}
-        </main>
+            <br />
+            <div className="text-center">
+                <a
+                    className="link"
+                    target="_blank"
+                    rel="noreferrer"
+                    href={`https://github.com/Concordium/concordium-web3id/tree/main/test-tools/issuer-front-end`}
+                >
+                    Source code
+                </a>
+            </div>
+            <br />
+            <br />
+        </main >
     );
 }

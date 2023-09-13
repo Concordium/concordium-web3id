@@ -1,7 +1,7 @@
 {
     "name": "proof-explorer",
     "license": "Apache-2.0",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "packageManager": "yarn@3.2.0",
     "dependencies": {
         "@concordium/browser-wallet-api-helpers": "2.7.0",

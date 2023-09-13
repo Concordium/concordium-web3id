@@ -150,13 +150,13 @@ export default function CreateSchemaAndMetadataFiles() {
                 <Row>
                     <p>
                         An issuer of verifiable credentials must define information about itself, and about the
-                        credentials. This information is used by verifiers to establish trust into the issuer, and by
-                        the wallet to display the credentials.
+                        credentials. This information is used by verifiers to establish trust in the issuer, and by the
+                        wallet to display the credentials.
                     </p>
 
                     <p>
-                        This page helps defining the information in the formats that are expected. More information
-                        about an issuer can be found on Concordium&#39;s{' '}
+                        This page helps define the information in the formats that are expected. More information about
+                        an issuer can be found on Concordium&#39;s{' '}
                         <a
                             href="https://developer.concordium.software/en/mainnet/net/web3-id/issuer.html"
                             target="_blank"
@@ -365,8 +365,8 @@ export default function CreateSchemaAndMetadataFiles() {
                     <AccordionHeader>CredentialMetadata</AccordionHeader>
                     <AccordionBody>
                         The credential metadata describes the details of a single credential, such as logo, background
-                        image or color. Like the JSON schema, the credential metadata must be hosted
-                        at a public URL and will also be used by the wallet to style the credential.
+                        image or color. Like the JSON schema, the credential metadata must be hosted at a public URL and
+                        will also be used by the wallet to style the credential.
                         <Form>
                             <Form.Group className="mb-3">
                                 <Form.Label>Title</Form.Label>
@@ -465,7 +465,7 @@ export default function CreateSchemaAndMetadataFiles() {
                 <AccordionItem eventKey="IssuerMetadata">
                     <AccordionHeader>IssuerMetadata</AccordionHeader>
                     <AccordionBody>
-                        The issuerMetadata is a JSON object describing the <strong>issuer</strong>, compared to the
+                        The issuerMetadata is a JSON object describing the <strong>issuer</strong> rather than the
                         credential. It allows for styling of the issuer.
                         <Form onSubmit={issuerMetadataForm.handleSubmit((x: any) => x)}>
                             <Form.Group className="mb-3">
