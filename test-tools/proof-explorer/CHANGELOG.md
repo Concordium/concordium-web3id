@@ -1,5 +1,9 @@
 ## Unreleased changes.
 
+## 1.0.5
+
+Add link to the source code.
+
 ## 1.0.4
 
 Fix the date format when submitting proof.

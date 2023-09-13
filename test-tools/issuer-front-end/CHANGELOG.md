@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 1.0.12
+
+Add link to the source code.
+
 ## 1.0.11
 
 - Update module reference for the credential registry contract.

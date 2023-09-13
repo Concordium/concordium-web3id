@@ -1109,6 +1109,18 @@ export default function ProofExplorer() {
                     <hr />
                     <Statement inner={statement} new_statement={new_statement} />
                 </div>
+                <div className="text-center">
+                    <a
+                        className="link"
+                        target="_blank"
+                        rel="noreferrer"
+                        href={`https://github.com/Concordium/concordium-web3id/tree/main/test-tools/proof-explorer`}
+                    >
+                        Source code
+                    </a>
+                </div>
+                <br />
+                <br />
             </div>
         </main>
     );
