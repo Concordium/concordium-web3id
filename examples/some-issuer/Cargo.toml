@@ -34,5 +34,5 @@ http = "0.2"
 tonic = { version = "0.8", features = ["tls", "tls-roots"] }
 handlebars = "4.3"
 futures = "0.3"
-thiserror = "1.0.48"
-axum-prometheus = "0.4.0"
+thiserror = "1.0"
+axum-prometheus = "0.4"
