@@ -472,9 +472,15 @@ pub async fn start_services(
             .with_graceful_shutdown(shutdown_trigger(server_receiver)),
     );
 
+    // Wait until something triggers shutdown. Either a signal handler or an error
+    // in the service startup or transaction sender.
     shutdown_trigger(died_receiver).await;
     tracing::info!("Received shutdown trigger.");
 
+    // Wait for the server to shut down itself. However this might not happen since
+    // open connections can make it wait until the client drops them.
+    // Thus we wait for 5s only, which should be sufficient to handle any
+    // outstanding requests. After that we forcefully kill it.
     let res = tokio::time::timeout(std::time::Duration::from_secs(5), server_handle).await;
 
     if res.is_err() {
@@ -482,10 +488,11 @@ pub async fn start_services(
             "Unable to stop the server gracefully in required time. Terminating forcefully."
         )
     }
-    // drop the sender explicitly. Since the server is now not responding even if
+    // Abort the sender explicitly. Since the server is now not responding even if
     // there are any pending transactions there is no point in sending them/waiting
     // for them to be sent.
-    drop(transaction_sender);
+    // This would happen implicitly as well, so this is here just for documentation.
+    transaction_sender.abort();
 
     Ok(())
 }
