@@ -77,6 +77,8 @@ The following configuration options are supported
           The domain of the verifier dApp, used for CORS. [env: DISCORD_ISSUER_VERIFIER_DAPP_URL=] [default: http://127.0.0.1]
       --frontend <FRONTEND_ASSETS>
           Path to the directory where frontend assets are located. [env: DISCORD_ISSUER_FRONTEND=] [default: ./frontend/dist/discord]
+      --prometheus-address <PROMETHEUS_ADDRESS>
+          If set, a /metrics endpoint will be available on the address. [env: DISCORD_ISSUER_PROMETHEUS_ADDRESS=]
 
 
 ### Configuration of the telegram issuer
@@ -109,4 +111,6 @@ The following configuration options are supported
           The name (handle) of the Telegram bot. [env: TELEGRAM_ISSUER_TELEGRAM_BOT_NAME=]
       --frontend <FRONTEND_ASSETS>
           Path to the directory where frontend assets are located. [env: TELEGRAM_ISSUER_FRONTEND=] [default: ./frontend/dist/telegram]
+      --prometheus-address <PROMETHEUS_ADDRESS>
+          If set, a /metrics endpoint will be available on the address. [env: TELEGRAM_ISSUER_PROMETHEUS_ADDRESS=]
 

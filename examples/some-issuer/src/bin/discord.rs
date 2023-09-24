@@ -5,6 +5,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use axum_prometheus::PrometheusMetricLayerBuilder;
 use axum_sessions::{
     async_session::CookieStore,
     extractors::{ReadableSession, WritableSession},
@@ -24,7 +25,7 @@ use rand::Rng;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use some_issuer::{set_shutdown, IssueResponse, IssuerState, SyncState};
+use some_issuer::{start_services, IssueChannelData, IssuerWorker, SyncState};
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -146,11 +147,17 @@ struct App {
         env = "DISCORD_ISSUER_RATE_LIMIT_REPEATS"
     )]
     rate_limit_max_repeats: usize,
+    #[clap(
+        long = "prometheus-address",
+        help = "If set, a /metrics endpoint will be available on the address.",
+        env = "DISCORD_ISSUER_PROMETHEUS_ADDRESS"
+    )]
+    prometheus_address: Option<std::net::SocketAddr>,
 }
 
 #[derive(Clone)]
 struct AppState {
-    issuer:                IssuerState,
+    issuer_sender:         tokio::sync::mpsc::Sender<IssueChannelData>,
     discord_client_id:     Arc<str>,
     discord_client_secret: Arc<str>,
     http_client:           reqwest::Client,
@@ -237,7 +244,7 @@ struct FrontendConfig {
 }
 
 /// Handles OAuth2 redirects and inserts an id in the session.
-#[tracing::instrument(level = "debug", skip(state))]
+#[tracing::instrument(level = "debug", skip(state, session))]
 async fn handle_oauth_redirect(
     State(state): State<AppState>,
     Query(params): Query<Oauth2RedirectParams>,
@@ -274,7 +281,7 @@ async fn issue_discord_credential(
     State(state): State<AppState>,
     session: ReadableSession,
     Json(request): Json<DiscordIssueRequest>,
-) -> Result<Json<IssueResponse>, StatusCode> {
+) -> Result<Json<serde_json::Value>, StatusCode> {
     tracing::debug!("Issuing Discord credential.");
     let user_id = match session.get("discord_id") {
         Some(id) => id,
@@ -292,10 +299,26 @@ async fn issue_discord_credential(
         }
     };
 
-    state
-        .issuer
-        .issue_credential(&request.credential, user_id, username)
-        .await
+    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+    let data = IssueChannelData {
+        credential: request.credential,
+        user_id,
+        username,
+        response_sender,
+    };
+    if state.issuer_sender.send(data).await.is_err() {
+        tracing::error!("Failed enqueueing transaction. The transaction sender task died.");
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    if let Ok(r) = response_receiver.await {
+        r.map(Json)
+    } else {
+        // There is no information in the error.
+        tracing::error!(
+            "Failed sending transaction; did not get response from transaction sender."
+        );
+        Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
 }
 
 impl AppState {
@@ -477,26 +500,11 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Unable to get registry metadata")?;
 
-    let issuer = IssuerState {
-        crypto_params: Arc::new(crypto_params),
-        contract_client,
-        credential_type: registry_metadata.credential_type,
-        network: app.network,
-        issuer: Arc::new(issuer_account),
-        issuer_key: Arc::new(issuer_key),
-        state: Arc::new(tokio::sync::Mutex::new(SyncState::new(
-            nonce.nonce,
-            app.rate_limit_queue_capacity,
-            app.rate_limit_max_repeats,
-        ))),
-        max_register_energy: app.max_register_energy,
-        metadata_url: Arc::new(metadata_url),
-        credential_schema_url: registry_metadata.credential_schema.schema_ref.url().into(),
-    };
+    let (issuer_sender, issuer_receiver) = tokio::sync::mpsc::channel(100);
 
     let discord_redirect_uri = app.url.join("discord-oauth2")?;
     let state = AppState {
-        issuer,
+        issuer_sender,
         discord_client_id: app.discord_client_id.clone().into(),
         discord_client_secret: app.discord_client_secret.into(),
         http_client,
@@ -546,7 +554,11 @@ async fn main() -> anyhow::Result<()> {
     let serve_dir_service = ServeDir::new(app.frontend_assets.join("assets"));
     let json_schema_service = ServeDir::new("json-schemas/discord");
 
-    tracing::info!("Starting server...");
+    let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
+        .with_prefix("discord")
+        .with_default_metrics()
+        .build_pair();
+
     let router = Router::new()
         .route("/", get(|| async { Html(index_html) }))
         .nest_service("/assets", serve_dir_service)
@@ -566,16 +578,33 @@ async fn main() -> anyhow::Result<()> {
             std::time::Duration::from_millis(app.request_timeout),
         ))
         .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)) // at most 100kB of data
-        .layer(tower_http::compression::CompressionLayer::new());
+        .layer(tower_http::compression::CompressionLayer::new())
+        .layer(prometheus_layer);
 
-    tracing::info!("Starting server on {}...", app.listen_address);
+    let issuer_state = IssuerWorker {
+        crypto_params: Arc::new(crypto_params),
+        contract_client,
+        credential_type: registry_metadata.credential_type,
+        network: app.network,
+        issuer: Arc::new(issuer_account),
+        issuer_key: Arc::new(issuer_key),
+        state: SyncState::new(
+            nonce.nonce,
+            app.rate_limit_queue_capacity,
+            app.rate_limit_max_repeats,
+        ),
+        max_register_energy: app.max_register_energy,
+        metadata_url: Arc::new(metadata_url),
+        credential_schema_url: registry_metadata.credential_schema.schema_ref.url().into(),
+        receiver: issuer_receiver,
+    };
 
-    // Start handling of shutdown signals now, before starting the server.
-    let shutdown_signal = set_shutdown()?;
-
-    axum::Server::bind(&app.listen_address)
-        .serve(router.into_make_service())
-        .with_graceful_shutdown(shutdown_signal)
-        .await
-        .context("Unable to start server.")
+    start_services(
+        issuer_state,
+        metric_handle,
+        app.prometheus_address,
+        app.listen_address,
+        router,
+    )
+    .await
 }

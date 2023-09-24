@@ -1,4 +1,6 @@
-use axum::Json;
+use anyhow::Context;
+use axum::Router;
+use axum_prometheus::metrics_exporter_prometheus::PrometheusHandle;
 use axum_sessions::async_session::chrono::{self, TimeZone};
 use concordium_rust_sdk::{
     cis4::{Cis4Contract, Cis4TransactionError, Cis4TransactionMetadata},
@@ -13,12 +15,14 @@ use concordium_rust_sdk::{
         hashes::TransactionHash, transactions::send::GivenEnergy, CryptographicParameters, Energy,
         Nonce, WalletAccount,
     },
+    v2::RPCError,
     web3id::{did::Network, SignedCommitments, Web3IdAttribute, Web3IdCredential},
 };
 use reqwest::{StatusCode, Url};
 use serde::Serialize;
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
+    net::SocketAddr,
     sync::Arc,
 };
 
@@ -72,18 +76,137 @@ impl SyncState {
     }
 }
 
-#[derive(Clone)]
-pub struct IssuerState {
+/// Data sent on a channel from the request handler task to the transaction
+/// sender task.
+#[derive(Debug)]
+pub struct IssueChannelData {
+    pub credential:      CredentialInfo,
+    pub user_id:         String,
+    pub username:        String,
+    /// The channel where the response is sent. The type that is sent is
+    /// [`IssueResponse`], however that type is not [`Send`] so we serialize it
+    /// to a JSON value in the worker thread instead.
+    pub response_sender: tokio::sync::oneshot::Sender<Result<serde_json::Value, StatusCode>>,
+}
+
+pub struct IssuerWorker {
     pub crypto_params:         Arc<CryptographicParameters>,
     pub contract_client:       Cis4Contract,
     pub network:               Network,
     pub issuer:                Arc<WalletAccount>,
     pub issuer_key:            Arc<KeyPair>,
     pub credential_type:       CredentialType,
-    pub state:                 Arc<tokio::sync::Mutex<SyncState>>,
+    pub state:                 SyncState,
     pub max_register_energy:   Energy,
     pub metadata_url:          Arc<Url>,
     pub credential_schema_url: Arc<str>,
+    /// A channel where new issue requests will be given.
+    pub receiver:              tokio::sync::mpsc::Receiver<IssueChannelData>,
+}
+
+fn send_and_log<T>(sender: tokio::sync::oneshot::Sender<T>, msg: T) {
+    if sender.send(msg).is_err() {
+        tracing::warn!("Unabled to send response. The request has been cancelled.");
+    }
+}
+
+impl IssuerWorker {
+    /// A transaction sender job. This listens for incoming issue requests and
+    /// sends transactions to the chain.
+    ///
+    /// This is intended to be run in a background task that is started once.
+    /// The task is not cancel-safe in the sense that if it is cancelled, the
+    /// state of [`IssuerWorker`] might be inconsistent. This is why this
+    /// function consumes [`Self`].
+    #[tracing::instrument(level = "debug", skip_all)]
+    async fn tx_sender(mut self) {
+        while let Some(IssueChannelData {
+            credential,
+            user_id,
+            username,
+            response_sender,
+        }) = self.receiver.recv().await
+        {
+            if let Err(err) = self.validate_credential(&credential) {
+                tracing::warn!("Failed to validate credential: {err}");
+                send_and_log(response_sender, Err(StatusCode::BAD_REQUEST));
+                continue;
+            }
+
+            let tx_hash = match self
+                .register_credential(&credential, user_id.as_str(), username.as_str())
+                .await
+            {
+                Ok(tx_hash) => {
+                    tracing::debug!(
+                        "Successfully registered credential with id {} (tx {tx_hash}).",
+                        credential.holder_id
+                    );
+                    tx_hash
+                }
+                Err(RegisterCredentialError::LimitExceeded { user_id }) => {
+                    tracing::info!("Rejecting credential for user id {user_id} due to rate limit.");
+                    send_and_log(response_sender, Err(StatusCode::TOO_MANY_REQUESTS));
+                    continue;
+                }
+                Err(RegisterCredentialError::Chain(Cis4TransactionError::RPCError(
+                    RPCError::CallError(err),
+                ))) if err.code() == tonic::Code::InvalidArgument => {
+                    tracing::error!(
+                        "Transaction rejected by the node: {err}
+                         Assuming account sequence number is incorrect, or some other \
+                         inconsistency, and terminating."
+                    );
+                    send_and_log(response_sender, Err(StatusCode::INTERNAL_SERVER_ERROR));
+                    break;
+                }
+                Err(RegisterCredentialError::Chain(Cis4TransactionError::NodeRejected(rr))) => {
+                    tracing::warn!("Bad request rejected by the contract: {rr:?}");
+                    send_and_log(response_sender, Err(StatusCode::BAD_REQUEST));
+                    continue;
+                }
+                Err(RegisterCredentialError::Chain(other_err)) => {
+                    tracing::error!("Failed to register credential: {other_err}");
+                    send_and_log(response_sender, Err(StatusCode::BAD_GATEWAY));
+                    continue;
+                }
+                Err(err) => {
+                    tracing::error!("Failed to register credential: {err}");
+                    send_and_log(response_sender, Err(StatusCode::INTERNAL_SERVER_ERROR));
+                    continue;
+                }
+            };
+            let values: BTreeMap<_, _> = BTreeMap::from([
+                (
+                    String::from("userId"),
+                    Web3IdAttribute::String(AttributeKind(user_id)),
+                ),
+                (
+                    String::from("username"),
+                    Web3IdAttribute::String(AttributeKind(username)),
+                ),
+            ]);
+            let credential = match self.make_secrets(values, &credential) {
+                Ok(credential) => credential,
+                Err(e) => {
+                    tracing::error!("Unable to create secrets: {e}");
+                    send_and_log(response_sender, Err(StatusCode::INTERNAL_SERVER_ERROR));
+                    return;
+                }
+            };
+            let response = IssueResponse {
+                tx_hash,
+                credential,
+            };
+            send_and_log(
+                response_sender,
+                Ok(serde_json::to_value(&response)
+                    .expect("Serialization of web3id credentials does not fail.")),
+            );
+        }
+        // All senders of the channel have been dropped.
+        tracing::info!("The transaction sender was stopped.");
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -95,6 +218,8 @@ pub struct IssueResponse {
 
 #[derive(thiserror::Error, Debug)]
 pub enum RegisterCredentialError {
+    #[error("Credential is not valid.")]
+    InvalidCredential,
     #[error("Limit of credentials for id {user_id} exceeded.")]
     LimitExceeded { user_id: String },
     #[error("Error sending transaction: {0}")]
@@ -114,7 +239,7 @@ pub enum MakeSecretsError {
     InvalidTimestamp,
 }
 
-impl IssuerState {
+impl IssuerWorker {
     /// Checks that the credential is reasonable.
     fn validate_credential(&self, credential: &CredentialInfo) -> anyhow::Result<()> {
         anyhow::ensure!(
@@ -140,61 +265,26 @@ impl IssuerState {
         Ok(())
     }
 
-    #[tracing::instrument(level = "debug", skip(self, credential))]
-    pub async fn issue_credential(
-        self,
-        credential: &CredentialInfo,
-        user_id: String,
-        username: String,
-    ) -> Result<Json<IssueResponse>, StatusCode> {
-        tracing::debug!("Request to issue a credential.");
-
-        if let Err(err) = self.validate_credential(credential) {
-            tracing::warn!("Failed to validate credential: {err}");
-            return Err(StatusCode::BAD_REQUEST);
-        }
-
-        match self
-            .register_credential(credential, user_id, username)
-            .await
-        {
-            Ok(res) => {
-                tracing::debug!(
-                    "Successfully issued credential with id {}.",
-                    credential.holder_id
-                );
-                Ok(Json(res))
-            }
-            Err(RegisterCredentialError::LimitExceeded { user_id }) => {
-                tracing::info!("Rejecting credential for user id {user_id} due to rate limit.");
-                Err(StatusCode::TOO_MANY_REQUESTS)
-            }
-            Err(err) => {
-                tracing::error!("Failed to register credential: {err}");
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        }
-    }
-
-    #[tracing::instrument(level = "debug", skip(self, credential))]
+    #[tracing::instrument(level = "debug", skip(self, credential), fields(holder_id = %credential.holder_id))]
     pub async fn register_credential(
-        mut self,
+        &mut self,
         credential: &CredentialInfo,
-        user_id: String,
-        username: String,
-    ) -> Result<IssueResponse, RegisterCredentialError> {
+        user_id: &str,
+        username: &str,
+    ) -> Result<TransactionHash, RegisterCredentialError> {
         tracing::debug!("Registering a credential.");
-        let mut state_guard = self.state.lock().await;
-        if !state_guard.limit.check_limit(user_id.as_str()) {
-            return Err(RegisterCredentialError::LimitExceeded { user_id });
+        if !self.state.limit.check_limit(user_id) {
+            return Err(RegisterCredentialError::LimitExceeded {
+                user_id: user_id.into(),
+            });
         }
         // Compute expiry after acquiring the lock to make sure we don't wait
         // too long before acquiring the lock, rendering expiry problematic
         let expiry = TransactionTime::minutes_after(5);
-        tracing::debug!("Using nonce {} to send the transaction.", state_guard.nonce);
+        tracing::debug!("Using nonce {} to send the transaction.", self.state.nonce);
         let metadata = Cis4TransactionMetadata {
             sender_address: self.issuer.address,
-            nonce: state_guard.nonce,
+            nonce: self.state.nonce,
             expiry,
             energy: GivenEnergy::Add(self.max_register_energy),
             amount: Amount::zero(),
@@ -204,25 +294,9 @@ impl IssuerState {
             .contract_client
             .register_credential(&*self.issuer, &metadata, credential, &[])
             .await?;
-        state_guard.nonce.next_mut();
-        state_guard.limit.update_limit(user_id.as_str());
-        drop(state_guard);
-        let values: BTreeMap<_, _> = BTreeMap::from([
-            (
-                String::from("userId"),
-                Web3IdAttribute::String(AttributeKind(user_id)),
-            ),
-            (
-                String::from("username"),
-                Web3IdAttribute::String(AttributeKind(username)),
-            ),
-        ]);
-        let credential = self.make_secrets(values, credential)?;
-
-        Ok(IssueResponse {
-            tx_hash,
-            credential,
-        })
+        self.state.nonce.next_mut();
+        self.state.limit.update_limit(user_id);
+        Ok(tx_hash)
     }
 
     fn make_secrets(
@@ -283,7 +357,7 @@ impl IssuerState {
 /// Construct a future for shutdown signals (for unix: SIGINT and SIGTERM) (for
 /// windows: ctrl c and ctrl break). The signal handler is set when the future
 /// is polled and until then the default signal handler.
-pub fn set_shutdown() -> anyhow::Result<impl futures::Future<Output = ()>> {
+fn set_shutdown() -> anyhow::Result<impl futures::Future<Output = ()>> {
     use futures::FutureExt;
     #[cfg(unix)]
     {
@@ -316,5 +390,108 @@ pub fn set_shutdown() -> anyhow::Result<impl futures::Future<Output = ()>> {
             .map(|_| ())
             .await
         })
+    }
+}
+
+/// Like `tokio::spawn` but the provided future is modified so that
+/// once it terminates it sends a message on the provided channel.
+/// This is sent regardless of how the future terminates, as long as it
+/// terminates normally (i.e., does not panic).
+pub fn spawn_cancel<T>(
+    died_sender: tokio::sync::broadcast::Sender<()>,
+    future: T,
+) -> tokio::task::JoinHandle<T::Output>
+where
+    T: futures::Future + Send + 'static,
+    T::Output: Send + 'static, {
+    tokio::spawn(async move {
+        let res = future.await;
+        // We ignore errors here since this always happens at the end of a task.
+        // Since we keep one receiver alive until the end of the `main` function
+        // the error should not happen anyhow.
+        let _ = died_sender.send(());
+        res
+    })
+}
+
+pub async fn start_services(
+    issuer_state: IssuerWorker,
+    metric_handle: PrometheusHandle,
+    prometheus_address: Option<SocketAddr>,
+    listen_address: SocketAddr,
+    router: Router,
+) -> anyhow::Result<()> {
+    let (died_sender, died_receiver) = tokio::sync::broadcast::channel(10);
+    // We create additional receivers of the broadcast messages.
+    // We do this before any message is potentially sent to make sure all receivers
+    // will receive them.
+    let prometheus_receiver = died_sender.subscribe();
+    let server_receiver = died_sender.subscribe();
+
+    {
+        let died_sender = died_sender.clone();
+        // Start handling of shutdown signals now, before starting the server.
+        let shutdown_signal = set_shutdown()?;
+        tokio::spawn(async move {
+            shutdown_signal.await;
+            if died_sender.send(()).is_err() {
+                tracing::error!("Unable to notify shutdown.");
+            }
+        });
+    }
+
+    if let Some(prometheus_address) = prometheus_address {
+        let prometheus_api = axum::Router::new()
+            .route(
+                "/metrics",
+                axum::routing::get(|| async move { metric_handle.render() }),
+            )
+            .layer(tower_http::timeout::TimeoutLayer::new(
+                std::time::Duration::from_millis(1000),
+            ))
+            .layer(tower_http::limit::RequestBodyLimitLayer::new(0));
+        tracing::info!("Starting prometheus server at {prometheus_address}.");
+        spawn_cancel(died_sender.clone(), async move {
+            axum::Server::bind(&prometheus_address)
+                .serve(prometheus_api.into_make_service())
+                .with_graceful_shutdown(shutdown_trigger(prometheus_receiver))
+                .await
+                .context("Unable to start Prometheus server.")?;
+            Ok::<(), anyhow::Error>(())
+        });
+    }
+
+    let transaction_sender = spawn_cancel(died_sender.clone(), issuer_state.tx_sender());
+
+    tracing::info!("Starting server on {}...", listen_address);
+    let server_handle = spawn_cancel(
+        died_sender.clone(),
+        axum::Server::bind(&listen_address)
+            .http1_header_read_timeout(std::time::Duration::from_secs(5))
+            .serve(router.into_make_service())
+            .with_graceful_shutdown(shutdown_trigger(server_receiver)),
+    );
+
+    shutdown_trigger(died_receiver).await;
+    tracing::info!("Received shutdown trigger.");
+
+    let res = tokio::time::timeout(std::time::Duration::from_secs(5), server_handle).await;
+
+    if res.is_err() {
+        tracing::error!(
+            "Unable to stop the server gracefully in required time. Terminating forcefully."
+        )
+    }
+    // drop the sender explicitly. Since the server is now not responding even if
+    // there are any pending transactions there is no point in sending them/waiting
+    // for them to be sent.
+    drop(transaction_sender);
+
+    Ok(())
+}
+
+async fn shutdown_trigger(mut receiver: tokio::sync::broadcast::Receiver<()>) {
+    if receiver.recv().await.is_err() {
+        tracing::error!("Shutdown channel unexpectedly closed.");
     }
 }
