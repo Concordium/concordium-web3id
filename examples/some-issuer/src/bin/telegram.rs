@@ -21,7 +21,7 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use some_issuer::{start_services, IssueChannelData, IssuerWorker, SyncState};
+use some_issuer::{send_tx, start_services, IssueChannelData, IssuerWorker, SyncState};
 use std::{fmt::Write, fs, net::SocketAddr, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -257,29 +257,13 @@ async fn issue_telegram_credential(
         return Err(StatusCode::BAD_REQUEST)
     };
 
-    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
-    let data = IssueChannelData {
-        credential: request.credential,
-        user_id: request.telegram_user.id.to_string(),
+    send_tx(
+        request.credential,
+        request.telegram_user.id.to_string(),
         username,
-        response_sender,
-    };
-    if state.issuer_sender.send(data).await.is_err() {
-        tracing::error!("Failed enqueueing transaction. The transaction sender task died.");
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
-    if let Ok(r) = response_receiver.await {
-        if r.is_ok() {
-            tracing::debug!("Responding with verifiable credential.")
-        } else {
-            tracing::debug!("Failed to issue credential.")
-        }
-        r.map(Json)
-    } else {
-        // There is no information in the error.
-        tracing::error!("Failed sending transaction; did not get response from issuer.");
-        Err(StatusCode::INTERNAL_SERVER_ERROR)
-    }
+        &state.issuer_sender,
+    )
+    .await
 }
 
 #[derive(serde::Serialize)]

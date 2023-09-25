@@ -502,3 +502,32 @@ async fn shutdown_trigger(mut receiver: tokio::sync::broadcast::Receiver<()>) {
         tracing::error!("Shutdown channel unexpectedly closed.");
     }
 }
+
+#[tracing::instrument(level = "debug", skip_all, fields(holder_id = %credential.holder_id))]
+pub async fn send_tx(
+    credential: CredentialInfo,
+    user_id: String,
+    username: String,
+    sender: &tokio::sync::mpsc::Sender<IssueChannelData>,
+) -> Result<axum::Json<serde_json::Value>, StatusCode> {
+    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+    let data = IssueChannelData {
+        credential,
+        user_id,
+        username,
+        response_sender,
+    };
+    if sender.send(data).await.is_err() {
+        tracing::error!("Failed enqueueing transaction. The transaction sender task died.");
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+    if let Ok(r) = response_receiver.await {
+        r.map(axum::Json)
+    } else {
+        // There is no information in the error.
+        tracing::error!(
+            "Failed sending transaction; did not get response from transaction sender."
+        );
+        Err(StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}

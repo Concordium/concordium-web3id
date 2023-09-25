@@ -25,7 +25,7 @@ use rand::Rng;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use some_issuer::{start_services, IssueChannelData, IssuerWorker, SyncState};
+use some_issuer::{send_tx, start_services, IssueChannelData, IssuerWorker, SyncState};
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -299,26 +299,7 @@ async fn issue_discord_credential(
         }
     };
 
-    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
-    let data = IssueChannelData {
-        credential: request.credential,
-        user_id,
-        username,
-        response_sender,
-    };
-    if state.issuer_sender.send(data).await.is_err() {
-        tracing::error!("Failed enqueueing transaction. The transaction sender task died.");
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
-    if let Ok(r) = response_receiver.await {
-        r.map(Json)
-    } else {
-        // There is no information in the error.
-        tracing::error!(
-            "Failed sending transaction; did not get response from transaction sender."
-        );
-        Err(StatusCode::INTERNAL_SERVER_ERROR)
-    }
+    send_tx(request.credential, user_id, username, &state.issuer_sender).await
 }
 
 impl AppState {
