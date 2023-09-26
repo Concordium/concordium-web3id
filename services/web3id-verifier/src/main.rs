@@ -195,6 +195,11 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("Listening on: {}", app.listen_address);
     }
 
+    anyhow::ensure!(
+        app.request_timeout >= 1000,
+        "Request timeout should be at least 1s."
+    );
+
     let endpoint = if app
         .endpoint
         .uri()
@@ -206,9 +211,18 @@ async fn main() -> anyhow::Result<()> {
             .context("Unable to construct TLS configuration for Concordium API.")?
     } else {
         app.endpoint
-    }
-    .connect_timeout(std::time::Duration::from_secs(10))
-    .timeout(std::time::Duration::from_millis(app.request_timeout));
+    };
+
+    // Make it 500ms less than request timeout to make sure we can fail properly
+    // with a connection timeout in case of node connectivity problems.
+    let node_timeout = std::time::Duration::from_millis(app.request_timeout - 500);
+
+    let endpoint = endpoint
+        .connect_timeout(node_timeout)
+        .timeout(node_timeout)
+        .http2_keep_alive_interval(std::time::Duration::from_secs(300))
+        .keep_alive_timeout(std::time::Duration::from_secs(10))
+        .keep_alive_while_idle(true);
 
     let mut client = v2::Client::new(endpoint)
         .await
