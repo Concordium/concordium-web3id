@@ -15,7 +15,7 @@ use concordium_rust_sdk::{
         hashes::TransactionHash, transactions::send::GivenEnergy, CryptographicParameters, Energy,
         Nonce, WalletAccount,
     },
-    v2::RPCError,
+    v2::{self, RPCError},
     web3id::{did::Network, SignedCommitments, Web3IdAttribute, Web3IdCredential},
 };
 use reqwest::{StatusCode, Url};
@@ -25,6 +25,7 @@ use std::{
     net::SocketAddr,
     sync::Arc,
 };
+use tonic::transport::ClientTlsConfig;
 
 pub struct SyncState {
     nonce: Nonce,
@@ -530,4 +531,38 @@ pub async fn send_tx(
         );
         Err(StatusCode::INTERNAL_SERVER_ERROR)
     }
+}
+
+pub fn configure_endpoint(
+    endpoint: v2::Endpoint,
+    timeout: std::time::Duration,
+) -> anyhow::Result<v2::Endpoint> {
+    anyhow::ensure!(
+        timeout.as_millis() >= 1000,
+        "Request timeout should be at least 1s."
+    );
+
+    let endpoint = if endpoint
+        .uri()
+        .scheme()
+        .map_or(false, |x| x == &http::uri::Scheme::HTTPS)
+    {
+        endpoint
+            .tls_config(ClientTlsConfig::new())
+            .context("Unable to construct TLS configuration for Concordium API.")?
+    } else {
+        endpoint
+    };
+
+    // Make it 500ms less than request timeout to make sure we can fail properly
+    // with a connection timeout in case of node connectivity problems.
+    let node_timeout = timeout - std::time::Duration::from_millis(500);
+
+    let endpoint = endpoint
+        .connect_timeout(node_timeout)
+        .timeout(node_timeout)
+        .http2_keep_alive_interval(std::time::Duration::from_secs(300))
+        .keep_alive_timeout(std::time::Duration::from_secs(10))
+        .keep_alive_while_idle(true);
+    Ok(endpoint)
 }

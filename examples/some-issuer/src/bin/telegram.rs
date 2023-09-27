@@ -21,9 +21,10 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use some_issuer::{send_tx, start_services, IssueChannelData, IssuerWorker, SyncState};
+use some_issuer::{
+    configure_endpoint, send_tx, start_services, IssueChannelData, IssuerWorker, SyncState,
+};
 use std::{fmt::Write, fs, net::SocketAddr, path::PathBuf, sync::Arc};
-use tonic::transport::ClientTlsConfig;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
 const HTML_TITLE: &str = "Telegram Web3 ID issuer";
@@ -294,21 +295,10 @@ async fn main() -> anyhow::Result<()> {
             .init();
     }
 
-    let endpoint = if app
-        .endpoint
-        .uri()
-        .scheme()
-        .map_or(false, |x| x == &http::uri::Scheme::HTTPS)
-    {
-        app.endpoint
-            .tls_config(ClientTlsConfig::new())
-            .context("Unable to construct TLS configuration for Concordium API.")?
-    } else {
-        app.endpoint
-    }
-    .connect_timeout(std::time::Duration::from_secs(10))
-    .timeout(std::time::Duration::from_millis(app.request_timeout));
-
+    let endpoint = configure_endpoint(
+        app.endpoint,
+        std::time::Duration::from_millis(app.request_timeout),
+    )?;
     tracing::info!("Connecting to node...");
 
     let mut node_client = v2::Client::new(endpoint)

@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## Telegram/Discord 1.0.2
+
+- Make the node connection more robust against timeouts in case of idle connections.
+
 ## Telegram/Discord 1.0.1
 
 - Add an option to start a prometheus server with basic request metrics (response

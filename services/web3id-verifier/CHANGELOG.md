@@ -1,3 +1,7 @@
+## 0.4.2
+
+- Make the node connection more robust against drops when idle.
+
 ## 0.4.1
 
 - Fix date-time attribute support by changing epoch to `-262144-01-01T00:00:00Z` from Unix epoch.
