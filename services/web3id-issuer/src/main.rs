@@ -112,6 +112,75 @@ struct App {
     max_register_energy: Energy,
 }
 
+/// Data sent on a channel from the request handler task to the transaction
+/// sender task.
+#[derive(Debug)]
+struct IssueChannelData {
+    credential:      CredentialInfo,
+    /// The channel where the response is sent.
+    response_sender: tokio::sync::oneshot::Sender<Result<TransactionHash, Error>>,
+}
+
+struct IssuerWorker {
+    client:              Cis4Contract,
+    issuer:              WalletAccount,
+    nonce_counter:       Nonce,
+    max_register_energy: Energy,
+    /// A channel where new issue requests will be given.
+    receiver:            tokio::sync::mpsc::Receiver<IssueChannelData>,
+}
+
+impl IssuerWorker {
+    /// A transaction sender job. This listens for incoming issue requests and
+    /// sends transactions to the chain.
+    ///
+    /// This is intended to be run in a background task that is started once.
+    /// The task is not cancel-safe in the sense that if it is cancelled, the
+    /// state of [`IssuerWorker`] might be inconsistent. This is why this
+    /// function consumes `self`.
+    #[tracing::instrument(level = "debug", skip_all)]
+    async fn tx_sender(mut self) {
+        while let Some(IssueChannelData {
+            credential,
+            response_sender,
+        }) = self.receiver.recv().await
+        {
+            let expiry = TransactionTime::minutes_after(5);
+            let metadata = Cis4TransactionMetadata {
+                sender_address: self.issuer.address,
+                nonce: self.nonce_counter,
+                expiry,
+                energy: GivenEnergy::Add(self.max_register_energy),
+                amount: Amount::zero(),
+            };
+
+            let res = self.register_credential(&credential, &metadata).await;
+            if response_sender.send(res).is_err() {
+                tracing::warn!("Unabled to send response. The request has been cancelled.");
+            }
+        }
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, fields(holder_id = %credential.holder_id))]
+    async fn register_credential(
+        &mut self,
+        credential: &CredentialInfo,
+        metadata: &Cis4TransactionMetadata,
+    ) -> Result<TransactionHash, Error> {
+        tracing::info!(
+            "Using nonce {} to send the transaction.",
+            self.nonce_counter
+        );
+
+        let tx_hash = self
+            .client
+            .register_credential(&self.issuer, metadata, credential, &[])
+            .await?;
+        self.nonce_counter.next_mut();
+        Ok(tx_hash)
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 enum Error {
     #[error("Unable to parse request: {0}")]
@@ -208,41 +277,13 @@ impl axum::response::IntoResponse for Error {
 
 #[derive(Clone, Debug)]
 struct State {
-    crypto_params:       Arc<CryptographicParameters>,
-    client:              Cis4Contract,
-    issuer:              Arc<WalletAccount>,
-    issuer_key:          Arc<KeyPair>,
-    nonce_counter:       Arc<tokio::sync::Mutex<Nonce>>,
-    network:             Network,
-    credential_schema:   String,
-    credential_type:     BTreeSet<String>,
-    max_register_energy: Energy,
-}
-
-#[derive(Debug, serde::Serialize)]
-#[serde(tag = "status")]
-enum StatusResponse {
-    #[serde(rename = "finalized")]
-    Finalized { block: BlockHash, success: bool },
-    #[serde(rename = "notFinalized")]
-    NotFinalized,
-}
-
-#[tracing::instrument(level = "info", skip(state, tx))]
-async fn status(
-    axum::extract::State(mut state): axum::extract::State<State>,
-    tx: Result<axum::extract::Path<TransactionHash>, PathRejection>,
-) -> Result<axum::Json<StatusResponse>, Error> {
-    let tx = tx?;
-    let status = state.client.client.get_block_item_status(&tx).await?;
-    if let Some((bh, summary)) = status.is_finalized() {
-        Ok(axum::Json(StatusResponse::Finalized {
-            block:   *bh,
-            success: summary.is_success(),
-        }))
-    } else {
-        Ok(axum::Json(StatusResponse::NotFinalized))
-    }
+    crypto_params:     Arc<CryptographicParameters>,
+    client:            Cis4Contract,
+    issuer_key:        Arc<KeyPair>,
+    network:           Network,
+    credential_schema: String,
+    credential_type:   BTreeSet<String>,
+    sender:            tokio::sync::mpsc::Sender<IssueChannelData>,
 }
 
 fn make_secrets(
@@ -288,26 +329,39 @@ fn make_secrets(
     })
 }
 
+#[derive(Debug, serde::Serialize)]
+#[serde(tag = "status")]
+enum StatusResponse {
+    #[serde(rename = "finalized")]
+    Finalized { block: BlockHash, success: bool },
+    #[serde(rename = "notFinalized")]
+    NotFinalized,
+}
+
+#[tracing::instrument(level = "info", skip(state, tx))]
+async fn status(
+    axum::extract::State(mut state): axum::extract::State<State>,
+    tx: Result<axum::extract::Path<TransactionHash>, PathRejection>,
+) -> Result<axum::Json<StatusResponse>, Error> {
+    let tx = tx?;
+    let status = state.client.client.get_block_item_status(&tx).await?;
+    if let Some((bh, summary)) = status.is_finalized() {
+        Ok(axum::Json(StatusResponse::Finalized {
+            block:   *bh,
+            success: summary.is_success(),
+        }))
+    } else {
+        Ok(axum::Json(StatusResponse::NotFinalized))
+    }
+}
+
 #[tracing::instrument(level = "info", skip(state, request))]
 async fn issue_credential(
-    axum::extract::State(mut state): axum::extract::State<State>,
+    axum::extract::State(state): axum::extract::State<State>,
     request: Result<axum::Json<IssueRequest>, JsonRejection>,
 ) -> Result<axum::Json<IssueResponse>, Error> {
     tracing::info!("Request to issue a credential.");
     let axum::Json(request) = request?;
-
-    let mut nonce_guard = state.nonce_counter.lock().await;
-    // compute expiry after acquiring the lock to make sure we don't wait
-    // too long before acquiring the lock, rendering expiry problematic.
-    let expiry = TransactionTime::minutes_after(5);
-    tracing::info!("Using nonce {} to send the transaction.", *nonce_guard);
-    let metadata = Cis4TransactionMetadata {
-        sender_address: state.issuer.address,
-        nonce: *nonce_guard,
-        expiry,
-        energy: GivenEnergy::Add(state.max_register_energy),
-        amount: Amount::zero(),
-    };
 
     let holder_id = request
         .credential_subject
@@ -344,18 +398,35 @@ async fn issue_credential(
         metadata_url: request.metadata_url.clone(),
     };
 
-    let tx_hash = state
-        .client
-        .register_credential(&*state.issuer, &metadata, &cred_info, &[])
-        .await?;
-    nonce_guard.next_mut();
-    drop(nonce_guard);
-    let credential = make_secrets(&state, holder_id, request)?;
+    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+    // Ask the issuer wormer to send the transaction.
+    if state
+        .sender
+        .send(IssueChannelData {
+            credential: cred_info,
+            response_sender,
+        })
+        .await
+        .is_err()
+    {
+        tracing::error!("Failed enqueueing transaction. The transaction sender task died.");
+        return Err(Error::Internal("Failed sending transaction.".into()));
+    }
 
-    Ok(axum::Json(IssueResponse {
-        tx_hash,
-        credential,
-    }))
+    if let Ok(r) = response_receiver.await {
+        let tx_hash = r?;
+        let credential = make_secrets(&state, holder_id, request)?;
+        Ok(axum::Json(IssueResponse {
+            tx_hash,
+            credential,
+        }))
+    } else {
+        // There is no information in the error.
+        tracing::error!(
+            "Failed sending transaction; did not get response from transaction sender."
+        );
+        Err(Error::Internal("Failed sending transaction.".into()))
+    }
 }
 
 #[tokio::main]
@@ -398,12 +469,10 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Unable to establish connection to the node.")?;
 
-    let issuer_key = Arc::new(
-        serde_json::from_reader(&std::fs::File::open(&app.issuer_key)?)
-            .context("Unable to read issuer's key.")?,
-    );
+    let issuer_key = serde_json::from_reader(&std::fs::File::open(&app.issuer_key)?)
+        .context("Unable to read issuer's key.")?;
 
-    let issuer = Arc::new(WalletAccount::from_json_file(app.wallet)?);
+    let issuer = WalletAccount::from_json_file(app.wallet)?;
 
     let nonce = client
         .get_next_account_sequence_number(&issuer.address)
@@ -427,9 +496,19 @@ async fn main() -> anyhow::Result<()> {
 
     let credential_schema = client.registry_metadata(BlockIdentifier::LastFinal).await?;
 
+    let (issuer_sender, issuer_receiver) = tokio::sync::mpsc::channel(100);
+
+    let worker = IssuerWorker {
+        client: client.clone(),
+        issuer,
+        nonce_counter: nonce.nonce,
+        max_register_energy: app.max_register_energy,
+        receiver: issuer_receiver,
+    };
+
     let state = State {
-        crypto_params: Arc::new(crypto_params),
         client,
+        crypto_params: Arc::new(crypto_params),
         network: app.network,
         credential_schema: credential_schema.credential_schema.schema_ref.url().into(),
         credential_type: [
@@ -439,10 +518,8 @@ async fn main() -> anyhow::Result<()> {
         ]
         .into_iter()
         .collect(),
-        issuer,
-        issuer_key,
-        nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
-        max_register_energy: app.max_register_energy,
+        issuer_key: Arc::new(issuer_key),
+        sender: issuer_sender,
     };
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
@@ -489,6 +566,10 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::cors::CorsLayer::permissive().allow_methods([http::Method::POST]))
         .layer(prometheus_layer);
 
+    // Start issuer worker.
+    tokio::spawn(worker.tx_sender());
+
+    // Start server.
     let server_shutdown = set_shutdown()?;
     let server_handle = tokio::spawn(async move {
         axum::Server::bind(&app.listen_address)
