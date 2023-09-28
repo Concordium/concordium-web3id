@@ -5,7 +5,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use axum_prometheus::PrometheusMetricLayerBuilder;
+use axum_prometheus::{
+    metrics_exporter_prometheus::PrometheusHandle, PrometheusMetricLayerBuilder,
+};
 use clap::Parser;
 use concordium_rust_sdk::{
     cis4::{Cis4Contract, Cis4TransactionError, Cis4TransactionMetadata},
@@ -26,6 +28,7 @@ use concordium_rust_sdk::{
 use futures::{Future, FutureExt};
 use std::{
     collections::{BTreeMap, BTreeSet},
+    net::SocketAddr,
     path::PathBuf,
     sync::Arc,
 };
@@ -283,6 +286,7 @@ struct State {
     network:           Network,
     credential_schema: String,
     credential_type:   BTreeSet<String>,
+    // A channel where new issue requests should be sent to the worker.
     sender:            tokio::sync::mpsc::Sender<IssueChannelData>,
 }
 
@@ -527,30 +531,8 @@ async fn main() -> anyhow::Result<()> {
         .with_default_metrics()
         .build_pair();
 
-    let prometheus_handle = if let Some(prometheus_address) = app.prometheus_address {
-        let prometheus_api = axum::Router::new()
-            .route(
-                "/metrics",
-                axum::routing::get(|| async move { metric_handle.render() }),
-            )
-            .layer(tower_http::timeout::TimeoutLayer::new(
-                std::time::Duration::from_millis(1000),
-            ))
-            .layer(tower_http::limit::RequestBodyLimitLayer::new(0));
-        Some(tokio::spawn(async move {
-            axum::Server::bind(&prometheus_address)
-                .serve(prometheus_api.into_make_service())
-                .with_graceful_shutdown(set_shutdown()?)
-                .await
-                .context("Unable to start Prometheus server.")?;
-            Ok::<(), anyhow::Error>(())
-        }))
-    } else {
-        None
-    };
-
     // build routes
-    let server = Router::new()
+    let router = Router::new()
         .route("/v0/issue", post(issue_credential))
         .route("/v0/status/:transactionHash", get(status))
         .with_state(state)
@@ -566,34 +548,125 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::cors::CorsLayer::permissive().allow_methods([http::Method::POST]))
         .layer(prometheus_layer);
 
-    // Start issuer worker.
-    tokio::spawn(worker.tx_sender());
+    start_services(
+        worker,
+        metric_handle,
+        app.prometheus_address,
+        app.listen_address,
+        router,
+    )
+    .await
+}
 
-    // Start server.
-    let server_shutdown = set_shutdown()?;
-    let server_handle = tokio::spawn(async move {
-        axum::Server::bind(&app.listen_address)
-            .serve(server.into_make_service())
-            .with_graceful_shutdown(server_shutdown)
-            .await
-    });
+/// Like `tokio::spawn` but the provided future is modified so that
+/// once it terminates it sends a message on the provided channel.
+/// This is sent regardless of how the future terminates, as long as it
+/// terminates normally (i.e., does not panic).
+pub fn spawn_cancel<T>(
+    died_sender: tokio::sync::broadcast::Sender<()>,
+    future: T,
+) -> tokio::task::JoinHandle<T::Output>
+where
+    T: futures::Future + Send + 'static,
+    T::Output: Send + 'static, {
+    tokio::spawn(async move {
+        let res = future.await;
+        // We ignore errors here since this always happens at the end of a task.
+        // Since we keep one receiver alive until the end of the `main` function
+        // the error should not happen anyhow.
+        let _ = died_sender.send(());
+        res
+    })
+}
 
-    if let Some(prometheus_handle) = prometheus_handle {
-        tokio::select! {
-            val = prometheus_handle => {
-                val.context("Prometheus task panicked.")?.context("Prometheus server crashed.")?;
+async fn start_services(
+    issuer_worker: IssuerWorker,
+    metric_handle: PrometheusHandle,
+    prometheus_address: Option<SocketAddr>,
+    listen_address: SocketAddr,
+    router: Router,
+) -> anyhow::Result<()> {
+    // If a service crashes it will send a message on this channel, which will then
+    // cause all of the other services to shut down.
+    let (died_sender, died_receiver) = tokio::sync::broadcast::channel(10);
+    // We create additional receivers of the broadcast messages.
+    // We do this before any message is potentially sent to make sure all receivers
+    // will receive them.
+    let prometheus_receiver = died_sender.subscribe();
+    let server_receiver = died_sender.subscribe();
+
+    {
+        let died_sender = died_sender.clone();
+        // Start handling of shutdown signals now, before starting the server.
+        let shutdown_signal = set_shutdown()?;
+        tokio::spawn(async move {
+            shutdown_signal.await;
+            if died_sender.send(()).is_err() {
+                tracing::error!("Unable to notify shutdown.");
             }
-            val = server_handle => {
-                val.context("Server task panicked.")?.context("Server crashed.")?;
-            }
-        }
-    } else {
-        server_handle
-            .await
-            .context("Server task join error.")?
-            .context("Server crashed.")?;
+        });
     }
+
+    if let Some(prometheus_address) = prometheus_address {
+        let prometheus_api = axum::Router::new()
+            .route(
+                "/metrics",
+                axum::routing::get(|| async move { metric_handle.render() }),
+            )
+            .layer(tower_http::timeout::TimeoutLayer::new(
+                std::time::Duration::from_millis(1000),
+            ))
+            .layer(tower_http::limit::RequestBodyLimitLayer::new(0));
+        tracing::info!("Starting prometheus server at {prometheus_address}.");
+        spawn_cancel(died_sender.clone(), async move {
+            axum::Server::bind(&prometheus_address)
+                .serve(prometheus_api.into_make_service())
+                .with_graceful_shutdown(shutdown_trigger(prometheus_receiver))
+                .await
+                .context("Unable to start Prometheus server.")?;
+            Ok::<(), anyhow::Error>(())
+        });
+    }
+
+    let transaction_sender = spawn_cancel(died_sender.clone(), issuer_worker.tx_sender());
+
+    let server_handle = spawn_cancel(
+        died_sender.clone(),
+        axum::Server::bind(&listen_address)
+            .http1_header_read_timeout(std::time::Duration::from_secs(5))
+            .serve(router.into_make_service())
+            .with_graceful_shutdown(shutdown_trigger(server_receiver)),
+    );
+
+    // Wait until something triggers shutdown. Either a signal handler or an error
+    // in the service startup or transaction sender.
+    shutdown_trigger(died_receiver).await;
+    tracing::info!("Received shutdown trigger.");
+
+    // Wait for the server to shut down itself. However this might not happen since
+    // open connections can make it wait until the client drops them.
+    // Thus we wait for 5s only, which should be sufficient to handle any
+    // outstanding requests. After that we forcefully kill it.
+    let res = tokio::time::timeout(std::time::Duration::from_secs(5), server_handle).await;
+
+    if res.is_err() {
+        tracing::error!(
+            "Unable to stop the server gracefully in required time. Terminating forcefully."
+        )
+    }
+    // Abort the sender explicitly. Since the server is now not responding even if
+    // there are any pending transactions there is no point in sending them/waiting
+    // for them to be sent.
+    // This would happen implicitly as well, so this is here just for documentation.
+    transaction_sender.abort();
+
     Ok(())
+}
+
+async fn shutdown_trigger(mut receiver: tokio::sync::broadcast::Receiver<()>) {
+    if receiver.recv().await.is_err() {
+        tracing::error!("Shutdown channel unexpectedly closed.");
+    }
 }
 
 /// Construct a future for shutdown signals (for unix: SIGINT and SIGTERM) (for
