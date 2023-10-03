@@ -403,7 +403,7 @@ async fn issue_credential(
     };
 
     let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
-    // Ask the issuer wormer to send the transaction.
+    // Ask the issuer worker to send the transaction.
     if state
         .sender
         .send(IssueChannelData {
@@ -467,7 +467,10 @@ async fn main() -> anyhow::Result<()> {
         app.endpoint
     }
     .connect_timeout(std::time::Duration::from_secs(10))
-    .timeout(std::time::Duration::from_millis(app.request_timeout));
+    .timeout(std::time::Duration::from_millis(app.request_timeout))
+    .http2_keep_alive_interval(std::time::Duration::from_secs(300))
+    .keep_alive_timeout(std::time::Duration::from_secs(10))
+    .keep_alive_while_idle(true);
 
     let mut client = v2::Client::new(endpoint)
         .await
