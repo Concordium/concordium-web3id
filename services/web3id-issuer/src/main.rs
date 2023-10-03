@@ -5,7 +5,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use axum_prometheus::PrometheusMetricLayerBuilder;
+use axum_prometheus::{
+    metrics_exporter_prometheus::PrometheusHandle, PrometheusMetricLayerBuilder,
+};
 use clap::Parser;
 use concordium_rust_sdk::{
     cis4::{Cis4Contract, Cis4TransactionError, Cis4TransactionMetadata},
@@ -26,6 +28,7 @@ use concordium_rust_sdk::{
 use futures::{Future, FutureExt};
 use std::{
     collections::{BTreeMap, BTreeSet},
+    net::SocketAddr,
     path::PathBuf,
     sync::Arc,
 };
@@ -110,6 +113,75 @@ struct App {
         env = "CONCORDIUM_WEB3ID_ISSUER_MAX_REGISTER_ENERGY"
     )]
     max_register_energy: Energy,
+}
+
+/// Data sent on a channel from the request handler task to the transaction
+/// sender task.
+#[derive(Debug)]
+struct IssueChannelData {
+    credential:      CredentialInfo,
+    /// The channel where the response is sent.
+    response_sender: tokio::sync::oneshot::Sender<Result<TransactionHash, Error>>,
+}
+
+struct IssuerWorker {
+    client:              Cis4Contract,
+    issuer:              WalletAccount,
+    nonce_counter:       Nonce,
+    max_register_energy: Energy,
+    /// A channel where new issue requests will be given.
+    receiver:            tokio::sync::mpsc::Receiver<IssueChannelData>,
+}
+
+impl IssuerWorker {
+    /// A transaction sender job. This listens for incoming issue requests and
+    /// sends transactions to the chain.
+    ///
+    /// This is intended to be run in a background task that is started once.
+    /// The task is not cancel-safe in the sense that if it is cancelled, the
+    /// state of [`IssuerWorker`] might be inconsistent. This is why this
+    /// function consumes `self`.
+    #[tracing::instrument(level = "debug", skip_all)]
+    async fn tx_sender(mut self) {
+        while let Some(IssueChannelData {
+            credential,
+            response_sender,
+        }) = self.receiver.recv().await
+        {
+            let expiry = TransactionTime::minutes_after(5);
+            let metadata = Cis4TransactionMetadata {
+                sender_address: self.issuer.address,
+                nonce: self.nonce_counter,
+                expiry,
+                energy: GivenEnergy::Add(self.max_register_energy),
+                amount: Amount::zero(),
+            };
+
+            let res = self.register_credential(&credential, &metadata).await;
+            if response_sender.send(res).is_err() {
+                tracing::warn!("Unabled to send response. The request has been cancelled.");
+            }
+        }
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, fields(holder_id = %credential.holder_id))]
+    async fn register_credential(
+        &mut self,
+        credential: &CredentialInfo,
+        metadata: &Cis4TransactionMetadata,
+    ) -> Result<TransactionHash, Error> {
+        tracing::info!(
+            "Using nonce {} to send the transaction.",
+            self.nonce_counter
+        );
+
+        let tx_hash = self
+            .client
+            .register_credential(&self.issuer, metadata, credential, &[])
+            .await?;
+        self.nonce_counter.next_mut();
+        Ok(tx_hash)
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -208,41 +280,14 @@ impl axum::response::IntoResponse for Error {
 
 #[derive(Clone, Debug)]
 struct State {
-    crypto_params:       Arc<CryptographicParameters>,
-    client:              Cis4Contract,
-    issuer:              Arc<WalletAccount>,
-    issuer_key:          Arc<KeyPair>,
-    nonce_counter:       Arc<tokio::sync::Mutex<Nonce>>,
-    network:             Network,
-    credential_schema:   String,
-    credential_type:     BTreeSet<String>,
-    max_register_energy: Energy,
-}
-
-#[derive(Debug, serde::Serialize)]
-#[serde(tag = "status")]
-enum StatusResponse {
-    #[serde(rename = "finalized")]
-    Finalized { block: BlockHash, success: bool },
-    #[serde(rename = "notFinalized")]
-    NotFinalized,
-}
-
-#[tracing::instrument(level = "info", skip(state, tx))]
-async fn status(
-    axum::extract::State(mut state): axum::extract::State<State>,
-    tx: Result<axum::extract::Path<TransactionHash>, PathRejection>,
-) -> Result<axum::Json<StatusResponse>, Error> {
-    let tx = tx?;
-    let status = state.client.client.get_block_item_status(&tx).await?;
-    if let Some((bh, summary)) = status.is_finalized() {
-        Ok(axum::Json(StatusResponse::Finalized {
-            block:   *bh,
-            success: summary.is_success(),
-        }))
-    } else {
-        Ok(axum::Json(StatusResponse::NotFinalized))
-    }
+    crypto_params:     Arc<CryptographicParameters>,
+    client:            Cis4Contract,
+    issuer_key:        Arc<KeyPair>,
+    network:           Network,
+    credential_schema: String,
+    credential_type:   BTreeSet<String>,
+    // A channel where new issue requests should be sent to the worker.
+    sender:            tokio::sync::mpsc::Sender<IssueChannelData>,
 }
 
 fn make_secrets(
@@ -288,26 +333,39 @@ fn make_secrets(
     })
 }
 
+#[derive(Debug, serde::Serialize)]
+#[serde(tag = "status")]
+enum StatusResponse {
+    #[serde(rename = "finalized")]
+    Finalized { block: BlockHash, success: bool },
+    #[serde(rename = "notFinalized")]
+    NotFinalized,
+}
+
+#[tracing::instrument(level = "info", skip(state, tx))]
+async fn status(
+    axum::extract::State(mut state): axum::extract::State<State>,
+    tx: Result<axum::extract::Path<TransactionHash>, PathRejection>,
+) -> Result<axum::Json<StatusResponse>, Error> {
+    let tx = tx?;
+    let status = state.client.client.get_block_item_status(&tx).await?;
+    if let Some((bh, summary)) = status.is_finalized() {
+        Ok(axum::Json(StatusResponse::Finalized {
+            block:   *bh,
+            success: summary.is_success(),
+        }))
+    } else {
+        Ok(axum::Json(StatusResponse::NotFinalized))
+    }
+}
+
 #[tracing::instrument(level = "info", skip(state, request))]
 async fn issue_credential(
-    axum::extract::State(mut state): axum::extract::State<State>,
+    axum::extract::State(state): axum::extract::State<State>,
     request: Result<axum::Json<IssueRequest>, JsonRejection>,
 ) -> Result<axum::Json<IssueResponse>, Error> {
     tracing::info!("Request to issue a credential.");
     let axum::Json(request) = request?;
-
-    let mut nonce_guard = state.nonce_counter.lock().await;
-    // compute expiry after acquiring the lock to make sure we don't wait
-    // too long before acquiring the lock, rendering expiry problematic.
-    let expiry = TransactionTime::minutes_after(5);
-    tracing::info!("Using nonce {} to send the transaction.", *nonce_guard);
-    let metadata = Cis4TransactionMetadata {
-        sender_address: state.issuer.address,
-        nonce: *nonce_guard,
-        expiry,
-        energy: GivenEnergy::Add(state.max_register_energy),
-        amount: Amount::zero(),
-    };
 
     let holder_id = request
         .credential_subject
@@ -344,18 +402,35 @@ async fn issue_credential(
         metadata_url: request.metadata_url.clone(),
     };
 
-    let tx_hash = state
-        .client
-        .register_credential(&*state.issuer, &metadata, &cred_info, &[])
-        .await?;
-    nonce_guard.next_mut();
-    drop(nonce_guard);
-    let credential = make_secrets(&state, holder_id, request)?;
+    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+    // Ask the issuer worker to send the transaction.
+    if state
+        .sender
+        .send(IssueChannelData {
+            credential: cred_info,
+            response_sender,
+        })
+        .await
+        .is_err()
+    {
+        tracing::error!("Failed enqueueing transaction. The transaction sender task died.");
+        return Err(Error::Internal("Failed sending transaction.".into()));
+    }
 
-    Ok(axum::Json(IssueResponse {
-        tx_hash,
-        credential,
-    }))
+    if let Ok(r) = response_receiver.await {
+        let tx_hash = r?;
+        let credential = make_secrets(&state, holder_id, request)?;
+        Ok(axum::Json(IssueResponse {
+            tx_hash,
+            credential,
+        }))
+    } else {
+        // There is no information in the error.
+        tracing::error!(
+            "Failed sending transaction; did not get response from transaction sender."
+        );
+        Err(Error::Internal("Failed sending transaction.".into()))
+    }
 }
 
 #[tokio::main]
@@ -392,18 +467,19 @@ async fn main() -> anyhow::Result<()> {
         app.endpoint
     }
     .connect_timeout(std::time::Duration::from_secs(10))
-    .timeout(std::time::Duration::from_millis(app.request_timeout));
+    .timeout(std::time::Duration::from_millis(app.request_timeout))
+    .http2_keep_alive_interval(std::time::Duration::from_secs(300))
+    .keep_alive_timeout(std::time::Duration::from_secs(10))
+    .keep_alive_while_idle(true);
 
     let mut client = v2::Client::new(endpoint)
         .await
         .context("Unable to establish connection to the node.")?;
 
-    let issuer_key = Arc::new(
-        serde_json::from_reader(&std::fs::File::open(&app.issuer_key)?)
-            .context("Unable to read issuer's key.")?,
-    );
+    let issuer_key = serde_json::from_reader(&std::fs::File::open(&app.issuer_key)?)
+        .context("Unable to read issuer's key.")?;
 
-    let issuer = Arc::new(WalletAccount::from_json_file(app.wallet)?);
+    let issuer = WalletAccount::from_json_file(app.wallet)?;
 
     let nonce = client
         .get_next_account_sequence_number(&issuer.address)
@@ -427,9 +503,19 @@ async fn main() -> anyhow::Result<()> {
 
     let credential_schema = client.registry_metadata(BlockIdentifier::LastFinal).await?;
 
+    let (issuer_sender, issuer_receiver) = tokio::sync::mpsc::channel(100);
+
+    let worker = IssuerWorker {
+        client: client.clone(),
+        issuer,
+        nonce_counter: nonce.nonce,
+        max_register_energy: app.max_register_energy,
+        receiver: issuer_receiver,
+    };
+
     let state = State {
-        crypto_params: Arc::new(crypto_params),
         client,
+        crypto_params: Arc::new(crypto_params),
         network: app.network,
         credential_schema: credential_schema.credential_schema.schema_ref.url().into(),
         credential_type: [
@@ -439,10 +525,8 @@ async fn main() -> anyhow::Result<()> {
         ]
         .into_iter()
         .collect(),
-        issuer,
-        issuer_key,
-        nonce_counter: Arc::new(tokio::sync::Mutex::new(nonce.nonce)),
-        max_register_energy: app.max_register_energy,
+        issuer_key: Arc::new(issuer_key),
+        sender: issuer_sender,
     };
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
@@ -450,30 +534,8 @@ async fn main() -> anyhow::Result<()> {
         .with_default_metrics()
         .build_pair();
 
-    let prometheus_handle = if let Some(prometheus_address) = app.prometheus_address {
-        let prometheus_api = axum::Router::new()
-            .route(
-                "/metrics",
-                axum::routing::get(|| async move { metric_handle.render() }),
-            )
-            .layer(tower_http::timeout::TimeoutLayer::new(
-                std::time::Duration::from_millis(1000),
-            ))
-            .layer(tower_http::limit::RequestBodyLimitLayer::new(0));
-        Some(tokio::spawn(async move {
-            axum::Server::bind(&prometheus_address)
-                .serve(prometheus_api.into_make_service())
-                .with_graceful_shutdown(set_shutdown()?)
-                .await
-                .context("Unable to start Prometheus server.")?;
-            Ok::<(), anyhow::Error>(())
-        }))
-    } else {
-        None
-    };
-
     // build routes
-    let server = Router::new()
+    let router = Router::new()
         .route("/v0/issue", post(issue_credential))
         .route("/v0/status/:transactionHash", get(status))
         .with_state(state)
@@ -489,30 +551,125 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::cors::CorsLayer::permissive().allow_methods([http::Method::POST]))
         .layer(prometheus_layer);
 
-    let server_shutdown = set_shutdown()?;
-    let server_handle = tokio::spawn(async move {
-        axum::Server::bind(&app.listen_address)
-            .serve(server.into_make_service())
-            .with_graceful_shutdown(server_shutdown)
-            .await
-    });
+    start_services(
+        worker,
+        metric_handle,
+        app.prometheus_address,
+        app.listen_address,
+        router,
+    )
+    .await
+}
 
-    if let Some(prometheus_handle) = prometheus_handle {
-        tokio::select! {
-            val = prometheus_handle => {
-                val.context("Prometheus task panicked.")?.context("Prometheus server crashed.")?;
+/// Like `tokio::spawn` but the provided future is modified so that
+/// once it terminates it sends a message on the provided channel.
+/// This is sent regardless of how the future terminates, as long as it
+/// terminates normally (i.e., does not panic).
+pub fn spawn_cancel<T>(
+    died_sender: tokio::sync::broadcast::Sender<()>,
+    future: T,
+) -> tokio::task::JoinHandle<T::Output>
+where
+    T: futures::Future + Send + 'static,
+    T::Output: Send + 'static, {
+    tokio::spawn(async move {
+        let res = future.await;
+        // We ignore errors here since this always happens at the end of a task.
+        // Since we keep one receiver alive until the end of the `main` function
+        // the error should not happen anyhow.
+        let _ = died_sender.send(());
+        res
+    })
+}
+
+async fn start_services(
+    issuer_worker: IssuerWorker,
+    metric_handle: PrometheusHandle,
+    prometheus_address: Option<SocketAddr>,
+    listen_address: SocketAddr,
+    router: Router,
+) -> anyhow::Result<()> {
+    // If a service crashes it will send a message on this channel, which will then
+    // cause all of the other services to shut down.
+    let (died_sender, died_receiver) = tokio::sync::broadcast::channel(10);
+    // We create additional receivers of the broadcast messages.
+    // We do this before any message is potentially sent to make sure all receivers
+    // will receive them.
+    let prometheus_receiver = died_sender.subscribe();
+    let server_receiver = died_sender.subscribe();
+
+    {
+        let died_sender = died_sender.clone();
+        // Start handling of shutdown signals now, before starting the server.
+        let shutdown_signal = set_shutdown()?;
+        tokio::spawn(async move {
+            shutdown_signal.await;
+            if died_sender.send(()).is_err() {
+                tracing::error!("Unable to notify shutdown.");
             }
-            val = server_handle => {
-                val.context("Server task panicked.")?.context("Server crashed.")?;
-            }
-        }
-    } else {
-        server_handle
-            .await
-            .context("Server task join error.")?
-            .context("Server crashed.")?;
+        });
     }
+
+    if let Some(prometheus_address) = prometheus_address {
+        let prometheus_api = axum::Router::new()
+            .route(
+                "/metrics",
+                axum::routing::get(|| async move { metric_handle.render() }),
+            )
+            .layer(tower_http::timeout::TimeoutLayer::new(
+                std::time::Duration::from_millis(1000),
+            ))
+            .layer(tower_http::limit::RequestBodyLimitLayer::new(0));
+        tracing::info!("Starting prometheus server at {prometheus_address}.");
+        spawn_cancel(died_sender.clone(), async move {
+            axum::Server::bind(&prometheus_address)
+                .serve(prometheus_api.into_make_service())
+                .with_graceful_shutdown(shutdown_trigger(prometheus_receiver))
+                .await
+                .context("Unable to start Prometheus server.")?;
+            Ok::<(), anyhow::Error>(())
+        });
+    }
+
+    let transaction_sender = spawn_cancel(died_sender.clone(), issuer_worker.tx_sender());
+
+    let server_handle = spawn_cancel(
+        died_sender.clone(),
+        axum::Server::bind(&listen_address)
+            .http1_header_read_timeout(std::time::Duration::from_secs(5))
+            .serve(router.into_make_service())
+            .with_graceful_shutdown(shutdown_trigger(server_receiver)),
+    );
+
+    // Wait until something triggers shutdown. Either a signal handler or an error
+    // in the service startup or transaction sender.
+    shutdown_trigger(died_receiver).await;
+    tracing::info!("Received shutdown trigger.");
+
+    // Wait for the server to shut down itself. However this might not happen since
+    // open connections can make it wait until the client drops them.
+    // Thus we wait for 5s only, which should be sufficient to handle any
+    // outstanding requests. After that we forcefully kill it.
+    let res = tokio::time::timeout(std::time::Duration::from_secs(5), server_handle).await;
+
+    if res.is_err() {
+        tracing::error!(
+            "Unable to stop the server gracefully in required time. Terminating forcefully."
+        )
+    }
+    // Abort the sender explicitly. Since the server is now not responding even if
+    // there are any pending transactions there is no point in sending them/waiting
+    // for them to be sent.
+    // This would happen implicitly as well, so this is here just for documentation.
+    transaction_sender.abort();
+
     Ok(())
+}
+
+async fn shutdown_trigger(mut receiver: tokio::sync::broadcast::Receiver<()>) {
+    if receiver.recv().await.is_err() {
+        tracing::error!("Shutdown channel unexpectedly closed.");
+    }
 }
 
 /// Construct a future for shutdown signals (for unix: SIGINT and SIGTERM) (for
