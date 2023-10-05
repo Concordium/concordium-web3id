@@ -1,5 +1,7 @@
 ## Unreleased changes
 
+## 0.3.2
+
 - Fixed a bug where the state of the server could become inconsistent if a client cancelled a request while the server was waiting for repsonse from the node.
 
 ## 0.3.1
