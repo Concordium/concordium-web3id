@@ -2,6 +2,7 @@ import { CredentialProof } from '@concordium/browser-wallet-api-helpers';
 import { TelegramUser } from 'react-telegram-login';
 import { MakeRequired, Platform } from './types';
 import { connectWallet } from './connect';
+import { ConcordiumGRPCClient, TransactionHash } from '@concordium/web-sdk';
 
 interface IssuerResponse {
   txHash: string;
@@ -122,7 +123,8 @@ export async function requestCredential(
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      await api.getGrpcClient().waitForTransactionFinalization(txHash!);
+      const client = new ConcordiumGRPCClient(api.grpcTransport);
+      await client.waitForTransactionFinalization(TransactionHash.fromHexString(txHash!));
       onFinalized();
       break;
     } catch (error) {
