@@ -13,8 +13,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@concordium/browser-wallet-api-helpers": "2.6.0",
-    "@concordium/web-sdk": "^6.1.1",
+    "@concordium/browser-wallet-api-helpers": "beta",
+    "@concordium/web-sdk": "^7.0.1",
     "bootstrap": "^5.3.0",
     "bootstrap-icons": "^1.10.5",
     "nanoid": "^4.0.2",
@@ -24,9 +24,6 @@
     "react-social-login-buttons": "^3.9.1",
     "react-telegram-login": "^1.1.2",
     "reactstrap": "^9.2.0"
-  },
-  "resolutions": {
-    "@concordium/web-sdk": "^6.1.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",

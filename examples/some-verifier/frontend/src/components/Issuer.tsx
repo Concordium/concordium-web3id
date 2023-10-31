@@ -9,6 +9,7 @@ import { ListGroup, ListGroupItem, ListGroupItemHeading } from 'reactstrap';
 import { nanoid } from 'nanoid';
 import { Issuer, Platform } from '../lib/types';
 import { appState } from '../lib/app-state';
+import { ConcordiumGRPCClient, TransactionHash } from '@concordium/web-sdk';
 
 function getContractDid(network: string, issuer: Issuer): string {
   return `$did:ccd:${network}:sci:${issuer.index}:${issuer.subindex}/issuer`;
@@ -21,11 +22,11 @@ type MakeRequired<T, K extends keyof T> = NotOptional<Pick<T, K>> & Omit<T, K>;
 
 type DiscordWindowMessage =
   | {
-      type: 'success';
-      userId: string;
-      username: string;
-      state: string | null;
-    }
+    type: 'success';
+    userId: string;
+    username: string;
+    state: string | null;
+  }
   | { type: 'error'; error: string; state: string | null };
 
 // This is set when Discord verification is started and read upon a message back
@@ -273,9 +274,9 @@ async function requestCredential(
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      const itemSummary = await api
-        .getGrpcClient()
-        .waitForTransactionFinalization(txHash!);
+      const client = new ConcordiumGRPCClient(api.grpcTransport);
+      const itemSummary = await client
+        .waitForTransactionFinalization(TransactionHash.fromHexString(txHash!));
       console.log('Transaction completed.', itemSummary);
       break;
     } catch (error) {
