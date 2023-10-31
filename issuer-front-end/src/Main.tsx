@@ -1,7 +1,7 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     WalletConnectionProps,
     useConnection,
@@ -51,7 +51,7 @@ export default function Main(props: ConnectionProps) {
         if (connection && account) {
             const interval = setInterval(() => {
                 client
-                    ?.getAccountInfo(new AccountAddress(account))
+                    ?.getAccountInfo(AccountAddress.fromBase58(account))
                     .then((value) => {
                         if (value !== undefined) {
                             setAccountBalance(value.accountAmount.toString());
@@ -72,7 +72,7 @@ export default function Main(props: ConnectionProps) {
     useEffect(() => {
         if (connection && account) {
             client
-                ?.getAccountInfo(new AccountAddress(account))
+                ?.getAccountInfo(AccountAddress.fromBase58(account))
                 .then((value) => {
                     if (value !== undefined) {
                         setAccountBalance(value.accountAmount.toString());
@@ -146,9 +146,8 @@ export default function Main(props: ConnectionProps) {
                         <div>
                             <a
                                 className="link"
-                                href={`https://${
-                                    isTestnet ? `testnet.` : ``
-                                }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                                href={`https://${isTestnet ? `testnet.` : ``
+                                    }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
                                 target="_blank"
                                 rel="noreferrer"
                             >

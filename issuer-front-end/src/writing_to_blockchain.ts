@@ -1,9 +1,8 @@
 /* eslint-disable no-console */
 import { createContext } from 'react';
-import { AccountTransactionType, CcdAmount, InitContractPayload, ModuleReference, toBuffer } from '@concordium/web-sdk';
+import { AccountTransactionType, CcdAmount, InitContractPayload, ModuleReference, ContractName, Parameter, Energy } from '@concordium/web-sdk';
 import { WalletConnection } from '@concordium/react-components';
-import { moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
-import { SmartContractParameters } from '@concordium/browser-wallet-api-helpers';
+import { TypedSmartContractParameters, moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
 import { CREDENTIAL_REGISTRY_BASE_64_SCHEMA, MODULE_REFERENCE_CREDENTIAL_REGISTRY } from './constants';
 
 export async function createNewIssuer(
@@ -58,19 +57,19 @@ export async function createNewIssuer(
             Some: [account],
         },
         revocation_keys: JSON.parse(revocationKeys),
-    } as SmartContractParameters;
+    } as TypedSmartContractParameters["parameters"];
 
-    const schema = {
+    const schema: TypedSmartContractParameters = {
         parameters: parameter,
         schema: moduleSchemaFromBase64(CREDENTIAL_REGISTRY_BASE_64_SCHEMA),
     };
 
     const payload = {
-        amount: new CcdAmount(BigInt(0)),
-        moduleRef: new ModuleReference(MODULE_REFERENCE_CREDENTIAL_REGISTRY),
-        initName: 'credential_registry',
-        param: toBuffer(''),
-        maxContractExecutionEnergy: 30000n,
+        amount: CcdAmount.fromMicroCcd(BigInt(0)),
+        moduleRef: ModuleReference.fromHexString(MODULE_REFERENCE_CREDENTIAL_REGISTRY),
+        initName: ContractName.fromString('credential_registry'),
+        param: Parameter.empty(),
+        maxContractExecutionEnergy: Energy.create(30000n),
     } as InitContractPayload;
 
     console.debug('Sending init transaction:');

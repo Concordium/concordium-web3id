@@ -11,8 +11,4 @@ RUN yarn install && yarn build
 
 FROM nginx
 COPY --from=frontend /build/issuer-front-end/dist ./usr/share/nginx/html
-
-
-
-
-
+COPY ./issuer-front-end/nginx.conf /etc/nginx/conf.d/default.conf

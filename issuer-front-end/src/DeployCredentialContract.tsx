@@ -1,11 +1,11 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useGrpcClient, TESTNET, MAINNET, WalletConnection } from '@concordium/react-components';
 import { Button, Row, Form, Alert, Modal } from 'react-bootstrap';
-import { TransactionKindString, TransactionSummaryType } from '@concordium/web-sdk';
+import { TransactionHash, TransactionKindString, TransactionSummaryType } from '@concordium/web-sdk';
 import { TailSpin } from 'react-loader-spinner';
 
 import { useForm } from 'react-hook-form';
@@ -76,7 +76,7 @@ export default function DeployCredentialContract(props: ConnectionProps) {
             const interval = setInterval(() => {
                 console.log('refreshing_smartContractIndex');
                 client
-                    .getBlockItemStatus(txHash)
+                    .getBlockItemStatus(TransactionHash.fromHexString(txHash))
                     .then((report) => {
                         if (report !== undefined) {
                             setViewErrorModuleReference('');
@@ -271,9 +271,8 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                         className="link"
                         target="_blank"
                         rel="noreferrer"
-                        href={`https://${
-                            isTestnet ? `testnet.` : ``
-                        }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
+                        href={`https://${isTestnet ? `testnet.` : ``
+                            }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
                     >
                         {txHash}
                     </a>
