@@ -16,6 +16,9 @@ import {
     deserializeTypeValue,
     SmartContractTypeValues,
     TimestampAttribute,
+    ContractName,
+    ReceiveName,
+    EntrypointName,
 } from '@concordium/web-sdk';
 import { Buffer } from 'buffer';
 import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
@@ -39,7 +42,7 @@ interface AccountStatement {
 }
 
 interface Web3IdStatement {
-    issuers: ContractAddress[];
+    issuers: ContractAddress.Type[];
     statement: AtomicStatementV2[];
 }
 
@@ -187,7 +190,7 @@ interface RevealAttributeProps {
 
 async function submitProof(
     statement: CredentialStatements,
-    provider: WalletProvider,
+    provider: WalletProvider | undefined,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void
 ) {
     let proof: VerifiablePresentation;
@@ -195,6 +198,11 @@ async function submitProof(
     crypto.getRandomValues(challengeBuffer);
     const challenge = Buffer.from(challengeBuffer).toString('hex');
     console.log(statement);
+
+    if (provider === undefined) {
+        return;
+    }
+
     try {
         proof = await provider.requestVerifiablePresentation(challenge, statement);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -408,7 +416,7 @@ function AttributeInRange({ setStatement, attributeOptions }: RevealAttributePro
 
     const [selected, setSelected] = useState<[string, string | undefined]>([
         attributeOptions[0].value,
-        attributeOptions[0].type,
+        attributeOptions[0].label,
     ]);
 
     const handleChange = (option: { value: string; label: string; type: string | undefined } | null) => {
@@ -717,11 +725,11 @@ function Issuers(
             for (let i = 0; i < issuers.length; i++) {
                 const addr = { index: issuers[i], subindex: BigInt(0) };
                 try {
-                    const ci = await client.getInstanceInfo(addr);
-                    const name = ci.name.substring(5);
+                    const ci = await client.getInstanceInfo(ContractAddress.create(addr.index, addr.subindex));
+                    const name = ContractName.fromInitName(ci.name);
                     const response = await client.invokeContract({
-                        contract: { index: issuers[i], subindex: BigInt(0) },
-                        method: `${name}.registryMetadata`,
+                        contract: ContractAddress.create(issuers[i], 0),
+                        method: ReceiveName.create(name, EntrypointName.fromString('registryMetadata')),
                     });
                     switch (response.tag) {
                         case 'failure':
@@ -729,7 +737,7 @@ function Issuers(
                             continue;
                         case 'success':
                             const metadata = deserializeTypeValue(
-                                toBuffer(response.returnValue as string, 'hex'),
+                                response.returnValue!.buffer,
                                 toBuffer(REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA, 'base64')
                             ) as {
                                 [key: string]: SmartContractTypeValues;
@@ -883,7 +891,7 @@ export default function ProofExplorer() {
                 setNewStatement(false);
                 const statement: Web3IdStatement = {
                     issuers: parseIssuers(issuers).map((i) => {
-                        return { index: i, subindex: BigInt(0) };
+                        return ContractAddress.create(i, 0);
                     }),
                     statement: a,
                 };
