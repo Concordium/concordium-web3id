@@ -1,4 +1,4 @@
-import { toBuffer, deserializeTypeValue, serializeTypeValue, ConcordiumGRPCClient } from '@concordium/web-sdk';
+import { toBuffer, deserializeTypeValue, serializeTypeValue, ConcordiumGRPCClient, ReceiveName, ContractAddress } from '@concordium/web-sdk';
 
 import {
     CONTRACT_SUB_INDEX,
@@ -17,8 +17,8 @@ export async function registryMetadata(
     }
 
     const res = await grpcClient?.invokeContract({
-        method: `${CONTRACT_REGISTRY_NAME}.registryMetadata`,
-        contract: { index: BigInt(credentialRegistryContratIndex), subindex: CONTRACT_SUB_INDEX },
+        method: ReceiveName.fromString(`${CONTRACT_REGISTRY_NAME}.registryMetadata`),
+        contract: ContractAddress.create(credentialRegistryContratIndex, CONTRACT_SUB_INDEX),
     });
 
     if (!res || res.tag === 'failure' || !res.returnValue) {
@@ -30,7 +30,7 @@ export async function registryMetadata(
     }
 
     const state = deserializeTypeValue(
-        toBuffer(res.returnValue, 'hex'),
+        res.returnValue.buffer,
         toBuffer(REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA, 'base64')
     );
 
@@ -70,9 +70,9 @@ export async function getCredentialEntry(
     }
 
     const res = await grpcClient?.invokeContract({
-        method: `${CONTRACT_REGISTRY_NAME}.credentialEntry`,
+        method: ReceiveName.fromString(`${CONTRACT_REGISTRY_NAME}.credentialEntry`),
         parameter: serializedPublicKey,
-        contract: { index: BigInt(credentialRegistryContratIndex), subindex: CONTRACT_SUB_INDEX },
+        contract: ContractAddress.create(credentialRegistryContratIndex, CONTRACT_SUB_INDEX),
     });
 
     if (!res || res.tag === 'failure' || !res.returnValue) {
@@ -84,7 +84,7 @@ export async function getCredentialEntry(
     }
 
     const state = deserializeTypeValue(
-        toBuffer(res.returnValue, 'hex'),
+        res.returnValue.buffer,
         toBuffer(REGISTRY_CONTRACT_CREDENTIAL_ENTRY_RETURN_VALUE_SCHEMA, 'base64')
     );
 

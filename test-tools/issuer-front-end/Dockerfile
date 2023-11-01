@@ -13,8 +13,6 @@ RUN cargo build --release --manifest-path ./test-tools/issuer-front-end/backend/
 
 FROM ${build_image} AS frontend
 
-RUN yarn set version 3.2.0
-
 # Copy front end files
 WORKDIR /build
 COPY ./test-tools/issuer-front-end ./test-tools/issuer-front-end

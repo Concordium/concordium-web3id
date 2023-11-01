@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { TESTNET, WithWalletConnector } from '@concordium/react-components';
 import Main from './Main';
 

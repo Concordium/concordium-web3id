@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
+import { useEffect, useState, ChangeEvent, PropsWithChildren, useCallback } from 'react';
 import Switch from 'react-switch';
 import { WalletConnectionProps, useConnection, useConnect, useGrpcClient, TESTNET } from '@concordium/react-components';
 import { Button, Col, Row, Form, InputGroup } from 'react-bootstrap';
@@ -435,7 +435,7 @@ export default function Main(props: WalletConnectionProps) {
         if (connection && account) {
             const interval = setInterval(() => {
                 grpcClient
-                    ?.getAccountInfo(new AccountAddress(account))
+                    ?.getAccountInfo(AccountAddress.fromBase58(account))
                     .then((value) => {
                         if (value !== undefined) {
                             setAccountBalance(value.accountAmount.toString());
@@ -458,7 +458,7 @@ export default function Main(props: WalletConnectionProps) {
     useEffect(() => {
         if (connection && account) {
             grpcClient
-                ?.getAccountInfo(new AccountAddress(account))
+                ?.getAccountInfo(AccountAddress.fromBase58(account))
                 .then((value) => {
                     if (value !== undefined) {
                         setAccountBalance(value.accountAmount.toString());
