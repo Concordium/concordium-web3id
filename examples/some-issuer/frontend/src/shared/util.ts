@@ -121,9 +121,9 @@ export async function requestCredential(
 
   // Loop until transaction has been finalized
   // eslint-disable-next-line no-constant-condition
+  const client = new ConcordiumGRPCClient(api.grpcTransport);
   while (true) {
     try {
-      const client = new ConcordiumGRPCClient(api.grpcTransport);
       await client.waitForTransactionFinalization(TransactionHash.fromHexString(txHash!));
       onFinalized();
       break;

@@ -190,7 +190,7 @@ interface RevealAttributeProps {
 
 async function submitProof(
     statement: CredentialStatements,
-    provider: WalletProvider | undefined,
+    provider: WalletProvider,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void
 ) {
     let proof: VerifiablePresentation;
@@ -198,10 +198,6 @@ async function submitProof(
     crypto.getRandomValues(challengeBuffer);
     const challenge = Buffer.from(challengeBuffer).toString('hex');
     console.log(statement);
-
-    if (provider === undefined) {
-        return;
-    }
 
     try {
         proof = await provider.requestVerifiablePresentation(challenge, statement);
@@ -257,8 +253,6 @@ function SubmitProof(
         }
     });
 
-    const handleProve: MouseEventHandler<HTMLButtonElement> = () => submitProof(request, provider, setMessages);
-
     return [
         setMessages,
         <div>
@@ -266,7 +260,7 @@ function SubmitProof(
                 {provider !== undefined && (
                     <button
                         title="Submit the statement as a verified presentation request to the wallet."
-                        onClick={handleProve}
+                        onClick={() => submitProof(request, provider, setMessages)}
                         type="button"
                         className="col-sm-4 btn btn-primary"
                     >
