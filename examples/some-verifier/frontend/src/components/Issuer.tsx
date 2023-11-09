@@ -22,11 +22,11 @@ type MakeRequired<T, K extends keyof T> = NotOptional<Pick<T, K>> & Omit<T, K>;
 
 type DiscordWindowMessage =
   | {
-    type: 'success';
-    userId: string;
-    username: string;
-    state: string | null;
-  }
+      type: 'success';
+      userId: string;
+      username: string;
+      state: string | null;
+    }
   | { type: 'error'; error: string; state: string | null };
 
 // This is set when Discord verification is started and read upon a message back
@@ -275,8 +275,9 @@ async function requestCredential(
   while (true) {
     try {
       const client = new ConcordiumGRPCClient(api.grpcTransport);
-      const itemSummary = await client
-        .waitForTransactionFinalization(TransactionHash.fromHexString(txHash!));
+      const itemSummary = await client.waitForTransactionFinalization(
+        TransactionHash.fromHexString(txHash!),
+      );
       console.log('Transaction completed.', itemSummary);
       break;
     } catch (error) {

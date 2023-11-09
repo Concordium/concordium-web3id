@@ -88,9 +88,7 @@ export async function requestProof(
 
   for (const issuer of issuers) {
     builder = builder.addForVerifiableCredentials(
-      [
-        ContractAddress.create(BigInt(issuer.index), BigInt(issuer.subindex))
-      ],
+      [ContractAddress.create(BigInt(issuer.index), BigInt(issuer.subindex))],
       (b) => {
         b.revealAttribute('userId');
 
