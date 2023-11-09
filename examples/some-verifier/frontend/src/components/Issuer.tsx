@@ -270,11 +270,11 @@ async function requestCredential(
   console.log('Transaction submitted, hash:', txHash);
   setPending();
 
+  const client = new ConcordiumGRPCClient(api.grpcTransport);
   // Loop until transaction has been finalized
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      const client = new ConcordiumGRPCClient(api.grpcTransport);
       const itemSummary = await client.waitForTransactionFinalization(
         TransactionHash.fromHexString(txHash!),
       );
