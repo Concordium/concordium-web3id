@@ -21,14 +21,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@concordium/browser-wallet-api-helpers@npm:beta":
-  version: 3.0.0-rc.1
-  resolution: "@concordium/browser-wallet-api-helpers@npm:3.0.0-rc.1"
+"@concordium/browser-wallet-api-helpers@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "@concordium/browser-wallet-api-helpers@npm:3.0.0"
   dependencies:
     "@protobuf-ts/runtime-rpc": ^2.9.1
   peerDependencies:
-    "@concordium/web-sdk": 7.0.0-rc.4
-  checksum: ddf28e049ddf562845f611a3a8cbe770433e8d139b4859ce6162a727d9c4108ef477c5365c8836519f912888b8f293a7f3c8edb3b35860290ee434954e2f63c1
+    "@concordium/web-sdk": ^7.0
+  checksum: 25e400de80734213cdc11c4e95867c8ccc34151c754bd4a8f1fd2207def22244b00d945ba0ed735bea1478ba9bc6679ec189b257ada177d42ca76879cb2aabed
   languageName: node
   linkType: hard
 
@@ -3618,7 +3618,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "some-verifier@workspace:."
   dependencies:
-    "@concordium/browser-wallet-api-helpers": beta
+    "@concordium/browser-wallet-api-helpers": ^3.0.0
     "@concordium/web-sdk": ^7.0.1
     "@types/react": ^18.2.15
     "@types/react-dom": ^18.2.7
