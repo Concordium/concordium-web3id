@@ -9,7 +9,7 @@
     "dependencies": {
         "@concordium/react-components": "beta",
         "@concordium/wallet-connectors": "beta",
-        "@concordium/web-sdk": "^7.0.1",
+        "@concordium/web-sdk": "beta",
         "@walletconnect/types": "^2.1.4",
         "bootstrap": "^5.3.0",
         "bootstrap-icons": "^1.10.5",
