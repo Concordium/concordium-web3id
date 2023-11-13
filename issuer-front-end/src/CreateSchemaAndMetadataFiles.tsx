@@ -1,5 +1,3 @@
-/* eslint-disable no-alert */
-/* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -339,17 +337,17 @@ export default function CreateSchemaAndMetadataFiles() {
                                         .length === 0 && <div>No required attribues.</div>}
                                     {credentialSchema.properties.credentialSubject.properties.attributes.required
                                         .length !== 0 && (
-                                            <>
-                                                <div>Required attributes:</div>
-                                                <div>
-                                                    {credentialSchema.properties.credentialSubject.properties.attributes.required?.map(
-                                                        (element) => (
-                                                            <li key={element}>{element}</li>
-                                                        )
-                                                    )}
-                                                </div>
-                                            </>
-                                        )}
+                                        <>
+                                            <div>Required attributes:</div>
+                                            <div>
+                                                {credentialSchema.properties.credentialSubject.properties.attributes.required?.map(
+                                                    (element) => (
+                                                        <li key={element}>{element}</li>
+                                                    )
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <br />
                                 <br />

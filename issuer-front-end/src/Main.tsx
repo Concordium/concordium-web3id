@@ -1,6 +1,3 @@
-/* eslint-disable no-alert */
-/* eslint-disable no-console */
-/* eslint-disable no-param-reassign */
 import { useEffect, useState } from 'react';
 import {
     WalletConnectionProps,
@@ -54,7 +51,7 @@ export default function Main(props: ConnectionProps) {
                     ?.getAccountInfo(AccountAddress.fromBase58(account))
                     .then((value) => {
                         if (value !== undefined) {
-                            setAccountBalance(value.accountAmount.toString());
+                            setAccountBalance(value.accountAmount.microCcdAmount.toString());
                             setAccountExistsOnNetwork(true);
                         }
                         setViewErrorAccountBalance('');
@@ -75,7 +72,7 @@ export default function Main(props: ConnectionProps) {
                 ?.getAccountInfo(AccountAddress.fromBase58(account))
                 .then((value) => {
                     if (value !== undefined) {
-                        setAccountBalance(value.accountAmount.toString());
+                        setAccountBalance(value.accountAmount.microCcdAmount.toString());
                         setAccountExistsOnNetwork(true);
                     }
                     setViewErrorAccountBalance('');
@@ -146,8 +143,9 @@ export default function Main(props: ConnectionProps) {
                         <div>
                             <a
                                 className="link"
-                                href={`https://${isTestnet ? `testnet.` : ``
-                                    }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
+                                href={`https://${
+                                    isTestnet ? `testnet.` : ``
+                                }ccdscan.io/?dcount=1&dentity=account&daddress=${account}`}
                                 target="_blank"
                                 rel="noreferrer"
                             >

@@ -103,9 +103,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@concordium/web-sdk@npm:^7.0.1":
-  version: 7.0.1
-  resolution: "@concordium/web-sdk@npm:7.0.1"
+"@concordium/web-sdk@npm:^7.1.0":
+  version: 7.1.0
+  resolution: "@concordium/web-sdk@npm:7.1.0"
   dependencies:
     "@concordium/rust-bindings": "npm:2.0.1"
     "@grpc/grpc-js": "npm:^1.9.4"
@@ -123,7 +123,7 @@ __metadata:
     iso-3166-1: "npm:^2.1.1"
     json-bigint: "npm:^1.0.0"
     uuid: "npm:^8.3.2"
-  checksum: c5f66396721aa5ad370ae9b42544abd2b916e969c719ed72af3b815130b1a2616a4eee68d5c2ef6761089dd9350adbbc953d97383d976e9edb67f0265b3cadee
+  checksum: 6737cdd39c302e47a279ade9f100477a750ec91f72951f4184d0386be870bb6485ba1671931f492464c44930d19fc3844e517f2b9e692aa24613051d3da7329c
   languageName: node
   linkType: hard
 
@@ -4823,7 +4823,7 @@ __metadata:
   resolution: "proof-explorer@workspace:."
   dependencies:
     "@concordium/browser-wallet-api-helpers": "npm:^3.0.0"
-    "@concordium/web-sdk": "npm:^7.0.1"
+    "@concordium/web-sdk": "npm:^7.1.0"
     "@types/node": "npm:^18.11.14"
     "@types/react": "npm:^18.0.9"
     "@types/react-dom": "npm:^18.0.5"

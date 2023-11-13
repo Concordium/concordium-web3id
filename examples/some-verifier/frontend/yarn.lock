@@ -39,9 +39,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@concordium/web-sdk@npm:^7.0.1":
-  version: 7.0.1
-  resolution: "@concordium/web-sdk@npm:7.0.1"
+"@concordium/web-sdk@npm:^7.1.0":
+  version: 7.1.0
+  resolution: "@concordium/web-sdk@npm:7.1.0"
   dependencies:
     "@concordium/rust-bindings": 2.0.1
     "@grpc/grpc-js": ^1.9.4
@@ -59,7 +59,7 @@ __metadata:
     iso-3166-1: ^2.1.1
     json-bigint: ^1.0.0
     uuid: ^8.3.2
-  checksum: a61b85b6f2e0e016fad7c2fc5c76aa0a588b3c51ca8cc53bdf627592aa9455925eb73120758a194d1c1e5446d56166bef7b71cf5424a8ff6a61de08f7498ee5d
+  checksum: 471518fee52c45fc9bc826c4025f7da890c51a02cffaaaeab22c4b4eea0848c0ef47164719fa0c4053335c40c1e37dab323cc40c59b5b09e37790088caf517a5
   languageName: node
   linkType: hard
 
@@ -3619,7 +3619,7 @@ __metadata:
   resolution: "some-verifier@workspace:."
   dependencies:
     "@concordium/browser-wallet-api-helpers": ^3.0.0
-    "@concordium/web-sdk": ^7.0.1
+    "@concordium/web-sdk": ^7.1.0
     "@types/react": ^18.2.15
     "@types/react-dom": ^18.2.7
     "@typescript-eslint/eslint-plugin": ^6.0.0

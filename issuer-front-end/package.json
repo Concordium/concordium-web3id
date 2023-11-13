@@ -7,9 +7,9 @@
         "node": ">=16.x"
     },
     "dependencies": {
-        "@concordium/react-components": "beta",
-        "@concordium/wallet-connectors": "beta",
-        "@concordium/web-sdk": "beta",
+        "@concordium/react-components": "^0.4.0",
+        "@concordium/wallet-connectors": "^0.4.0",
+        "@concordium/web-sdk": "^7.1.0",
         "@walletconnect/types": "^2.1.4",
         "bootstrap": "^5.3.0",
         "bootstrap-icons": "^1.10.5",
