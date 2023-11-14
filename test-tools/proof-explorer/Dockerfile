@@ -1,6 +1,6 @@
 # This dockerfile is meant to be run from the **root of the repository**.
 
-ARG build_image=node:16-slim
+ARG build_image=node:18-slim
 
 FROM ${build_image} AS frontend
 

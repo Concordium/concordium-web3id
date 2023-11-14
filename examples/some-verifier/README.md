@@ -73,7 +73,7 @@ The docker image with the `some-verifier` can be built using the provided
 [`Dockerfile`](./scripts/build.Dockerfile).
 
 ```console
-podman build     --build-arg build_image=rust:1.67-buster --build-arg frontend_build_image=node:16-slim --build-arg base_image=debian:buster -f examples/some-verifier/scripts/build.Dockerfile .
+podman build     --build-arg build_image=rust:1.67-buster --build-arg frontend_build_image=node:18-slim --build-arg base_image=debian:buster -f examples/some-verifier/scripts/build.Dockerfile .
 ```
 
 running from the **root** of the repository.

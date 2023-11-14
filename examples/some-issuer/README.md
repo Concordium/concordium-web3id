@@ -37,7 +37,7 @@ The docker image with the `discord` and `telegram` issuers can be built using th
 [`Dockerfile`](./scripts/build.Dockerfile).
 
 ```console
-podman build --build-arg build_image=rust:1.67-buster --build-arg base_image=debian:buster --build-arg frontend_build_image=node:16-slim -f examples/some-issuer/scripts/build.Dockerfile .
+podman build --build-arg build_image=rust:1.67-buster --build-arg base_image=debian:buster --build-arg frontend_build_image=node:18-slim -f examples/some-issuer/scripts/build.Dockerfile .
 ```
 
 running from the **root** of the repository.

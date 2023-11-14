@@ -1,6 +1,6 @@
 # This dockerfile is meant to be run from the **root of the repository**.
 
-ARG build_image=node:16-slim
+ARG build_image=node:18-slim
 ARG rust_base_image=rust:1.69-buster
 
 FROM ${rust_base_image} AS backend
