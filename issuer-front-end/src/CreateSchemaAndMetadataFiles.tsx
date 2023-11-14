@@ -1,7 +1,5 @@
-/* eslint-disable no-alert */
-/* eslint-disable no-console */
 /* eslint-disable no-param-reassign */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { saveAs } from 'file-saver';

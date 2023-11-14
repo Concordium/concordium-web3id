@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /* eslint-disable no-alert */
-import React, { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction } from 'react';
 import { Form } from 'react-bootstrap';
 import { MODULE_REFERENCE_CREDENTIAL_REGISTRY } from './constants';
 
@@ -29,7 +29,6 @@ export default function SelectNetwork(props: ConnectionProps) {
                     type="switch"
                     id="testnet-check"
                     label="Testnet"
-                    active={isTestnet}
                     checked={isTestnet}
                     onClick={() => setIsTestnet(true)}
                 />
@@ -37,7 +36,6 @@ export default function SelectNetwork(props: ConnectionProps) {
                     type="switch"
                     id="mainnet-check"
                     label="Mainnet"
-                    active={isTestnet}
                     checked={!isTestnet}
                     onClick={() => setIsTestnet(false)}
                 />

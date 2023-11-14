@@ -9,6 +9,7 @@ import { ListGroup, ListGroupItem, ListGroupItemHeading } from 'reactstrap';
 import { nanoid } from 'nanoid';
 import { Issuer, Platform } from '../lib/types';
 import { appState } from '../lib/app-state';
+import { ConcordiumGRPCClient, TransactionHash } from '@concordium/web-sdk';
 
 function getContractDid(network: string, issuer: Issuer): string {
   return `$did:ccd:${network}:sci:${issuer.index}:${issuer.subindex}/issuer`;
@@ -269,13 +270,14 @@ async function requestCredential(
   console.log('Transaction submitted, hash:', txHash);
   setPending();
 
+  const client = new ConcordiumGRPCClient(api.grpcTransport);
   // Loop until transaction has been finalized
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      const itemSummary = await api
-        .getGrpcClient()
-        .waitForTransactionFinalization(txHash!);
+      const itemSummary = await client.waitForTransactionFinalization(
+        TransactionHash.fromHexString(txHash!),
+      );
       console.log('Transaction completed.', itemSummary);
       break;
     } catch (error) {

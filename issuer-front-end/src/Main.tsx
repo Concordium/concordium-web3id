@@ -1,7 +1,4 @@
-/* eslint-disable no-alert */
-/* eslint-disable no-console */
-/* eslint-disable no-param-reassign */
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     WalletConnectionProps,
     useConnection,
@@ -51,10 +48,10 @@ export default function Main(props: ConnectionProps) {
         if (connection && account) {
             const interval = setInterval(() => {
                 client
-                    ?.getAccountInfo(new AccountAddress(account))
+                    ?.getAccountInfo(AccountAddress.fromBase58(account))
                     .then((value) => {
                         if (value !== undefined) {
-                            setAccountBalance(value.accountAmount.toString());
+                            setAccountBalance(value.accountAmount.microCcdAmount.toString());
                             setAccountExistsOnNetwork(true);
                         }
                         setViewErrorAccountBalance('');
@@ -72,10 +69,10 @@ export default function Main(props: ConnectionProps) {
     useEffect(() => {
         if (connection && account) {
             client
-                ?.getAccountInfo(new AccountAddress(account))
+                ?.getAccountInfo(AccountAddress.fromBase58(account))
                 .then((value) => {
                     if (value !== undefined) {
-                        setAccountBalance(value.accountAmount.toString());
+                        setAccountBalance(value.accountAmount.microCcdAmount.toString());
                         setAccountExistsOnNetwork(true);
                     }
                     setViewErrorAccountBalance('');

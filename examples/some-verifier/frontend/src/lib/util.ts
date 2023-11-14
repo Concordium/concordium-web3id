@@ -1,5 +1,6 @@
 import {
   AttributeKeyString,
+  ContractAddress,
   VerifiablePresentation,
   Web3StatementBuilder,
 } from '@concordium/web-sdk';
@@ -87,12 +88,7 @@ export async function requestProof(
 
   for (const issuer of issuers) {
     builder = builder.addForVerifiableCredentials(
-      [
-        {
-          index: BigInt(issuer.index),
-          subindex: BigInt(issuer.subindex),
-        },
-      ],
+      [ContractAddress.create(BigInt(issuer.index), BigInt(issuer.subindex))],
       (b) => {
         b.revealAttribute('userId');
 

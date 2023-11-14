@@ -16,4 +16,5 @@ RUN yarn install && yarn build
 # production environment
 FROM nginx:stable-alpine
 COPY --from=frontend /build/test-tools/proof-explorer/dist /usr/share/nginx/html
+COPY ./test-tools/proof-explorer/nginx.conf /etc/nginx/conf.d/default.conf
 CMD ["nginx", "-g", "daemon off;"]

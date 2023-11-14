@@ -1,5 +1,9 @@
 ## Unreleased changes.
 
+## 1.0.6
+
+-   Upgrade frontend dependencies @concordium/web-sdk and @concordium/browser-wallet-api-helpers
+
 ## 1.0.5
 
 Add link to the source code.

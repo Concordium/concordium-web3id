@@ -1,4 +1,6 @@
-## Unreleased changes
+## Telegram/Discord 1.0.3
+
+- Upgrade frontend dependencies @concordium/web-sdk and @concordium/browser-wallet-api-helpers
 
 ## Telegram/Discord 1.0.2
 
