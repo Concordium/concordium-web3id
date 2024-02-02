@@ -6,7 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-teloxide = { version = "0.12", features = ["macros"] }
+# We need the fix from https://github.com/teloxide/teloxide/pull/1002
+teloxide = { git = "https://github.com/teloxide/teloxide.git", rev = "9c70cc4", features = [
+    "macros",
+] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 tokio = { version = "1.29", features = ["rt-multi-thread", "macros"] }
