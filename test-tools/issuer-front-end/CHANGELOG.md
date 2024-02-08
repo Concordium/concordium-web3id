@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 1.0.14
+
+- Fix BigInts decoding of the return parameter from the smart contract invoke.
+
 ## 1.0.13
 
 - Upgrade frontend dependencies @concordium/web-sdk, @concordium/browser-wallet-api-helpers, @concordium/react-components, and @concordium/wallet-connectors
