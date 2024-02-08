@@ -1,4 +1,12 @@
-import { toBuffer, deserializeTypeValue, serializeTypeValue, ConcordiumGRPCClient, ReceiveName, ContractAddress } from '@concordium/web-sdk';
+import {
+    toBuffer,
+    deserializeTypeValue,
+    serializeTypeValue,
+    ConcordiumGRPCClient,
+    ReceiveName,
+    ContractAddress,
+} from '@concordium/web-sdk';
+import { stringify } from 'json-bigint';
 
 import {
     CONTRACT_SUB_INDEX,
@@ -95,6 +103,6 @@ export async function getCredentialEntry(
             )} ' failed`
         );
     } else {
-        return JSON.stringify(state);
+        return stringify(state);
     }
 }

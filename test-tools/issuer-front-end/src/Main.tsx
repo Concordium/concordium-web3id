@@ -1155,7 +1155,7 @@ export default function Main(props: WalletConnectionProps) {
                                         <div>Your return value is:</div>
                                         <br />
                                         <pre className="largeText">
-                                            {JSON.stringify(credentialRegistryState, null, "\t")}
+                                            {stringify(credentialRegistryState, null, "\t")}
                                         </pre>
                                     </div>
                                 )}
