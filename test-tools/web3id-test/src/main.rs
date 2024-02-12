@@ -203,7 +203,7 @@ async fn main() -> anyhow::Result<()> {
                     schema_ref: MetadataUrl::new(schema_ref, None)
                         .context("Schema reference too large.")?,
                 },
-                issuer_key: issuer_keypair.public.into(),
+                issuer_key: issuer_keypair.public().into(),
             };
             let nonce = client
                 .get_next_account_sequence_number(&wallet.address)
@@ -253,7 +253,7 @@ async fn main() -> anyhow::Result<()> {
             credential,
         } => {
             let wallet = std::fs::read_to_string(&seed).context("Unable to read seed phrase.")?;
-            let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet);
+            let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet)?;
 
             let credential: Web3IdCredential<ArCurve, Web3IdAttribute> = serde_json::from_reader(
                 std::fs::File::open(&credential).context("Unable to open credential.")?,
@@ -348,7 +348,7 @@ async fn main() -> anyhow::Result<()> {
                 .await
                 .context("Unable to construct registry contract.")?;
             let wallet = std::fs::read_to_string(&seed).context("Unable to read seed phrase.")?;
-            let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet);
+            let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet)?;
             let pk = wallet.get_verifiable_credential_public_key(registry, index)?;
             let holder = CredentialHolderId::new(pk);
             let entry = registry_contract
@@ -377,7 +377,7 @@ async fn main() -> anyhow::Result<()> {
             valid_from,
         } => {
             let wallet = std::fs::read_to_string(&seed).context("Unable to read seed phrase.")?;
-            let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet);
+            let wallet = ConcordiumHdWallet::from_seed_phrase(wallet.as_str(), Net::Testnet)?;
 
             let mut registry_contract = Cis4Contract::create(client.clone(), registry)
                 .await
@@ -459,7 +459,7 @@ async fn main() -> anyhow::Result<()> {
 
                 let secrets = Web3IdCredential {
                     registry,
-                    issuer_key: issuer_signer.public.into(),
+                    issuer_key: issuer_signer.public().into(),
                     values,
                     randomness,
                     signature: signed_commitments.signature,
