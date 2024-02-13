@@ -1,0 +1,43 @@
+name: Create and publish a Docker image for the issuer frontend.
+
+# Configures this workflow to run every time a change is pushed to the branch called `release`.
+on:
+  # Only allow manual builds.
+  workflow_dispatch: # allows manual trigger
+  push:
+    branches: build-issuer-front-end # Temporary
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: issuer-front-end
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      # Uses the `docker/login-action` action to log in to the Container registry.
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract tag from package.json
+        id: meta
+        run: echo "version=$(jq -r .version test-tools/issuer-front-end/package.json)" > "$GITHUB_OUTPUT"
+      - name: Build and push Docker image
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
+        with:
+          context: .
+          file: ./test-tools/issuer-front-end/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.REGISTRY }}/concordium/${{ env.IMAGE_NAME}}:${{ steps.meta.outputs.version }}
