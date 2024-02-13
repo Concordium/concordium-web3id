@@ -14,7 +14,6 @@ use concordium_rust_sdk::{
     web3id::{CredentialHolderId, SignedCommitments, Web3IdAttribute},
 };
 use rand::SeedableRng;
-use rand_chacha;
 use sha2::Digest;
 use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use tonic::transport::ClientTlsConfig;
