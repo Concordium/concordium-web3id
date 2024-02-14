@@ -320,7 +320,7 @@ fn make_secrets(
 
     Ok(Web3IdCredential {
         registry: state.client.address,
-        issuer_key: state.issuer_key.public.into(),
+        issuer_key: state.issuer_key.public().into(),
         values: request.credential_subject.attributes,
         randomness,
         signature: signed_commitments.signature,

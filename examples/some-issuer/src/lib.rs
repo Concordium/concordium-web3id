@@ -346,7 +346,7 @@ impl IssuerWorker {
             .into(),
             valid_from,
             valid_until: None,
-            issuer_key: self.issuer_key.public.into(),
+            issuer_key: self.issuer_key.public().into(),
             values,
             randomness,
             signature: signed_commitments.signature,

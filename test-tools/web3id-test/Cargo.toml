@@ -9,12 +9,11 @@ edition = "2021"
 anyhow = "1.0"
 chrono = "0.4.24"
 clap = { version = "4.3", features = ["derive", "env"] }
-concordium-rust-sdk = { version = "3", path = "../../deps/concordium-rust-sdk" }
+concordium-rust-sdk = { version = "*", path = "../../deps/concordium-rust-sdk" }
 web3id-issuer = { version = "*", path = "../../services/web3id-issuer/" }
-ed25519-dalek = "1.0.1"
 hex = "0.4"
 key_derivation = { version = "*", path = "../../deps/concordium-rust-sdk/concordium-base/rust-src/key_derivation" }
-rand = "0.7"
+rand = "0.8"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
