@@ -84,7 +84,7 @@ Open http://127.0.0.1:8080 in your browser.
 ## Build and push to DockerHub
 
 To build the docker image and push to dockerhub use the
-[test-issuer-front-end](https://github.com/Concordium/concordium-web3id/blob/main/.github/workflows/release-test-issuer-front-end.yaml)
+[test-issuer-front-end](https://github.com/Concordium/concordium-web3id/blob/main/.github/workflows/release-test-issuer-front-end-docker.yaml)
 job.
 
 The job will build the image, check that the version does not already exist, and push it. The job requires approval since it accesses secrets.
