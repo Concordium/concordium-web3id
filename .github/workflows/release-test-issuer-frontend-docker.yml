@@ -2,12 +2,12 @@
 # the dockerhub image repository.
 name: Create and publish a Docker image for the issuer frontend.
 
-# Configures this workflow to run every time a change is pushed to the branch called `release`.
 on:
-  # Only allow manual builds.
   workflow_dispatch: # allows manual trigger
+
   push:
-    branches: build-issuer-front-end # Temporary
+    tags:
+      - 'issuer-front-end/*.*.*'
 
 env:
   REGISTRY: docker.io
