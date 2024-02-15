@@ -1,3 +1,5 @@
+# This job builds and publishes a docker image for the test issuer frontend to
+# the dockerhub image repository.
 name: Create and publish a Docker image for the issuer frontend.
 
 # Configures this workflow to run every time a change is pushed to the branch called `release`.
@@ -8,16 +10,13 @@ on:
     branches: build-issuer-front-end # Temporary
 
 env:
-  REGISTRY: ghcr.io
+  REGISTRY: docker.io
   IMAGE_NAME: issuer-front-end
 
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
-    # Sets the permissions granted to the `GITHUB_TOKEN` for the actions in this job.
-    permissions:
-      contents: read
-      packages: write
+    environment: testnet-builds
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,8 +27,8 @@ jobs:
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Extract tag from package.json
         id: meta
         run: echo "version=$(jq -r .version test-tools/issuer-front-end/package.json)" > "$GITHUB_OUTPUT"
