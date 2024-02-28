@@ -165,20 +165,20 @@ export class WalletConnectProvider extends WalletProvider {
 
         const params = {
             challenge,
-            statement,
+            credentialStatements: statement,
         };
 
         try {
-            const { idProof } = (await this.client.request({
+            const verifiablePresentation = (await this.client.request({
                 topic: this.topic,
                 request: {
                     method: ID_METHOD,
                     params,
                 },
                 chainId: CHAIN_ID,
-            })) as { idProof: VerifiablePresentation };
+            })) as VerifiablePresentation;
 
-            return idProof;
+            return verifiablePresentation;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
             if (isWalletConnectError(e)) {

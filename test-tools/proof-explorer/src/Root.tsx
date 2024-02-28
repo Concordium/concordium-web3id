@@ -21,7 +21,7 @@ import {
     EntrypointName,
 } from '@concordium/web-sdk';
 import { Buffer } from 'buffer';
-import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
+import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 import { VERIFIER_URL, GRPC_WEB_CONFIG, REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA } from './constants';
 import { version } from '../package.json';
@@ -211,12 +211,13 @@ async function submitProof(
         return;
     }
     console.log(proof.toString());
+    console.log(proof);
     const resp = await fetch(`${getVerifierURL()}/v0/verify`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: proof.toString(),
+        body: JSON.stringify(proof),
     });
     if (resp.ok) {
         setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
@@ -1058,13 +1059,12 @@ export default function ProofExplorer() {
                         )}
                         {
                             // This is commented out since the mobile wallets don't support Web3ID proofs at the moment.
-                            // <button
-                            //     className="btn btn-secondary"
-                            //     disabled
-                            //     onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
-                            // >
-                            //     Connect mobile
-                            // </button>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
+                            >
+                                Connect mobile
+                            </button>
                         }
                     </div>
                     <hr />
