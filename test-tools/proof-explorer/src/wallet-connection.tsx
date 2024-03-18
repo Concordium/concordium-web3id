@@ -80,7 +80,7 @@ export class BrowserWalletProvider extends WalletProvider {
     }
 }
 
-const ID_METHOD = 'proof_of_identity';
+const ID_METHOD = 'request_verifiable_presentation';
 
 let walletConnectInstance: WalletConnectProvider | undefined;
 
