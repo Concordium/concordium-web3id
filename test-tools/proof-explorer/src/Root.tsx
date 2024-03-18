@@ -1052,20 +1052,17 @@ export default function ProofExplorer() {
                             >
                                 Connect browser
                             </button>
+                            <button
+                                className="btn btn-secondary mt-2"
+                                onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
+                            >
+                                Connect mobile
+                            </button>
                         </div>
                         {provider !== undefined && <div className="col-4 bg-info p-2 text-center"> Connected </div>}
                         {provider === undefined && (
                             <div className="col-4 bg-danger p-2 text-center"> Not connected </div>
                         )}
-                        {
-                            // This is commented out since the mobile wallets don't support Web3ID proofs at the moment.
-                            <button
-                                className="btn btn-secondary"
-                                onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
-                            >
-                                Connect mobile
-                            </button>
-                        }
                     </div>
                     <hr />
                     <div className="row">
