@@ -4,6 +4,7 @@ import { SessionTypes, SignClientTypes } from '@walletconnect/types';
 import SignClient from '@walletconnect/sign-client';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 import EventEmitter from 'events';
+import JSONBigInt from 'json-bigint';
 
 const WALLET_CONNECT_PROJECT_ID = '76324905a70fe5c388bab46d3e0564dc';
 const WALLET_CONNECT_SESSION_NAMESPACE = 'ccd';
@@ -168,15 +169,17 @@ export class WalletConnectProvider extends WalletProvider {
             credentialStatements: statement,
         };
 
+        const serializedParams = JSONBigInt.stringify(params);
+
         try {
-            const result = (await this.client.request<{ verifiablePresentationJson: string }>({
+            const result = await this.client.request<{ verifiablePresentationJson: string }>({
                 topic: this.topic,
                 request: {
                     method: ID_METHOD,
-                    params,
+                    params: { paramsJson: serializedParams },
                 },
                 chainId: CHAIN_ID,
-            }));
+            });
             return VerifiablePresentation.fromString(result.verifiablePresentationJson);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
