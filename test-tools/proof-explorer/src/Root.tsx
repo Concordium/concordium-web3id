@@ -217,7 +217,7 @@ async function submitProof(
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(proof),
+        body: proof.toString(),
     });
     if (resp.ok) {
         setMessages((oldMessages) => [...oldMessages, 'Proof OK']);

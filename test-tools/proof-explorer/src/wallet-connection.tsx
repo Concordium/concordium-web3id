@@ -169,16 +169,15 @@ export class WalletConnectProvider extends WalletProvider {
         };
 
         try {
-            const verifiablePresentation = (await this.client.request({
+            const result = (await this.client.request<{ verifiablePresentationJson: string }>({
                 topic: this.topic,
                 request: {
                     method: ID_METHOD,
                     params,
                 },
                 chainId: CHAIN_ID,
-            })) as VerifiablePresentation;
-
-            return verifiablePresentation;
+            }));
+            return VerifiablePresentation.fromString(result.verifiablePresentationJson);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
             if (isWalletConnectError(e)) {
