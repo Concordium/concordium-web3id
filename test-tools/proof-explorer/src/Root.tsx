@@ -21,7 +21,7 @@ import {
     EntrypointName,
 } from '@concordium/web-sdk';
 import { Buffer } from 'buffer';
-import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
+import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 import { VERIFIER_URL, GRPC_WEB_CONFIG, REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA } from './constants';
 import { version } from '../package.json';
@@ -211,6 +211,7 @@ async function submitProof(
         return;
     }
     console.log(proof.toString());
+    console.log(proof);
     const resp = await fetch(`${getVerifierURL()}/v0/verify`, {
         method: 'POST',
         headers: {
@@ -1051,21 +1052,17 @@ export default function ProofExplorer() {
                             >
                                 Connect browser
                             </button>
+                            <button
+                                className="btn btn-secondary mt-2"
+                                onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
+                            >
+                                Connect mobile
+                            </button>
                         </div>
                         {provider !== undefined && <div className="col-4 bg-info p-2 text-center"> Connected </div>}
                         {provider === undefined && (
                             <div className="col-4 bg-danger p-2 text-center"> Not connected </div>
                         )}
-                        {
-                            // This is commented out since the mobile wallets don't support Web3ID proofs at the moment.
-                            // <button
-                            //     className="btn btn-secondary"
-                            //     disabled
-                            //     onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
-                            // >
-                            //     Connect mobile
-                            // </button>
-                        }
                     </div>
                     <hr />
                     <div className="row">
