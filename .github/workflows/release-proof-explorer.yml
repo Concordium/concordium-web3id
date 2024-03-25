@@ -1,6 +1,6 @@
-# This job builds and publishes a docker image for the test issuer frontend to
+# This job builds and publishes a docker image for the proof explorer to
 # the dockerhub image repository.
-name: Create and publish a Docker image for the issuer frontend.
+name: Create and publish a Docker image for the proof explorer
 
 on:
   workflow_dispatch: # allows manual trigger
