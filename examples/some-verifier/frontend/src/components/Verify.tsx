@@ -144,11 +144,10 @@ export default function Verify() {
     }
     if (fullNameChecked) {
       togglePrivacyNotice();
+    } else {
+      prove(event);
     }
-    else {
-      prove(event)
-    }
-  }
+  };
 
   const prove = async (event: FormEvent) => {
     event.preventDefault();
@@ -371,25 +370,25 @@ export default function Verify() {
         </ModalHeader>
         <ModalBody>
           <p>
-            Please observe that if you select the "Full name - requires Concordium
-            mainnet identity and account" option, your personal full name
-            on Discord and/or Telegram will be exposed, depending on what
+            Please observe that if you select the "Full name - requires
+            Concordium mainnet identity and account" option, your personal full
+            name on Discord and/or Telegram will be exposed, depending on what
             social media options you choose.
           </p>
 
           <p>
-            If you only select the Telegram and Discord options, then only
-            your username from the platform that is used for verification
-            will be exposed on the platform you are verifying. For example,
-            if you are using your Discord profile to verify your Telegram
-            account, your Discord username will be displayed in your Telegram
-            channel upon verification.
+            If you only select the Telegram and Discord options, then only your
+            username from the platform that is used for verification will be
+            exposed on the platform you are verifying. For example, if you are
+            using your Discord profile to verify your Telegram account, your
+            Discord username will be displayed in your Telegram channel upon
+            verification.
           </p>
 
           <p>
-            The selected information may thus be visible to any person that
-            have access to the communication channel that you use to post
-            messages, including persons that may not be known to you.
+            The selected information may thus be visible to any person that have
+            access to the communication channel that you use to post messages,
+            including persons that may not be known to you.
           </p>
 
           <p>
@@ -411,13 +410,14 @@ export default function Verify() {
             color="secondary"
             onClick={(event) => {
               prove(event);
-              setShowPrivacyNotice(false)}
-            }
-          >I understand</Button>
-          <Button
-            color="tertiary"
-            onClick={() => setShowPrivacyNotice(false)}
-          >Cancel</Button>
+              setShowPrivacyNotice(false);
+            }}
+          >
+            I understand
+          </Button>
+          <Button color="tertiary" onClick={() => setShowPrivacyNotice(false)}>
+            Cancel
+          </Button>
         </ModalFooter>
       </Modal>
       <div className="d-flex align-items-start align-items-md-center justify-content-between flex-wrap text-opacity-25 text-body m-1">
