@@ -136,10 +136,12 @@ export default function Verify() {
     setDiscordIssued(true);
   };
 
+  const lessThanTwoOptionsError = 'Please select at least two options.';
+
   const submitHandler = async (event: FormEvent) => {
     event.preventDefault();
     if (checkedCount < 2) {
-      setProofError('Please select at least two options.');
+      setProofError(lessThanTwoOptionsError);
       return;
     }
     if (fullNameChecked) {
@@ -152,7 +154,7 @@ export default function Verify() {
   const prove = async (event: FormEvent) => {
     event.preventDefault();
     if (checkedCount < 2) {
-      setProofError('Please select at least two options.');
+      setProofError(lessThanTwoOptionsError);
       return;
     }
     const issuers = [];
