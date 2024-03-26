@@ -147,7 +147,7 @@ export default function Verify() {
     if (fullNameChecked) {
       togglePrivacyNotice();
     } else {
-      prove(event);
+      await prove(event);
     }
   };
 
@@ -372,10 +372,10 @@ export default function Verify() {
         </ModalHeader>
         <ModalBody>
           <p>
-            Please observe that if you select the "Full name - requires
-            Concordium mainnet identity and account" option, your personal full
-            name on Discord and/or Telegram will be exposed, depending on what
-            social media options you choose.
+            Please observe that if you select the &quot;Full name - requires
+            Concordium mainnet identity and account&quot; option, your personal
+            full name on Discord and/or Telegram will be exposed, depending on
+            what social media options you choose.
           </p>
 
           <p>
@@ -410,9 +410,9 @@ export default function Verify() {
         <ModalFooter class="modal-footer">
           <Button
             color="secondary"
-            onClick={(event) => {
-              prove(event);
+            onClick={async (event) => {
               setShowPrivacyNotice(false);
+              await prove(event);
             }}
           >
             I understand
