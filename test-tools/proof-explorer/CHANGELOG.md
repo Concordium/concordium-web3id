@@ -1,5 +1,9 @@
 ## Unreleased changes.
 
+## 1.1.0
+
+Add button for connecting to mobile wallets using WalletConnect.
+
 ## 1.0.6
 
 -   Upgrade frontend dependencies @concordium/web-sdk and @concordium/browser-wallet-api-helpers
