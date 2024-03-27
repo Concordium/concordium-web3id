@@ -1,3 +1,7 @@
+## 1.0.4
+
+Add privacy notice when requesting verifications.
+
 ## 1.0.3
 
 - Upgrade frontend dependencies @concordium/web-sdk and @concordium/browser-wallet-api-helpers

@@ -2,7 +2,7 @@
   "name": "some-verifier",
   "private": true,
   "packageManager": "yarn@3.2.0",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

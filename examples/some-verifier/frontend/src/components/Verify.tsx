@@ -144,11 +144,7 @@ export default function Verify() {
       setProofError(lessThanTwoOptionsError);
       return;
     }
-    if (fullNameChecked) {
-      togglePrivacyNotice();
-    } else {
-      await prove(event);
-    }
+    togglePrivacyNotice();
   };
 
   const prove = async (event: FormEvent) => {
