@@ -138,7 +138,7 @@ export default function Verify() {
 
   const lessThanTwoOptionsError = 'Please select at least two options.';
 
-  const submitHandler = async (event: FormEvent) => {
+  const submitHandler = (event: FormEvent) => {
     event.preventDefault();
     if (checkedCount < 2) {
       setProofError(lessThanTwoOptionsError);
