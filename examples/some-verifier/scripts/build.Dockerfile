@@ -1,6 +1,6 @@
-ARG frontend_build_image
-ARG build_image
-ARG base_image
+ARG frontend_build_image=node:18-slim
+ARG build_image=rust:1.72-bookworm
+ARG base_image=base_image=debian:bookworm
 
 FROM ${frontend_build_image} AS frontend
 
