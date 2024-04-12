@@ -7,7 +7,8 @@ import { useContext, useEffect, useState } from 'react';
 import { DiscordLoginButton } from 'react-social-login-buttons';
 import { ListGroup, ListGroupItem, ListGroupItemHeading } from 'reactstrap';
 import { nanoid } from 'nanoid';
-import { Issuer, Platform } from '../lib/types';
+import type { Issuer } from '../lib/types';
+import { Platform } from '../lib/types';
 import { appState } from '../lib/app-state';
 import { ConcordiumGRPCClient, TransactionHash } from '@concordium/web-sdk';
 
