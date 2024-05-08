@@ -12,7 +12,7 @@
     },
     "dependencies": {
         "@azure/core-asynciterator-polyfill": "^1.0.2",
-        "@concordium/web-sdk": "^7.4.0-alpha",
+        "@concordium/web-sdk": "^7.4.0-alpha.1",
         "@stardazed/streams-polyfill": "^2.4.0",
         "@types/dotenv": "^8.2.0",
         "body-parser": "^1.20.2",
