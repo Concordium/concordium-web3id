@@ -11,7 +11,7 @@ import { Network } from '@concordium/web-sdk/types';
  * @throws {InvalidArgumentError} If the value is not a valid network.
  * @returns The parsed network.
  */
-function parseNetwork(value: string, _dummyPrevious: any): Network {
+function parseNetwork(value: string): Network {
     if (['Mainnet', 'Testnet'].includes(value)) {
         return value as Network;
     }
@@ -25,7 +25,7 @@ function parseNetwork(value: string, _dummyPrevious: any): Network {
  * @throws {InvalidArgumentError} If the URL is invalid.
  * @returns The parsed URL.
  */
-function parseUrl(url: string, _dummyPrevious: any): URL {
+function parseUrl(url: string): URL {
     let parsed: URL;
     try {
         parsed = new URL(url);
@@ -45,7 +45,7 @@ function parseUrl(url: string, _dummyPrevious: any): URL {
  * @throws {InvalidArgumentError} If the value is not a number.
  * @returns The parsed number.
  */
-function parseNumber(value: string, _dummyPrevious: any): number {
+function parseNumber(value: string): number {
     const parsed = Number(value);
     if (isNaN(parsed)) {
         throw new InvalidArgumentError(`Invalid number value.`);

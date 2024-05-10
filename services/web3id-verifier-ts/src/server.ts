@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import express, { NextFunction, Request, Response } from 'express';
 import { AppConfig } from './types.js';
 import { RpcError, VerifiablePresentation } from '@concordium/web-sdk/types';
@@ -22,7 +23,7 @@ class HttpError extends Error {
      * Attemps to convert any value thrown into an appropriate http error
      */
     static fromThrowable(e: unknown, statusCode: number) {
-        let message: string = 'An error happened while handling the request';
+        let message = 'An error happened while handling the request';
         if (e instanceof Error) {
             message = e.message;
         } else if (typeof e === 'string') {
@@ -72,8 +73,8 @@ function catchErrors(fun: (req: Request, res: Response) => Promise<unknown>) {
  * Create a new ConcordiumGRPCNodeClient with the provided endpoint.
  * */
 function setupConcordiumClient(endpoint: URL, timeout: number): ConcordiumGRPCNodeClient {
-    let addr = endpoint.hostname;
-    let port = Number(endpoint.port);
+    const addr = endpoint.hostname;
+    const port = Number(endpoint.port);
     const creds = /https/.test(endpoint.protocol) ? credentials.createSsl() : credentials.createInsecure();
     return new ConcordiumGRPCNodeClient(addr, port, creds, { timeout: timeout });
 }
@@ -142,6 +143,8 @@ export function runServer(appConfig: AppConfig) {
     // Start the server
     app.listen(appConfig.listenAddress.port, () => {
         console.log('Configuration:', JSON.stringify(appConfig, null, 2));
-        console.log(`Server is running on ${appConfig.listenAddress} (port: ${appConfig.listenAddress.port})`);
+        console.log(
+            `Server is running on ${appConfig.listenAddress.toString()} (port: ${appConfig.listenAddress.port})`,
+        );
     });
 }
