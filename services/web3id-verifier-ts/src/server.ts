@@ -1,11 +1,15 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { AppConfig } from './types.js';
-import { VerifiablePresentation } from '@concordium/web-sdk/types';
+import { RpcError, VerifiablePresentation } from '@concordium/web-sdk/types';
 import { ConcordiumGRPCNodeClient, credentials } from '@concordium/web-sdk/nodejs';
 import { getPublicData } from '@concordium/web-sdk/web3-id';
 import { CIS4 } from '@concordium/web-sdk/cis4';
 import { verifyPresentation } from '@concordium/web-sdk/wasm';
+import bodyParser from 'body-parser';
 
+/**
+ * Error class for returning HTTP error responses with status codes
+ */
 class HttpError extends Error {
     constructor(
         public statusCode: number,
@@ -14,6 +18,9 @@ class HttpError extends Error {
         super(message);
     }
 
+    /**
+     * Attemps to convert any value thrown into an appropriate http error
+     */
     static fromThrowable(e: unknown, statusCode: number) {
         let message: string = 'An error happened while handling the request';
         if (e instanceof Error) {
@@ -31,9 +38,12 @@ class HttpError extends Error {
     }
 }
 
+/**
+ * Middleware for handling {@linkcode HttpError}s.
+ */
 function httpErrorHandler(err: unknown, _req: Request, res: Response, next: NextFunction) {
     if (err instanceof Error) {
-        console.error(err.message, err.stack);
+        console.error(err.stack ?? err.message);
     } else {
         console.error(err);
     }
@@ -46,42 +56,61 @@ function httpErrorHandler(err: unknown, _req: Request, res: Response, next: Next
 }
 
 /**
+ * Utility function for wrapping request handlers with graceful error handling
+ */
+function catchErrors(fun: (req: Request, res: Response) => Promise<unknown>) {
+    return async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            return await fun(req, res);
+        } catch (e) {
+            next(e);
+        }
+    };
+}
+
+/**
  * Create a new ConcordiumGRPCNodeClient with the provided endpoint.
  * */
 function setupConcordiumClient(endpoint: URL, timeout: number): ConcordiumGRPCNodeClient {
-    // FIXME: support https
     let addr = endpoint.hostname;
     let port = Number(endpoint.port);
-    return new ConcordiumGRPCNodeClient(addr, port, credentials.createInsecure(), { timeout: timeout });
+    const creds = /https/.test(endpoint.protocol) ? credentials.createSsl() : credentials.createInsecure();
+    return new ConcordiumGRPCNodeClient(addr, port, creds, { timeout: timeout });
 }
 
+/**
+ * Runs the verification server with the runtime configuration
+ */
 export function runServer(appConfig: AppConfig) {
-    const app = express();
-    app.use(httpErrorHandler);
-
     const grpc = setupConcordiumClient(appConfig.endpoint, appConfig.requestTimeout);
 
+    /**
+     * Handles the verification of received {@linkcode VerifiablePresentation}s.
+     *
+     * Sends a response containing the verified request containing the statements of the proof.
+     * If verification fails, we return statuscode 400 (BAD_REQUEST).
+     */
     async function verify(req: Request, res: Response) {
-        // Parse the JSON body as a VerifiablePresentation.
-        // Catch the error if the body is not a valid VerifiablePresentation.
-        const vp = VerifiablePresentation.fromString(req.body);
-        console.log('Verifiable presentation:', vp.toString());
+        const body = (req.body as Buffer).toString('utf8');
 
-        // Get the block info from the node.
-        const { blockHash, blockSlotTime: blockTime } = await grpc.getBlockInfo();
-        const publicData = await getPublicData(grpc, appConfig.network, vp, blockHash);
+        const vp = VerifiablePresentation.fromString(body);
 
-        // Check that all credentials are currently active
-        publicData.forEach((data) => {
-            if (data.status !== CIS4.CredentialStatus.Active) {
-                throw new Error('One or more credentials in the presentation are inactive');
-            }
-        });
-
-        const globalContext = await grpc.getCryptographicParameters(blockHash);
         try {
-            // TODO: define correct type
-            const verifiedRequest: any = verifyPresentation(
+            // Get the block info from the node.
+            const { blockHash, blockSlotTime: blockTime } = await grpc.getBlockInfo();
+            const publicData = await getPublicData(grpc, appConfig.network, vp, blockHash);
+
+            // Check that all credentials are currently active
+            publicData.forEach((data) => {
+                if (data.status !== CIS4.CredentialStatus.Active) {
+                    throw new Error('One or more credentials in the presentation are inactive');
+                }
+            });
+
+            // Get the cryptographic parameters for the chain
+            const globalContext = await grpc.getCryptographicParameters(blockHash);
+            // Verify the presentation received
+            const verifiedRequest = verifyPresentation(
                 vp,
                 globalContext,
                 publicData.map((d) => d.inputs),
@@ -90,19 +119,28 @@ export function runServer(appConfig: AppConfig) {
             res.send({
                 blockHash,
                 blockTime,
-                ...verifiedRequest, // flatten fields of verified request into response body.
+                ...verifiedRequest,
             });
         } catch (e: unknown) {
+            if (e instanceof RpcError) {
+                throw HttpError.fromThrowable(e, 500);
+            }
+
             throw HttpError.fromThrowable(e, 400);
         }
     }
 
-    // Define the routes, where /v0/verify is handled by the function verify_presentation.
-    app.post('/v0/verify', verify);
+    const app = express();
+    app.use(bodyParser.raw({ type: 'application/json' }));
+
+    // Routes
+    app.post('/v0/verify', catchErrors(verify));
+
+    // Handle request errors gracefully
+    app.use(httpErrorHandler);
 
     // Start the server
     app.listen(appConfig.listenAddress.port, () => {
-        // Log all the configuration settings in a nice format.
         console.log('Configuration:', JSON.stringify(appConfig, null, 2));
         console.log(`Server is running on ${appConfig.listenAddress} (port: ${appConfig.listenAddress.port})`);
     });

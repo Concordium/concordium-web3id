@@ -12,7 +12,7 @@
     },
     "dependencies": {
         "@azure/core-asynciterator-polyfill": "^1.0.2",
-        "@concordium/web-sdk": "^7.4.0-alpha.1",
+        "@concordium/web-sdk": "^7.4.0-alpha.4",
         "@stardazed/streams-polyfill": "^2.4.0",
         "@types/dotenv": "^8.2.0",
         "body-parser": "^1.20.2",
@@ -33,6 +33,7 @@
         "eslint": "^8.45.0",
         "eslint-config-prettier": "^9.0.0",
         "prettier": "^3.0.3",
+        "tsx": "^4.9.3",
         "typescript": "^5.0.2"
     },
     "packageManager": "yarn@4.2.1"
