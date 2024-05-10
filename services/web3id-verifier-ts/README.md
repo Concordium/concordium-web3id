@@ -10,49 +10,30 @@ Install dependencies:
 yarn
 ```
 
-Start dev server:
+Start server:
 
 ```bash
-yarn dev
+yarn start
 ```
 
-Build for production:
+## Configuration
 
-```bash
-yarn build
+The server is configurable at runtime with a set of arguments:
+
+```
+Usage: yarn start [options]
+
+Options:
+  -V, --version              output the version number
+  --endpoint <URL>           gRPC V2 interface of the node. (default: "http://localhost:20001/", env: CONCORDIUM_WEB3ID_VERIFIER_NODE)
+  --listen-address <URL>     Listen address for the server. (default: "http://0.0.0.0:8080/", env: CONCORDIUM_WEB3ID_VERIFIER_API_LISTEN_ADDRESS)
+  --request-timeout <value>  Request timeout in milliseconds. (default: 5000, env: CONCORDIUM_WEB3ID_VERIFIER_REQUEST_TIMEOUT)
+  --network <value>          Network to which the verifier is connected. (default: "Testnet", env: CONCORDIUM_WEB3ID_VERIFIER_NETWORK)
+  -h, --help                 display help for command
 ```
 
-## Development
+**Run against public testnet node**
 
-### Styling
-
-The template uses bootstrap, which is themed in the scss files placed in `src/scss`. More information about customizing bootstrap can be found [here](https://getbootstrap.com/docs/5.0/customize/overview/).
-Bootstrap components can be used by importing components from [`react-boostrap`](https://react-bootstrap.netlify.app/).
-When a new bootstrap component is used, the corresponding bootstrap component scss file should be imported and (ideally) themed.
-
-#### Example: Using a bootstrap card
-
-```ts
-// src/components/SomeComponent.tsx
-import { Card } from 'react-bootstrap';
-
-export default function SomeComponent() {
-    return <Card>...</Card>;
-}
 ```
-
-```scss
-// src/scss/layout/_card.scss
-@import "bootstrap/scss/card";
-
-// Theming by overriding
-.card {
-    ...
-}
-```
-
-```scss
-// src/scss/_layout.scss
-...
-@import "layout/card";
+yarn start --endpoint "https://grpc.testnet.concordium.com:20000"
 ```
