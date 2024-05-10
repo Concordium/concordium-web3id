@@ -5,13 +5,6 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@azure/core-asynciterator-polyfill@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "@azure/core-asynciterator-polyfill@npm:1.0.2"
-  checksum: 10c0/677edc092bbb9f492ddaf6972089e145309edc64205f277423a1b7cfd5e70dff9170c9dad774d7231e22f9b56f6ff0b42b8a69563443f3f7c1ba79c20e903d5d
-  languageName: node
-  linkType: hard
-
 "@concordium/rust-bindings@npm:3.1.0-alpha.3":
   version: 3.1.0-alpha.3
   resolution: "@concordium/rust-bindings@npm:3.1.0-alpha.3"
@@ -514,13 +507,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@stardazed/streams-polyfill@npm:^2.4.0":
-  version: 2.4.0
-  resolution: "@stardazed/streams-polyfill@npm:2.4.0"
-  checksum: 10c0/4b66a535aedeb848beca3631fbd63955e99ee13753b02913aacf4e225358b70b681032e87de7aae6b0be01e094e772bbcd2b3d3553c3e28fd3e42cfb0890acc3
-  languageName: node
-  linkType: hard
-
 "@types/big.js@npm:^6.2.0":
   version: 6.2.2
   resolution: "@types/big.js@npm:6.2.2"
@@ -544,15 +530,6 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10c0/2e1cdba2c410f25649e77856505cd60223250fa12dff7a503e492208dbfdd25f62859918f28aba95315251fd1f5e1ffbfca1e25e73037189ab85dd3f8d0a148c
-  languageName: node
-  linkType: hard
-
-"@types/dotenv@npm:^8.2.0":
-  version: 8.2.0
-  resolution: "@types/dotenv@npm:8.2.0"
-  dependencies:
-    dotenv: "npm:*"
-  checksum: 10c0/cd010440ea750acf2359fb9ed0a1681b00ce29d9c40b602fe33e51642bd44ce30ced54b23fadc05385daa415fe9f671273911bcf95381a5aaf09690b3db96938
   languageName: node
   linkType: hard
 
@@ -1346,13 +1323,6 @@ __metadata:
   dependencies:
     esutils: "npm:^2.0.2"
   checksum: 10c0/c96bdccabe9d62ab6fea9399fdff04a66e6563c1d6fb3a3a063e8d53c3bb136ba63e84250bbf63d00086a769ad53aef92d2bd483f03f837fc97b71cbee6b2520
-  languageName: node
-  linkType: hard
-
-"dotenv@npm:*":
-  version: 16.4.5
-  resolution: "dotenv@npm:16.4.5"
-  checksum: 10c0/48d92870076832af0418b13acd6e5a5a3e83bb00df690d9812e94b24aff62b88ade955ac99a05501305b8dc8f1b0ee7638b18493deb6fe93d680e5220936292f
   languageName: node
   linkType: hard
 
@@ -3444,11 +3414,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "web3id-verifier-ts@workspace:."
   dependencies:
-    "@azure/core-asynciterator-polyfill": "npm:^1.0.2"
     "@concordium/web-sdk": "npm:^7.4.0-alpha.4"
-    "@stardazed/streams-polyfill": "npm:^2.4.0"
     "@types/body-parser": "npm:^1"
-    "@types/dotenv": "npm:^8.2.0"
     "@types/express": "npm:^4"
     "@types/node": "npm:^17.0.13"
     "@types/text-encoding": "npm:^0"
