@@ -1,6 +1,6 @@
 # Concordium dApp template
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This project includes a general purpose Web3 ID verification server implemented in typescript.
 
 ## Getting started
 
@@ -37,3 +37,14 @@ Options:
 ```
 yarn start --endpoint "https://grpc.testnet.concordium.com:20000"
 ```
+
+## Endpoints
+
+The server exposes a single endpoint for verifying the proofs contained in a "verifiable presentation".
+
+### `POST /v0/verify`
+
+Expects a JSON body consisting of a "verifiable presentation" typically obtained by request from a compatible concordium wallet.\
+
+-   If verification is successful, a `200 OK` response with the corresponding proof request is sent.
+-   If verification fails, a `400 BAD REQUEST` response is sent.
