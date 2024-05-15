@@ -14,6 +14,7 @@ on:
 env:
   RUST_FMT: nightly-2023-04-01-x86_64-unknown-linux-gnu
   RUST_CLIPPY: 1.72
+  VITE_SOME_ISSUER_PLATFORM: "telegram" # To ensure that examples/some-issuer/frontend builds
 
 jobs:
   "lint_fmt":
@@ -86,8 +87,8 @@ jobs:
           command: clippy
           args: --manifest-path ${{ matrix.crates }} --locked -- -D warnings
 
-  "frontend_verifier":
-    name: lint:check-frontends
+  "lint_ts":
+    name: lint:check-typescript
     # Don't run on draft pull requests
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
@@ -95,37 +96,20 @@ jobs:
       matrix:
         dirs:
           - examples/some-verifier/frontend
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Format
-        working-directory: ${{ matrix.dirs }}
-        run: yarn && yarn fmt-check
-      - name: Lint
-        working-directory: ${{ matrix.dirs }}
-        run: yarn && yarn lint
-      - name: Build
-        working-directory: ${{ matrix.dirs }}
-        run: yarn && yarn build
-
-  "frontend_issuer":
-    name: lint:check-frontends
-    # Don't run on draft pull requests
-    if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dirs:
           - examples/some-issuer/frontend
+          - services/web3id-verifier-ts
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Dependencies
+        working-directory: ${{ matrix.dirs }}
+        run: yarn
       - name: Format
         working-directory: ${{ matrix.dirs }}
-        run: yarn && yarn fmt-check
+        run: yarn fmt-check
       - name: Lint
         working-directory: ${{ matrix.dirs }}
-        run: yarn && yarn lint
+        run: yarn lint
       - name: Build
         working-directory: ${{ matrix.dirs }}
-        run: yarn && yarn build-telegram && yarn build-discord
+        run: yarn build

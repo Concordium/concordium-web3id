@@ -69,7 +69,8 @@ struct App {
     network:            Network,
     #[clap(
         long = "prometheus-address",
-        help = "Listen address for the server.",
+        help = "Address to which the Prometheus server should bind. If not set, the Prometheus \
+                server will not start.",
         env = "CONCORDIUM_WEB3ID_VERIFIER_PROMETHEUS_ADDRESS"
     )]
     prometheus_address: Option<std::net::SocketAddr>,
