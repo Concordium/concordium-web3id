@@ -1,5 +1,9 @@
 ## Unreleased changes.
 
+## 1.2.0
+
+Add new ID attributes (company ID)
+
 ## 1.1.0
 
 Add button for connecting to mobile wallets using WalletConnect.
