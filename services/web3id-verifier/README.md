@@ -1,6 +1,6 @@
 ## web3id-verifier
 
-A generic verifier for Web3ID credentials. This is a self-contained service that 
+A generic verifier for Web3ID credentials. This is a self-contained service that
 handles the retrieval of credentials from the chain, and the cryptographic
 verification of presentations.
 
@@ -85,9 +85,23 @@ docker build \
     headers (defaults to `false`)
 - `CONCORDIUM_WEB3ID_VERIFIER_REQUEST_TIMEOUT` - timeout of requests (in
   milliseconds), both of requests to the node as well as the entire processing
-  of a verification request )] 
+  of a verification request
 - `CONCORDIUM_WEB3ID_VERIFIER_NETWORK` - the network to which the service is
   connected. Either `testnet` or `mainnet`. Defaults to `testnet`
 - `CONCORDIUM_WEB3ID_VERIFIER_PROMETHEUS_ADDRESS` - if set, the address on
   which the prometheus server is to be started. The `/metrics` endpoint is
   exposed that contains information about the number and duration of requests.
+
+For example, to run the indexer with a node connection to testnet:
+
+```console
+cargo run --bin web3id-verifier -- --node https://grpc.testnet.concordium.com:20000
+```
+
+## Help
+
+To open the help menu:
+
+```console
+cargo run --bin web3id-verifier -- --help
+```

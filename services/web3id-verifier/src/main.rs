@@ -23,7 +23,6 @@ use tonic::transport::ClientTlsConfig;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 
 #[derive(clap::Parser, Debug)]
-#[clap(arg_required_else_help(true))]
 #[clap(version, author)]
 struct App {
     #[clap(
