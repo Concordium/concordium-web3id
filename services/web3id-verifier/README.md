@@ -105,3 +105,4 @@ To open the help menu:
 ```console
 cargo run --bin web3id-verifier -- --help
 ```
+
