@@ -3022,7 +3022,7 @@ dependencies = [
 
 [[package]]
 name = "web3id-verifier"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "axum",
