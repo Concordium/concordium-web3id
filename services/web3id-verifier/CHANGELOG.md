@@ -1,3 +1,7 @@
+## 0.5.0
+
+- Support new ID attributes (company).
+
 ## 0.4.2
 
 - Make the node connection more robust against drops when idle.
@@ -9,7 +13,7 @@
 ## 0.4.0
 
 - Support date-time attributes.
-- Added graceful shutdown
+- Added graceful shutdown.
 
 ## 0.3.0
 

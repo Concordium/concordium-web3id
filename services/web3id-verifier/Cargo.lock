@@ -577,18 +577,17 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chrono"
-version = "0.4.26"
+version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec837a71355b28f6556dbd569b37b3f363091c0bd4b2e735674521b4c5fd9bc5"
+checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
  "js-sys",
  "num-traits",
  "serde",
- "time 0.1.45",
  "wasm-bindgen",
- "winapi",
+ "windows-targets 0.52.0",
 ]
 
 [[package]]
@@ -650,7 +649,7 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "concordium-contracts-common"
-version = "9.0.0"
+version = "9.1.0"
 dependencies = [
  "base64",
  "bs58",
@@ -670,7 +669,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-contracts-common-derive"
-version = "4.0.1"
+version = "4.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -679,7 +678,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-rust-sdk"
-version = "4.1.1"
+version = "4.3.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -710,7 +709,7 @@ dependencies = [
 
 [[package]]
 name = "concordium-smart-contract-engine"
-version = "4.0.0"
+version = "5.0.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -744,7 +743,7 @@ dependencies = [
 
 [[package]]
 name = "concordium_base"
-version = "4.0.0"
+version = "5.0.0"
 dependencies = [
  "aes",
  "anyhow",
@@ -1236,7 +1235,7 @@ checksum = "be4136b2a15dd319360be1c07d9933517ccf0be8f16bf62a3bee4f0d618df427"
 dependencies = [
  "cfg-if",
  "libc",
- "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasi",
 ]
 
 [[package]]
@@ -1676,7 +1675,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "927a765cd3fc26206e66b296465fa9d3e5ab003e651c1b3c060e7956d96b19d2"
 dependencies = [
  "libc",
- "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasi",
  "windows-sys 0.48.0",
 ]
 
@@ -2029,7 +2028,7 @@ dependencies = [
  "mach2",
  "once_cell",
  "raw-cpuid",
- "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasi",
  "web-sys",
  "winapi",
 ]
@@ -2406,7 +2405,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with_macros",
- "time 0.3.25",
+ "time",
 ]
 
 [[package]]
@@ -2596,17 +2595,6 @@ checksum = "3fdd6f064ccff2d6567adcb3873ca630700f00b5ad3f060c25b5dcfd9a4ce152"
 dependencies = [
  "cfg-if",
  "once_cell",
-]
-
-[[package]]
-name = "time"
-version = "0.1.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b797afad3f312d1c66a56d11d0316f916356d11bd158fbc6ca6389ff6bf805a"
-dependencies = [
- "libc",
- "wasi 0.10.0+wasi-snapshot-preview1",
- "winapi",
 ]
 
 [[package]]
@@ -2964,12 +2952,6 @@ dependencies = [
 
 [[package]]
 name = "wasi"
-version = "0.10.0+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
-
-[[package]]
-name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
@@ -3040,7 +3022,7 @@ dependencies = [
 
 [[package]]
 name = "web3id-verifier"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "axum",
