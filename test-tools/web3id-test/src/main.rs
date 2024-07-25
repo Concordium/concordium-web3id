@@ -440,7 +440,7 @@ async fn main() -> anyhow::Result<()> {
                 }
                 let issuer_signer: common::types::KeyPair =
                     serde_json::from_reader(&std::fs::File::open(
-                        &issuer_key.context("Expected issuer key if local issuer is set.")?,
+                        issuer_key.context("Expected issuer key if local issuer is set.")?,
                     )?)
                     .context("Unable to read attributes.")?;
                 let signed_commitments = SignedCommitments::from_secrets(
