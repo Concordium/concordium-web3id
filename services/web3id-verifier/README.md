@@ -92,7 +92,7 @@ docker build \
   which the prometheus server is to be started. The `/metrics` endpoint is
   exposed that contains information about the number and duration of requests.
 
-For example, to run the indexer with a node connection to testnet:
+For example, to run the binary with a node connection to testnet:
 
 ```console
 cargo run --bin web3id-verifier -- --node https://grpc.testnet.concordium.com:20000
