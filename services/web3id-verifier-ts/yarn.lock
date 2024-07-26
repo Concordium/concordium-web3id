@@ -5,18 +5,18 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@concordium/rust-bindings@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "@concordium/rust-bindings@npm:3.1.0"
-  checksum: 10c0/e75d9edfbaf1e024eb4d7c34d6de349f08fc6f426ba9bcfb502f5e940c7e2fac77eccd4a52b89ada3bbd74523f1d6d390671cdf46466d5439a2a29f33849bd32
+"@concordium/rust-bindings@npm:^3.2.0":
+  version: 3.2.0
+  resolution: "@concordium/rust-bindings@npm:3.2.0"
+  checksum: 10c0/bcc6e3c515aceb930c5d5a46c04e4d2d77e8b4cb77f29bad25e91ddba026de01a412597ee8b6bbf160975189550c7f45d7db5444a6f9942e839bdb9ca4542adf
   languageName: node
   linkType: hard
 
-"@concordium/web-sdk@npm:^7.4.0":
-  version: 7.4.0
-  resolution: "@concordium/web-sdk@npm:7.4.0"
+"@concordium/web-sdk@npm:^7.5.0":
+  version: 7.5.0
+  resolution: "@concordium/web-sdk@npm:7.5.0"
   dependencies:
-    "@concordium/rust-bindings": "npm:^3.1.0"
+    "@concordium/rust-bindings": "npm:^3.2.0"
     "@grpc/grpc-js": "npm:^1.9.4"
     "@noble/ed25519": "npm:^2.0.0"
     "@noble/hashes": "npm:^1.3.2"
@@ -32,7 +32,9 @@ __metadata:
     iso-3166-1: "npm:^2.1.1"
     json-bigint: "npm:^1.0.0"
     uuid: "npm:^8.3.2"
-  checksum: 10c0/233397efc910210ce3c6fecc1c89bf1c23e3b5f87822cba33ada8e22b3938021145d039fa4be3f2e8e04c91dbf8a1c17081791968f920240bad42d325b7ae76b
+  peerDependencies:
+    "@protobuf-ts/runtime-rpc": ^2.8.2
+  checksum: 10c0/4f020b1dfd88fd8ebd369019b8104bba829b0e88315c4ebf1491526d2f651e3aebb700d334c5067e4c784aead54f2045431b470752bf5d2f46bbc374c9d75f59
   languageName: node
   linkType: hard
 
@@ -3414,7 +3416,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "web3id-verifier-ts@workspace:."
   dependencies:
-    "@concordium/web-sdk": "npm:^7.4.0"
+    "@concordium/web-sdk": "npm:^7.5.0"
     "@types/body-parser": "npm:^1"
     "@types/express": "npm:^4"
     "@types/node": "npm:^17.0.13"
