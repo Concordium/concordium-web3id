@@ -1,3 +1,7 @@
+## Unreleased changes
+
+- Add health endpoint.
+
 ## 0.5.0
 
 - Support new ID attributes (company).
