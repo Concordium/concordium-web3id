@@ -2,8 +2,8 @@ use anyhow::Context;
 use axum::{
     extract::rejection::JsonRejection,
     http::{self, StatusCode},
-    routing::post,
-    Router,
+    routing::{get, post},
+    Json, Router,
 };
 use axum_prometheus::PrometheusMetricLayerBuilder;
 use clap::Parser;
@@ -173,6 +173,21 @@ async fn verify_presentation(
     }))
 }
 
+/// Struct returned by the `health` endpoint. It returns the version of the
+/// backend.
+#[derive(serde::Serialize)]
+struct Health {
+    version: &'static str,
+}
+
+/// Handles the `health` endpoint, returning the version of the backend.
+#[tracing::instrument(level = "info", skip_all)]
+async fn health() -> Json<Health> {
+    Json(Health {
+        version: env!("CARGO_PKG_VERSION"),
+    })
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let app = App::parse();
@@ -270,6 +285,7 @@ async fn main() -> anyhow::Result<()> {
     // build routes
     let server = Router::new()
         .route("/v0/verify", post(verify_presentation))
+        .route("/v0/health", get(health))
         .with_state(state)
         .layer(tower_http::trace::TraceLayer::new_for_http().
                make_span_with(DefaultMakeSpan::new().
