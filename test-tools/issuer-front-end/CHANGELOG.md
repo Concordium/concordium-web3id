@@ -1,5 +1,7 @@
 ## Unreleased changes
 
+- Backend: Bumped the concordium rust-sdk dependency for the protocol 7 release
+
 ## 1.0.14
 
 - Fix BigInts decoding of the return parameter from the smart contract invoke.

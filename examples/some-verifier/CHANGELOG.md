@@ -1,6 +1,7 @@
-## 1.0.4
+## Unreleased changes
 
-Add privacy notice when requesting verifications.
+- Add privacy notice when requesting verifications.
+- Bumped the concordium-rust-sdk dependency for the protocol 7 release
 
 ## 1.0.3
 

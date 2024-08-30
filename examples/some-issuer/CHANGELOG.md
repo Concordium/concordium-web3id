@@ -1,3 +1,7 @@
+## Unreleased changes
+
+- Bumped the concordium-rust-sdk dependency for the protocol 7 release
+
 ## Telegram/Discord 1.0.3
 
 - Upgrade frontend dependencies @concordium/web-sdk and @concordium/browser-wallet-api-helpers
