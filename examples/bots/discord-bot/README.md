@@ -1,4 +1,4 @@
-# Discord Bot
+# ⛔️ DEPRECATED Discord Bot
 
 The Discord bot that can redirect users to the verification dApp and check the verification status.
 
