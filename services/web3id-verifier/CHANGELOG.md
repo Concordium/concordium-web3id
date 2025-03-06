@@ -1,6 +1,9 @@
 ## Unreleased changes
 
-- Bumped the concordium rust-sdk dependency for the protocol 7 release
+## 0.6.0
+
+- Bumped the concordium rust-sdk dependency for the protocol 8 release.
+- Bumped the concordium rust-sdk dependency for the protocol 7 release.
 - Add health endpoint.
 
 ## 0.5.0
