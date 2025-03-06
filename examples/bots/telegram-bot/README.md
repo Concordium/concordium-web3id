@@ -1,4 +1,4 @@
-# Telegram Bot
+# ⛔️ DEPRECATED Telegram Bot
 
 Telegram bot that can redirect users to the verification dApp and check the verification status.
 

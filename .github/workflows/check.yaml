@@ -29,8 +29,6 @@ jobs:
           - services/web3id-verifier/Cargo.toml
           - test-tools/web3id-test/Cargo.toml
           - test-tools/issuer-front-end/backend/Cargo.toml
-          - examples/bots/discord-bot/Cargo.toml
-          - examples/bots/telegram-bot/Cargo.toml
           - examples/some-issuer/Cargo.toml
           - examples/some-verifier/Cargo.toml
           - examples/some-verifier-lib/Cargo.toml
@@ -63,8 +61,6 @@ jobs:
           - services/web3id-verifier/Cargo.toml
           - test-tools/web3id-test/Cargo.toml
           - test-tools/issuer-front-end/backend/Cargo.toml
-          - examples/bots/discord-bot/Cargo.toml
-          - examples/bots/telegram-bot/Cargo.toml
           - examples/some-issuer/Cargo.toml
           - examples/some-verifier/Cargo.toml
           - examples/some-verifier-lib/Cargo.toml
