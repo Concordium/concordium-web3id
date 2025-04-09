@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import ProofExplorer from './Root';
+import ProofExplorer from './components/ProofExplorer';
 
 const container = document.getElementById('root');
 
