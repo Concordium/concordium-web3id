@@ -12,7 +12,7 @@ import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 import { GRPC_WEB_CONFIG} from '../constants';
 import { version } from '../../package.json';
 import { AccountStatement, TopLevelStatements, Web3IdStatement } from '../types';
-import { IdentityProviders, Issuers, parseIssuers } from '../services/identity-service';
+import { IdentityProviders, Issuers, parseIssuers } from '../services/credential-provider-services';
 import { SubmitProof} from '../services/verification-service';
 import { Statement } from './statements/StatementDisplay';
 import { AttributeInRange, AttributeInSet, RevealAttribute } from './statements/Web3IdStatementBuilders';
