@@ -43,3 +43,9 @@ export interface SpecialSetProps extends ExtendStatementProps {
     // otherwise about EU residence
     nationality: boolean;
 }
+
+export interface ProofDetailsProps {
+  proof: string | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
