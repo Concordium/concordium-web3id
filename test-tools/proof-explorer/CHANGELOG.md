@@ -1,5 +1,9 @@
 ## Unreleased changes.
 
+## 1.2.1
+
+UI change, add ProofDetails component for improved visualization of verifiable presentations.
+
 ## 1.2.0
 
 Add new ID attributes (company ID)

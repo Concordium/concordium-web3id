@@ -4,6 +4,7 @@ import { Buffer } from 'buffer';
 import { WalletProvider } from './wallet-connection';
 import { useState } from 'react';
 import { TopLevelStatements } from '../types';
+import ProofDetails from '../components/ProofDetails';
 
 export function getVerifierURL(): string {
     return VERIFIER_URL;
@@ -12,7 +13,8 @@ export function getVerifierURL(): string {
 async function submitProof(
     statement: CredentialStatements,
     provider: WalletProvider,
-    setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void
+    setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
+    setProofData?: (proof: string) => void  // optional param to store proof data
 ) {
     let proof: VerifiablePresentation;
     const challengeBuffer = new Uint8Array(32);
@@ -33,6 +35,7 @@ async function submitProof(
     }
     console.log(proof.toString());
     console.log(proof);
+
     const resp = await fetch(`${getVerifierURL()}/v0/verify`, {
         method: 'POST',
         headers: {
@@ -40,8 +43,12 @@ async function submitProof(
         },
         body: proof.toString(),
     });
+
     if (resp.ok) {
         setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
+        if (setProofData) {
+            setProofData(proof.toString());
+        }
     } else {
         const body = await resp.json();
         setMessages((oldMessages) => [...oldMessages, `Proof not OK: (${resp.status}) ${body}`]);
@@ -53,6 +60,8 @@ export function SubmitProof(
     provider: WalletProvider | undefined
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
+    const [currentProof, setCurrentProof] = useState<string | null>(null);
+    const [isProofDetailsOpen, setIsProofDetailsOpen] = useState<boolean>(false);
 
     const request = all_statements.map((s) => {
         switch (s.type) {
@@ -75,6 +84,16 @@ export function SubmitProof(
         }
     });
 
+    const handleViewDetails = () => {
+        if (currentProof) {
+            setIsProofDetailsOpen(true);
+        }
+    };
+
+    const handleCloseDetails = () => {
+        setIsProofDetailsOpen(false);
+    };
+
     return [
         setMessages,
         <div>
@@ -82,7 +101,7 @@ export function SubmitProof(
                 {provider !== undefined && (
                     <button
                         title="Submit the statement as a verified presentation request to the wallet."
-                        onClick={() => submitProof(request, provider, setMessages)}
+                        onClick={() => submitProof(request, provider, setMessages, setCurrentProof)}
                         type="button"
                         className="col-sm-4 btn btn-primary"
                     >
@@ -93,12 +112,30 @@ export function SubmitProof(
             <hr />
             <div>
                 <ol>
-                    {' '}
-                    {messages.map((m) => (
-                        <li className="alert alert-success"> {m} </li>
-                    ))}{' '}
+                    {messages.map((m, index) => {
+                        if (m === 'Proof OK' && currentProof) {
+                            return (
+                                <li key={index} className="alert alert-success d-flex justify-content-between align-items-center">
+                                    <span>{m}</span>
+                                    <button
+                                        onClick={handleViewDetails}
+                                        className="btn btn-sm btn-outline-success"
+                                    >
+                                        View Details
+                                    </button>
+                                </li>
+                            );
+                        }
+                        return <li key={index} className="alert alert-success">{m}</li>;
+                    })}
                 </ol>
             </div>
+            {/* Render the ProofDetails popup */}
+            <ProofDetails 
+                proof={currentProof}
+                isOpen={isProofDetailsOpen}
+                onClose={handleCloseDetails}
+            />
         </div>,
     ];
 }
