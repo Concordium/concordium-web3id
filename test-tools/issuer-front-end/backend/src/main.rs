@@ -10,7 +10,7 @@ use concordium_rust_sdk::{
     common::types::KeyPair,
     id::{constants::ArCurve, pedersen_commitment},
     types::{ContractAddress, CryptographicParameters},
-    v2::{self, BlockIdentifier},
+    v2::{self, BlockIdentifier, Scheme},
     web3id::{CredentialHolderId, SignedCommitments, Web3IdAttribute},
 };
 use rand::SeedableRng;
@@ -201,12 +201,7 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("Listening on: {}", app.listen_address);
     }
 
-    let endpoint = if app
-        .endpoint
-        .uri()
-        .scheme()
-        .map_or(false, |x| x == &http::uri::Scheme::HTTPS)
-    {
+    let endpoint = if app.endpoint.uri().scheme() == Some(&Scheme::HTTPS) {
         app.endpoint
             .tls_config(ClientTlsConfig::new())
             .context("Unable to construct TLS configuration for Concordium API.")?

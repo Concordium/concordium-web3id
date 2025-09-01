@@ -15,7 +15,7 @@ use concordium_rust_sdk::{
         hashes::TransactionHash, transactions::send::GivenEnergy, CryptographicParameters, Energy,
         Nonce, WalletAccount,
     },
-    v2::{self, RPCError},
+    v2::{self, RPCError, Scheme},
     web3id::{did::Network, SignedCommitments, Web3IdAttribute, Web3IdCredential},
 };
 use reqwest::{StatusCode, Url};
@@ -542,11 +542,7 @@ pub fn configure_endpoint(
         "Request timeout should be at least 1s."
     );
 
-    let endpoint = if endpoint
-        .uri()
-        .scheme()
-        .map_or(false, |x| x == &http::uri::Scheme::HTTPS)
-    {
+    let endpoint = if endpoint.uri().scheme() == Some(&Scheme::HTTPS) {
         endpoint
             .tls_config(ClientTlsConfig::new())
             .context("Unable to construct TLS configuration for Concordium API.")?

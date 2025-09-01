@@ -3,7 +3,6 @@ use concordium_rust_sdk::{
     web3id::{CredentialHolderId, Presentation, Web3IdAttribute},
 };
 use some_verifier_lib::{FullName, Platform};
-use std::usize;
 use tokio_postgres::{types::ToSql, NoTls};
 
 const VERIFICATIONS_TABLE: &str = "verifications";
