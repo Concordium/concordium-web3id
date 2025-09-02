@@ -158,14 +158,14 @@ struct App {
 
 #[derive(Clone)]
 struct AppState {
-    issuer_sender:         tokio::sync::mpsc::Sender<IssueChannelData>,
-    discord_client_id:     Arc<str>,
+    issuer_sender: tokio::sync::mpsc::Sender<IssueChannelData>,
+    discord_client_id: Arc<str>,
     discord_client_secret: Arc<str>,
-    http_client:           reqwest::Client,
-    handlebars:            Arc<Handlebars<'static>>,
-    discord_redirect_uri:  Arc<Url>,
-    dapp_domain:           Arc<Url>,
-    verifier_dapp_domain:  Arc<String>,
+    http_client: reqwest::Client,
+    handlebars: Arc<Handlebars<'static>>,
+    discord_redirect_uri: Arc<Url>,
+    dapp_domain: Arc<Url>,
+    verifier_dapp_domain: Arc<String>,
 }
 
 /// Request for issuance of Discord credential.
@@ -176,59 +176,59 @@ struct DiscordIssueRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 struct User {
-    id:            String,
-    username:      String,
+    id: String,
+    username: String,
     discriminator: String,
 }
 
 #[derive(Serialize)]
 struct AccessTokenRequestData<'a> {
-    client_id:     &'a str,
+    client_id: &'a str,
     client_secret: &'a str,
-    grant_type:    &'static str,
-    code:          &'a str,
-    redirect_uri:  &'a str,
+    grant_type: &'static str,
+    code: &'a str,
+    redirect_uri: &'a str,
 }
 
 #[derive(Deserialize)]
 struct AccessTokenResponse {
     access_token: String,
-    token_type:   String,
-    scope:        String,
+    token_type: String,
+    scope: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct Oauth2RedirectParams {
-    pub(crate) code:  Option<String>,
+    pub(crate) code: Option<String>,
     pub(crate) error: Option<String>,
 }
 
 #[derive(Serialize)]
 struct OauthTemplateParams<'a> {
-    id:                   &'a str,
-    username:             &'a str,
-    dapp_domain:          &'a str,
+    id: &'a str,
+    username: &'a str,
+    dapp_domain: &'a str,
     verifier_dapp_domain: &'a str,
 }
 
 #[derive(Serialize)]
 struct OauthErrorParams<'a> {
-    error:                &'a str,
-    dapp_domain:          &'a str,
+    error: &'a str,
+    dapp_domain: &'a str,
     verifier_dapp_domain: &'a str,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ContractConfig {
-    index:    String,
+    index: String,
     subindex: String,
 }
 
 impl From<ContractAddress> for ContractConfig {
     fn from(value: ContractAddress) -> Self {
         Self {
-            index:    value.index.to_string(),
+            index: value.index.to_string(),
             subindex: value.subindex.to_string(),
         }
     }
@@ -238,10 +238,10 @@ impl From<ContractAddress> for ContractConfig {
 #[serde(rename_all = "camelCase")]
 struct FrontendConfig {
     #[serde(rename = "type")]
-    config_type:       String,
+    config_type: String,
     discord_client_id: String,
-    network:           Network,
-    contract:          ContractConfig,
+    network: Network,
+    contract: ContractConfig,
 }
 
 /// Handles OAuth2 redirects and inserts an id in the session.
@@ -261,8 +261,8 @@ async fn handle_oauth_redirect(
         }
     } else if let Some(error) = params.error {
         let params = OauthErrorParams {
-            error:                error.as_str(),
-            dapp_domain:          &state.dapp_domain.to_string(),
+            error: error.as_str(),
+            dapp_domain: &state.dapp_domain.to_string(),
             verifier_dapp_domain: &state.verifier_dapp_domain,
         };
 
@@ -379,9 +379,9 @@ impl AppState {
             .context("Cannot serialize username.")?;
 
         let params = OauthTemplateParams {
-            id:                   &user.id,
-            username:             &username,
-            dapp_domain:          &self.dapp_domain.to_string(),
+            id: &user.id,
+            username: &username,
+            dapp_domain: &self.dapp_domain.to_string(),
             verifier_dapp_domain: &self.verifier_dapp_domain,
         };
 
@@ -511,10 +511,10 @@ async fn main() -> anyhow::Result<()> {
     // Prevent handlebars from escaping inserted object
     reg.register_escape_fn(|s| s.into());
     let frontend_config = FrontendConfig {
-        config_type:       "discord".into(),
+        config_type: "discord".into(),
         discord_client_id: app.discord_client_id,
-        network:           app.network,
-        contract:          app.registry.into(),
+        network: app.network,
+        contract: app.registry.into(),
     };
     let config_string = serde_json::to_string(&frontend_config)?;
     let index_html = reg.render_template(

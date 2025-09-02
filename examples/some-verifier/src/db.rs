@@ -45,24 +45,24 @@ impl DbName for Platform {
 #[derive(Debug)]
 pub struct DbAccount {
     pub platform: Platform,
-    pub id:       String,
+    pub id: String,
     pub username: String,
 }
 
 /// The output from querying a line in the verifications table.
 pub struct DbVerification {
-    pub accounts:     Vec<DbAccount>,
-    pub full_name:    Option<FullName>,
+    pub accounts: Vec<DbAccount>,
+    pub full_name: Option<FullName>,
     pub presentation: Presentation<ArCurve, Web3IdAttribute>,
 }
 
 /// Initializer for verification entries, including the entries of the platform
 /// tables.
 pub struct VerificationsEntry {
-    pub telegram:     Option<PlatformEntry>,
-    pub discord:      Option<PlatformEntry>,
+    pub telegram: Option<PlatformEntry>,
+    pub discord: Option<PlatformEntry>,
     pub presentation: serde_json::Value,
-    pub full_name:    Option<FullName>,
+    pub full_name: Option<FullName>,
 }
 
 impl VerificationsEntry {
@@ -81,10 +81,10 @@ pub struct Database {
 impl VerificationsEntry {
     pub fn from_presentation(proof: &Presentation<ArCurve, Web3IdAttribute>) -> Self {
         Self {
-            telegram:     None,
-            discord:      None,
+            telegram: None,
+            discord: None,
             presentation: serde_json::to_value(proof).expect("Presentations can be serialized"),
-            full_name:    None,
+            full_name: None,
         }
     }
 
@@ -97,8 +97,8 @@ impl VerificationsEntry {
 }
 
 pub struct PlatformEntry {
-    pub id:       String,
-    pub cred_id:  CredentialHolderId,
+    pub id: String,
+    pub cred_id: CredentialHolderId,
     pub username: String,
 }
 
@@ -191,14 +191,17 @@ impl Database {
 
         for p in Platform::SUPPORTED_PLATFORMS {
             if p != platform {
-                let Some(row) = tx.query_opt(
-                    &format!(
-                        "SELECT {ID_COLUMN}, {USERNAME_COLUMN} FROM {} WHERE \
+                let Some(row) = tx
+                    .query_opt(
+                        &format!(
+                            "SELECT {ID_COLUMN}, {USERNAME_COLUMN} FROM {} WHERE \
                          {VERIFICATION_ID_COLUMN}=$1",
-                        p.table_name()
-                    ),
-                    &[&ver_id],
-                ).await? else {
+                            p.table_name()
+                        ),
+                        &[&ver_id],
+                    )
+                    .await?
+                else {
                     continue;
                 };
                 let id = row.try_get(ID_COLUMN)?;
@@ -246,9 +249,10 @@ impl Database {
                 entry.cred_id
             );
             let rows = transaction
-                .execute(&delete_statement, &[
-                    entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync)
-                ])
+                .execute(
+                    &delete_statement,
+                    &[entry.cred_id.public_key.as_bytes() as &(dyn ToSql + Sync)],
+                )
                 .await?;
             if rows > 0 {
                 tracing::debug!("Deleted {rows} rows from {VERIFICATIONS_TABLE}");

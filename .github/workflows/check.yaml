@@ -12,8 +12,7 @@ on:
   workflow_dispatch: # allows manual trigger
 
 env:
-  RUST_FMT: nightly-2023-04-01-x86_64-unknown-linux-gnu
-  RUST_CLIPPY: 1.85
+  RUST_VERSION: 1.85
   VITE_SOME_ISSUER_PLATFORM: "telegram" # To ensure that examples/some-issuer/frontend builds
 
 jobs:
@@ -39,7 +38,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_FMT }}
+          toolchain: ${{ env.RUST_VERSION }}
           override: true
           components: rustfmt
       - name: Format
@@ -73,7 +72,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_CLIPPY }}
+          toolchain: ${{ env.RUST_VERSION }}
           override: true
           target: ${{ env.TARGET }}
           components: rustfmt, clippy

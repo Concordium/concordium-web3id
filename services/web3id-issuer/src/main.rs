@@ -46,64 +46,64 @@ struct App {
         default_value = "http://localhost:20000",
         env = "CONCORDIUM_WEB3ID_ISSUER_NODE"
     )]
-    endpoint:            v2::Endpoint,
+    endpoint: v2::Endpoint,
     #[clap(
         long = "listen-address",
         default_value = "0.0.0.0:8080",
         help = "Listen address for the server.",
         env = "CONCORDIUM_WEB3ID_ISSUER_API_LISTEN_ADDRESS"
     )]
-    listen_address:      std::net::SocketAddr,
+    listen_address: std::net::SocketAddr,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "CONCORDIUM_WEB3ID_ISSUER_LOG_LEVEL"
     )]
-    log_level:           tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "log-headers",
         help = "Whether to log headers for requests and responses.",
         env = "CONCORDIUM_WEB3ID_ISSUER_LOG_HEADERS"
     )]
-    log_headers:         bool,
+    log_headers: bool,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "CONCORDIUM_WEB3ID_ISSUER_REQUEST_TIMEOUT"
     )]
-    request_timeout:     u64,
+    request_timeout: u64,
     #[clap(
         long = "registry",
         help = "Address of the registry smart contract.",
         env = "CONCORDIUM_WEB3ID_ISSUER_REGISTRY_ADDRESS"
     )]
-    registry:            ContractAddress,
+    registry: ContractAddress,
     #[clap(
         long = "wallet",
         help = "Path to the wallet keys.",
         env = "CONCORDIUM_WEB3ID_ISSUER_WALLET"
     )]
-    wallet:              PathBuf,
+    wallet: PathBuf,
     #[clap(
         long = "issuer-key",
         help = "Path to the issuer's key, used to sign commitments.",
         env = "CONCORDIUM_WEB3ID_ISSUER_KEY"
     )]
-    issuer_key:          PathBuf,
+    issuer_key: PathBuf,
     #[clap(
         long = "network",
         help = "Network on which this issuer operates.",
         env = "CONCORDIUM_WEB3ID_NETWORK"
     )]
-    network:             Network,
+    network: Network,
     #[clap(
         long = "prometheus-address",
         help = "Listen address for the server.",
         env = "CONCORDIUM_WEB3ID_ISSUER_PROMETHEUS_ADDRESS"
     )]
-    prometheus_address:  Option<std::net::SocketAddr>,
+    prometheus_address: Option<std::net::SocketAddr>,
     #[clap(
         long = "max-register-energy",
         help = "The amount of energy to allow for execution of the register credential \
@@ -119,18 +119,18 @@ struct App {
 /// sender task.
 #[derive(Debug)]
 struct IssueChannelData {
-    credential:      CredentialInfo,
+    credential: CredentialInfo,
     /// The channel where the response is sent.
     response_sender: tokio::sync::oneshot::Sender<Result<TransactionHash, Error>>,
 }
 
 struct IssuerWorker {
-    client:              Cis4Contract,
-    issuer:              WalletAccount,
-    nonce_counter:       Nonce,
+    client: Cis4Contract,
+    issuer: WalletAccount,
+    nonce_counter: Nonce,
     max_register_energy: Energy,
     /// A channel where new issue requests will be given.
-    receiver:            tokio::sync::mpsc::Receiver<IssueChannelData>,
+    receiver: tokio::sync::mpsc::Receiver<IssueChannelData>,
 }
 
 impl IssuerWorker {
@@ -280,14 +280,14 @@ impl axum::response::IntoResponse for Error {
 
 #[derive(Clone, Debug)]
 struct State {
-    crypto_params:     Arc<CryptographicParameters>,
-    client:            Cis4Contract,
-    issuer_key:        Arc<KeyPair>,
-    network:           Network,
+    crypto_params: Arc<CryptographicParameters>,
+    client: Cis4Contract,
+    issuer_key: Arc<KeyPair>,
+    network: Network,
     credential_schema: String,
-    credential_type:   BTreeSet<String>,
+    credential_type: BTreeSet<String>,
     // A channel where new issue requests should be sent to the worker.
-    sender:            tokio::sync::mpsc::Sender<IssueChannelData>,
+    sender: tokio::sync::mpsc::Sender<IssueChannelData>,
 }
 
 fn make_secrets(
@@ -351,7 +351,7 @@ async fn status(
     let status = state.client.client.get_block_item_status(&tx).await?;
     if let Some((bh, summary)) = status.is_finalized() {
         Ok(axum::Json(StatusResponse::Finalized {
-            block:   *bh,
+            block: *bh,
             success: summary.is_success(),
         }))
     } else {
@@ -534,11 +534,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/v0/issue", post(issue_credential))
         .route("/v0/status/:transactionHash", get(status))
         .with_state(state)
-        .layer(tower_http::trace::TraceLayer::new_for_http().
-               make_span_with(DefaultMakeSpan::new().
-                              include_headers(app.log_headers)).
-               on_response(DefaultOnResponse::new().
-                           include_headers(app.log_headers)))
+        .layer(
+            tower_http::trace::TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().include_headers(app.log_headers))
+                .on_response(DefaultOnResponse::new().include_headers(app.log_headers)),
+        )
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))
@@ -566,7 +566,8 @@ pub fn spawn_cancel<T>(
 ) -> tokio::task::JoinHandle<T::Output>
 where
     T: futures::Future + Send + 'static,
-    T::Output: Send + 'static, {
+    T::Output: Send + 'static,
+{
     tokio::spawn(async move {
         let res = future.await;
         // We ignore errors here since this always happens at the end of a task.

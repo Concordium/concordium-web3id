@@ -34,12 +34,12 @@ pub struct InitParams {
     pub issuer_metadata: MetadataUrl,
     /// Credential type
     pub credential_type: CredentialType,
-    pub schema:          SchemaRef,
+    pub schema: SchemaRef,
     /// The issuer for the registry. If `None`, the `init_origin` is used as
     /// `issuer`.
-    pub issuer:          Option<AccountAddress>,
+    pub issuer: Option<AccountAddress>,
     /// The public key of the issuer.
-    pub issuer_key:      IssuerKey,
+    pub issuer_key: IssuerKey,
     /// Revocation keys available right after initialization.
     #[concordium(size_length = 1)]
     pub revocation_keys: Vec<RevocationKey>,
@@ -53,18 +53,18 @@ enum Action {
     )]
     NewIssuer {
         #[clap(long = "metadata-url", help = "The credential's metadata URL.")]
-        metadata_url:    String,
+        metadata_url: String,
         #[clap(long = "credential-type", help = "The credential type.")]
         credential_type: String,
         #[clap(
             long = "schema-ref",
             help = "The schema belonging to the credential type."
         )]
-        schema_ref:      String,
+        schema_ref: String,
         #[clap(long = "issuer")]
-        issuer:          Option<AccountAddress>,
+        issuer: Option<AccountAddress>,
         #[clap(long = "wallet")]
-        wallet:          PathBuf,
+        wallet: PathBuf,
         #[clap(long = "revocation-key", help = "A revocation key to register.")]
         revocation_keys: Vec<RevocationKey>,
         #[clap(
@@ -72,7 +72,7 @@ enum Action {
             help = "The source module from which to initialize.",
             default_value = "9630530e200d01cbf15890eb322e513755df1ba88bc5efac1cbead8002d24857"
         )]
-        mod_ref:         ModuleReference,
+        mod_ref: ModuleReference,
     },
     #[clap(
         name = "register",
@@ -81,11 +81,11 @@ enum Action {
     Register {
         #[clap(long = "registry")]
         /// Address of the registry contract.
-        registry:         ContractAddress,
+        registry: ContractAddress,
         #[clap(long = "attributes", help = "Path to the file with attributes.")]
-        attributes:       PathBuf,
+        attributes: PathBuf,
         #[clap(long = "seed", help = "The path to the seed phrase.")]
-        seed:             PathBuf,
+        seed: PathBuf,
         #[clap(
             name = "issuer",
             long = "issuer",
@@ -93,22 +93,22 @@ enum Action {
             required_unless_present = "issuer-service",
             requires = "issuer-key"
         )]
-        issuer:           Option<PathBuf>,
+        issuer: Option<PathBuf>,
         #[clap(
             name = "issuer-key",
             long = "issuer-key",
             help = "The issuer's key for signing commitments."
         )]
-        issuer_key:       Option<PathBuf>,
+        issuer_key: Option<PathBuf>,
         #[clap(
             name = "issuer-service",
             long = "issuer-service",
             help = "The URL of the issuer servicexs.",
             required_unless_present = "issuer"
         )]
-        issuer_service:   Option<reqwest::Url>,
+        issuer_service: Option<reqwest::Url>,
         #[clap(long = "metadata-url", help = "The credential's metadata URL.")]
-        metadata_url:     String,
+        metadata_url: String,
         #[clap(
             long = "holder-revocable",
             help = "Whether the credential should be holder revocable."
@@ -119,12 +119,12 @@ enum Action {
             help = "Timestamp when the credential starts being valid.",
             default_value_t = chrono::Utc::now()
         )]
-        valid_from:       chrono::DateTime<chrono::Utc>,
+        valid_from: chrono::DateTime<chrono::Utc>,
         #[clap(
             long = "valid-until",
             help = "Timestamp when the credential stops being valid."
         )]
-        valid_until:      Option<chrono::DateTime<chrono::Utc>>,
+        valid_until: Option<chrono::DateTime<chrono::Utc>>,
     },
     #[clap(name = "view", about = "View the credentials in a given contract.")]
     View {
@@ -132,9 +132,9 @@ enum Action {
         /// Address of the registry contract.
         registry: ContractAddress,
         #[clap(long = "seed", help = "The path to the seed phrase.")]
-        seed:     PathBuf,
+        seed: PathBuf,
         #[clap(long = "index", help = "The index of the credential.")]
-        index:    u32,
+        index: u32,
     },
     #[clap(
         name = "prove",
@@ -146,13 +146,13 @@ enum Action {
             help = "URL of the verifier where to submit the presentation.",
             default_value = "https://web3id-verifier.testnet.concordium.com/v0/verify"
         )]
-        verifier:   url::Url,
+        verifier: url::Url,
         #[clap(long = "credential", help = "The stored credential.")]
         credential: PathBuf,
         #[clap(long = "seed", help = "The path to the seed phrase.")]
-        seed:       PathBuf,
+        seed: PathBuf,
         #[clap(long = "statement", help = "Path to the credential.")]
-        statement:  PathBuf,
+        statement: PathBuf,
     },
 }
 
@@ -168,7 +168,7 @@ struct App {
     )]
     endpoint: v2::Endpoint,
     #[command(subcommand)]
-    action:   Action,
+    action: Action,
 }
 
 #[tokio::main(flavor = "multi_thread")]
@@ -261,9 +261,12 @@ async fn main() -> anyhow::Result<()> {
             .context("Unable to parse credential.")?;
 
             // Find the index used for this credential.
-            let Some(index) = (0u32..).find(
-                |idx| wallet.get_verifiable_credential_public_key(credential.registry, *idx).unwrap() == credential.holder_id.public_key
-            ) else {
+            let Some(index) = (0u32..).find(|idx| {
+                wallet
+                    .get_verifiable_credential_public_key(credential.registry, *idx)
+                    .unwrap()
+                    == credential.holder_id.public_key
+            }) else {
                 anyhow::bail!("Could not find credential index.");
             };
 
@@ -299,7 +302,7 @@ async fn main() -> anyhow::Result<()> {
                 statement,
             };
             let request = Request {
-                challenge:             thread_rng().gen::<[u8; 32]>().into(),
+                challenge: thread_rng().gen::<[u8; 32]>().into(),
                 credential_statements: vec![statement],
             };
             let gc = client
@@ -507,9 +510,9 @@ async fn main() -> anyhow::Result<()> {
                     valid_until,
                     holder_revocable,
                     credential_subject: CredentialSubject {
-                        id:         Method {
+                        id: Method {
                             network: Network::Testnet,
-                            ty:      IdentifierType::PublicKey { key: pub_key },
+                            ty: IdentifierType::PublicKey { key: pub_key },
                         },
                         attributes: values,
                     },
