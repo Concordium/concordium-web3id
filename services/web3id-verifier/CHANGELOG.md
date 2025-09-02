@@ -1,5 +1,9 @@
 ## Unreleased changes
 
+## 0.7.0
+
+- Bumped the concordium rust-sdk dependency for the protocol 9 release.
+
 ## 0.6.0
 
 - Bumped the concordium rust-sdk dependency for the protocol 8 release.

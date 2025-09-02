@@ -11,7 +11,7 @@ use concordium_rust_sdk::{
     contract_client::CredentialStatus,
     id::{constants::ArCurve, types::GlobalContext},
     types::hashes::BlockHash,
-    v2::{self, BlockIdentifier},
+    v2::{self, BlockIdentifier, Scheme},
     web3id::{
         self, did::Network, CredentialLookupError, Presentation, PresentationVerificationError,
         Web3IdAttribute,
@@ -215,12 +215,7 @@ async fn main() -> anyhow::Result<()> {
         "Request timeout should be at least 1s."
     );
 
-    let endpoint = if app
-        .endpoint
-        .uri()
-        .scheme()
-        .map_or(false, |x| x == &http::uri::Scheme::HTTPS)
-    {
+    let endpoint = if app.endpoint.uri().scheme() == Some(&Scheme::HTTPS) {
         app.endpoint
             .tls_config(ClientTlsConfig::new())
             .context("Unable to construct TLS configuration for Concordium API.")?

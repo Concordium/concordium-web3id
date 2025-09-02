@@ -20,7 +20,7 @@ use concordium_rust_sdk::{
         transactions::send::GivenEnergy,
         ContractAddress, CryptographicParameters, Energy, Nonce, WalletAccount,
     },
-    v2::{self, BlockIdentifier, QueryError},
+    v2::{self, BlockIdentifier, QueryError, Scheme},
     web3id::{
         did::Network, CredentialHolderId, SignedCommitments, Web3IdAttribute, Web3IdCredential,
     },
@@ -454,12 +454,7 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("Listening on: {}", app.listen_address);
     }
 
-    let endpoint = if app
-        .endpoint
-        .uri()
-        .scheme()
-        .map_or(false, |x| x == &http::uri::Scheme::HTTPS)
-    {
+    let endpoint = if app.endpoint.uri().scheme() == Some(&Scheme::HTTPS) {
         app.endpoint
             .tls_config(ClientTlsConfig::new())
             .context("Unable to construct TLS configuration for Concordium API.")?
