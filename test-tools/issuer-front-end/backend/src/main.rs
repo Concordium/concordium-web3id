@@ -32,27 +32,27 @@ struct App {
         default_value = "http://node.testnet.concordium.com:20000",
         env = "CONCORDIUM_TEST_ISSUER_BACKEND_ISSUER_NODE"
     )]
-    endpoint:        v2::Endpoint,
+    endpoint: v2::Endpoint,
     #[clap(
         long = "listen-address",
         default_value = "0.0.0.0:8080",
         help = "Listen address for the server.",
         env = "CONCORDIUM_TEST_ISSUER_BACKEND_LISTEN_ADDRESS"
     )]
-    listen_address:  std::net::SocketAddr,
+    listen_address: std::net::SocketAddr,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "CONCORDIUM_TEST_ISSUER_BACKEND_ISSUER_LOG_LEVEL"
     )]
-    log_level:       tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "log-headers",
         help = "Whether to log headers for requests and responses.",
         env = "CONCORDIUM_TEST_ISSUER_BACKEND_LOG_HEADERS"
     )]
-    log_headers:     bool,
+    log_headers: bool,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
@@ -65,7 +65,7 @@ struct App {
         help = "Serve the contents of the directory.",
         env = "CONCORDIUM_TEST_ISSUER_BACKEND_SERVE_DIR"
     )]
-    serve_dir:       Option<PathBuf>,
+    serve_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -129,15 +129,15 @@ async fn get_keypair(
 #[serde(rename_all = "camelCase")]
 struct CommitmentsRequest {
     attributes: BTreeMap<String, Web3IdAttribute>,
-    issuer:     ContractAddress,
-    holder_id:  CredentialHolderId,
+    issuer: ContractAddress,
+    holder_id: CredentialHolderId,
 }
 
 #[derive(serde::Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct CommitmentsResponse {
     signed_commitments: SignedCommitments<ArCurve>,
-    randomness:         BTreeMap<String, pedersen_commitment::Randomness<ArCurve>>,
+    randomness: BTreeMap<String, pedersen_commitment::Randomness<ArCurve>>,
 }
 
 #[tracing::instrument(level = "info", skip(state))]
@@ -242,16 +242,19 @@ async fn main() -> anyhow::Result<()> {
     };
     let server = router
         .with_state(state)
-        .layer(tower_http::trace::TraceLayer::new_for_http().
-               make_span_with(DefaultMakeSpan::new().
-                              include_headers(app.log_headers)).
-               on_response(DefaultOnResponse::new().
-                           include_headers(app.log_headers)))
+        .layer(
+            tower_http::trace::TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().include_headers(app.log_headers))
+                .on_response(DefaultOnResponse::new().include_headers(app.log_headers)),
+        )
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))
         .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)) // at most 100kB of data.
-        .layer(tower_http::cors::CorsLayer::permissive().allow_methods([http::Method::GET, http::Method::POST]));
+        .layer(
+            tower_http::cors::CorsLayer::permissive()
+                .allow_methods([http::Method::GET, http::Method::POST]),
+        );
 
     let server_handle = tokio::spawn(async move {
         axum::Server::bind(&app.listen_address)

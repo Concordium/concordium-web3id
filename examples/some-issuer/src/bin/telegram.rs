@@ -154,19 +154,19 @@ struct App {
 
 #[derive(Clone)]
 struct AppState {
-    issuer_sender:       tokio::sync::mpsc::Sender<IssueChannelData>,
+    issuer_sender: tokio::sync::mpsc::Sender<IssueChannelData>,
     telegram_bot_tokens: Arc<[String]>,
 }
 
 #[derive(Deserialize, Debug)]
 struct User {
-    id:         u64,
+    id: u64,
     first_name: String,
-    last_name:  Option<String>,
-    username:   Option<String>,
-    photo_url:  Option<String>,
-    auth_date:  u64,
-    hash:       String,
+    last_name: Option<String>,
+    username: Option<String>,
+    photo_url: Option<String>,
+    auth_date: u64,
+    hash: String,
 }
 
 type HmacSha256 = Hmac<Sha256>;
@@ -209,21 +209,21 @@ impl User {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct TelegramIssueRequest {
-    credential:    CredentialInfo,
+    credential: CredentialInfo,
     telegram_user: User,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ContractConfig {
-    index:    String,
+    index: String,
     subindex: String,
 }
 
 impl From<ContractAddress> for ContractConfig {
     fn from(value: ContractAddress) -> Self {
         Self {
-            index:    value.index.to_string(),
+            index: value.index.to_string(),
             subindex: value.subindex.to_string(),
         }
     }
@@ -233,10 +233,10 @@ impl From<ContractAddress> for ContractConfig {
 #[serde(rename_all = "camelCase")]
 struct FrontendConfig {
     #[serde(rename = "type")]
-    config_type:       String,
+    config_type: String,
     telegram_bot_name: String,
-    network:           Network,
-    contract:          ContractConfig,
+    network: Network,
+    contract: ContractConfig,
 }
 
 #[tracing::instrument(level = "debug", skip_all, fields(holder_id = %request.credential.holder_id))]
@@ -255,7 +255,7 @@ async fn issue_telegram_credential(
 
     let Some(username) = request.telegram_user.username else {
         tracing::warn!("Missing username in telegram user");
-        return Err(StatusCode::BAD_REQUEST)
+        return Err(StatusCode::BAD_REQUEST);
     };
 
     send_tx(
@@ -360,10 +360,10 @@ async fn main() -> anyhow::Result<()> {
     // Prevent handlebars from escaping inserted object
     reg.register_escape_fn(|s| s.into());
     let frontend_config = FrontendConfig {
-        config_type:       "telegram".into(),
+        config_type: "telegram".into(),
         telegram_bot_name: app.telegram_bot_name,
-        network:           app.network,
-        contract:          app.registry.into(),
+        network: app.network,
+        contract: app.registry.into(),
     };
     let config_string = serde_json::to_string(&frontend_config)?;
     let index_html = reg.render_template(

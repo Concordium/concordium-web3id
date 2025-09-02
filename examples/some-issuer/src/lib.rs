@@ -33,10 +33,10 @@ pub struct SyncState {
 }
 
 struct RateLimiter {
-    multiplicity:   usize,
+    multiplicity: usize,
     max_queue_size: usize,
-    queue:          VecDeque<Arc<str>>,
-    mapping:        HashMap<Arc<str>, usize>,
+    queue: VecDeque<Arc<str>>,
+    mapping: HashMap<Arc<str>, usize>,
 }
 
 impl RateLimiter {
@@ -81,9 +81,9 @@ impl SyncState {
 /// sender task.
 #[derive(Debug)]
 pub struct IssueChannelData {
-    pub credential:      CredentialInfo,
-    pub user_id:         String,
-    pub username:        String,
+    pub credential: CredentialInfo,
+    pub user_id: String,
+    pub username: String,
     /// The channel where the response is sent. The type that is sent is
     /// [`IssueResponse`], however that type is not [`Send`] so we serialize it
     /// to a JSON value in the worker thread instead.
@@ -91,18 +91,18 @@ pub struct IssueChannelData {
 }
 
 pub struct IssuerWorker {
-    pub crypto_params:         Arc<CryptographicParameters>,
-    pub contract_client:       Cis4Contract,
-    pub network:               Network,
-    pub issuer:                Arc<WalletAccount>,
-    pub issuer_key:            Arc<KeyPair>,
-    pub credential_type:       CredentialType,
-    pub state:                 SyncState,
-    pub max_register_energy:   Energy,
-    pub metadata_url:          Arc<Url>,
+    pub crypto_params: Arc<CryptographicParameters>,
+    pub contract_client: Cis4Contract,
+    pub network: Network,
+    pub issuer: Arc<WalletAccount>,
+    pub issuer_key: Arc<KeyPair>,
+    pub credential_type: CredentialType,
+    pub state: SyncState,
+    pub max_register_energy: Energy,
+    pub metadata_url: Arc<Url>,
     pub credential_schema_url: Arc<str>,
     /// A channel where new issue requests will be given.
-    pub receiver:              tokio::sync::mpsc::Receiver<IssueChannelData>,
+    pub receiver: tokio::sync::mpsc::Receiver<IssueChannelData>,
 }
 
 fn send_and_log<T>(sender: tokio::sync::oneshot::Sender<T>, msg: T) {
@@ -213,7 +213,7 @@ impl IssuerWorker {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IssueResponse {
-    tx_hash:    TransactionHash,
+    tx_hash: TransactionHash,
     credential: Web3IdCredential<ArCurve, Web3IdAttribute>,
 }
 
@@ -232,10 +232,7 @@ pub enum RegisterCredentialError {
 #[derive(thiserror::Error, Debug)]
 pub enum MakeSecretsError {
     #[error("Incompatible number of values and randomness: {values} != {randomness}.")]
-    IncompatibleValuesAndRandomness {
-        values:     usize,
-        randomness: usize,
-    },
+    IncompatibleValuesAndRandomness { values: usize, randomness: usize },
     #[error("Invalid timestamp.")]
     InvalidTimestamp,
 }
@@ -325,7 +322,7 @@ impl IssuerWorker {
             self.contract_client.address,
         )
         .ok_or(MakeSecretsError::IncompatibleValuesAndRandomness {
-            values:     values.len(),
+            values: values.len(),
             randomness: randomness.len(),
         })?;
 
@@ -404,7 +401,8 @@ pub fn spawn_cancel<T>(
 ) -> tokio::task::JoinHandle<T::Output>
 where
     T: futures::Future + Send + 'static,
-    T::Output: Send + 'static, {
+    T::Output: Send + 'static,
+{
     tokio::spawn(async move {
         let res = future.await;
         // We ignore errors here since this always happens at the end of a task.

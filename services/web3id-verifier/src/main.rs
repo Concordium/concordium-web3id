@@ -31,41 +31,41 @@ struct App {
         default_value = "http://localhost:20000",
         env = "CONCORDIUM_WEB3ID_VERIFIER_NODE"
     )]
-    endpoint:           v2::Endpoint,
+    endpoint: v2::Endpoint,
     #[clap(
         long = "listen-address",
         default_value = "0.0.0.0:8080",
         help = "Listen address for the server.",
         env = "CONCORDIUM_WEB3ID_VERIFIER_API_LISTEN_ADDRESS"
     )]
-    listen_address:     std::net::SocketAddr,
+    listen_address: std::net::SocketAddr,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "CONCORDIUM_WEB3ID_VERIFIER_LOG_LEVEL"
     )]
-    log_level:          tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "log-headers",
         help = "Whether to log headers for requests and responses.",
         env = "CONCORDIUM_WEB3ID_VERIFIER_LOG_HEADERS"
     )]
-    log_headers:        bool,
+    log_headers: bool,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
         default_value = "5000",
         env = "CONCORDIUM_WEB3ID_VERIFIER_REQUEST_TIMEOUT"
     )]
-    request_timeout:    u64,
+    request_timeout: u64,
     #[clap(
         long = "network",
         help = "Network to which the verifier is connected.",
         default_value = "testnet",
         env = "CONCORDIUM_WEB3ID_VERIFIER_NETWORK"
     )]
-    network:            Network,
+    network: Network,
     #[clap(
         long = "prometheus-address",
         help = "Address to which the Prometheus server should bind. If not set, the Prometheus \
@@ -125,18 +125,18 @@ impl axum::response::IntoResponse for Error {
 
 #[derive(Clone, Debug)]
 struct State {
-    client:  v2::Client,
+    client: v2::Client,
     network: Network,
-    params:  Arc<GlobalContext<ArCurve>>,
+    params: Arc<GlobalContext<ArCurve>>,
 }
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Response {
-    block:      BlockHash,
+    block: BlockHash,
     block_time: chrono::DateTime<chrono::Utc>,
     #[serde(flatten)]
-    request:    web3id::Request<ArCurve, Web3IdAttribute>,
+    request: web3id::Request<ArCurve, Web3IdAttribute>,
 }
 
 #[tracing::instrument(level = "info", skip_all)]
@@ -282,11 +282,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/v0/verify", post(verify_presentation))
         .route("/v0/health", get(health))
         .with_state(state)
-        .layer(tower_http::trace::TraceLayer::new_for_http().
-               make_span_with(DefaultMakeSpan::new().
-                              include_headers(app.log_headers)).
-               on_response(DefaultOnResponse::new().
-                           include_headers(app.log_headers)))
+        .layer(
+            tower_http::trace::TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().include_headers(app.log_headers))
+                .on_response(DefaultOnResponse::new().include_headers(app.log_headers)),
+        )
         .layer(tower_http::timeout::TimeoutLayer::new(
             std::time::Duration::from_millis(app.request_timeout),
         ))

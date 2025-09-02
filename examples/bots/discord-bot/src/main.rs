@@ -18,14 +18,14 @@ struct App {
         help = "Discord bot API token.",
         env = "DISCORD_BOT_TOKEN"
     )]
-    bot_token:       String,
+    bot_token: String,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "DISCORD_BOT_LOG_LEVEL"
     )]
-    log_level:       tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
@@ -39,12 +39,12 @@ struct App {
         help = "URL of the SoMe verifier.",
         env = "DISCORD_BOT_VERIFIER_URL"
     )]
-    verifier_url:    Url,
+    verifier_url: Url,
 }
 
 struct BotConfig {
     verifier_url: Url,
-    client:       reqwest::Client,
+    client: reqwest::Client,
 }
 type Context<'a> = poise::Context<'a, BotConfig, anyhow::Error>;
 

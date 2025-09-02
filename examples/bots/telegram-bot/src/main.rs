@@ -21,14 +21,14 @@ struct App {
         help = "Telegram bot API token.",
         env = "TELEGRAM_BOT_TOKEN"
     )]
-    bot_token:       String,
+    bot_token: String,
     #[clap(
         long = "log-level",
         default_value = "info",
         help = "Maximum log level.",
         env = "TELEGRAM_BOT_LOG_LEVEL"
     )]
-    log_level:       tracing_subscriber::filter::LevelFilter,
+    log_level: tracing_subscriber::filter::LevelFilter,
     #[clap(
         long = "request-timeout",
         help = "Request timeout in milliseconds.",
@@ -42,7 +42,7 @@ struct App {
         help = "URL of the SoMe verifier.",
         env = "TELEGRAM_BOT_VERIFIER_URL"
     )]
-    verifier_url:    Url,
+    verifier_url: Url,
 }
 
 #[derive(BotCommands, Clone)]
@@ -67,7 +67,7 @@ enum Command {
 #[derive(Clone)]
 struct BotConfig {
     verifier_url: Arc<Url>,
-    client:       reqwest::Client,
+    client: reqwest::Client,
 }
 
 #[tokio::main]
