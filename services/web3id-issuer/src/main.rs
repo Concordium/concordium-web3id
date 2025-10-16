@@ -20,7 +20,7 @@ use concordium_rust_sdk::{
         transactions::send::GivenEnergy,
         ContractAddress, CryptographicParameters, Energy, Nonce, WalletAccount,
     },
-    v2::{self, BlockIdentifier, QueryError, Scheme},
+    v2::{self, upward::UnknownDataError, BlockIdentifier, QueryError, Scheme},
     web3id::{
         did::Network, CredentialHolderId, SignedCommitments, Web3IdAttribute, Web3IdCredential,
     },
@@ -192,6 +192,8 @@ enum Error {
     InvalidPath(#[from] PathRejection),
     #[error("Unable to submit transaction: {0}")]
     CouldNotSubmit(#[from] Cis4TransactionError),
+    #[error("Forward incompatible")]
+    Unknown(#[from] UnknownDataError),
     #[error("Transaction query error: {0}.")]
     Query(#[from] QueryError),
     #[error("Internal error: {0}.")]
@@ -273,6 +275,16 @@ impl axum::response::IntoResponse for Error {
                     )
                 }
             }
+            Error::Unknown(e) => {
+                tracing::error!("Unknown data type: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    axum::Json(
+                        "Unknown data type from the future protocol. Please update the SDK version."
+                            .to_string(),
+                    ),
+                )
+            }
         };
         r.into_response()
     }
@@ -352,7 +364,7 @@ async fn status(
     if let Some((bh, summary)) = status.is_finalized() {
         Ok(axum::Json(StatusResponse::Finalized {
             block: *bh,
-            success: summary.is_success(),
+            success: summary.is_success().known_or_err()?,
         }))
     } else {
         Ok(axum::Json(StatusResponse::NotFinalized))
