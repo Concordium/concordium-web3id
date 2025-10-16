@@ -192,8 +192,8 @@ enum Error {
     InvalidPath(#[from] PathRejection),
     #[error("Unable to submit transaction: {0}")]
     CouldNotSubmit(#[from] Cis4TransactionError),
-    #[error("Forward incompatible")]
-    Unknown(#[from] UnknownDataError),
+    #[error("Forward incompatible: {0}")]
+    UnknownData(#[from] UnknownDataError),
     #[error("Transaction query error: {0}.")]
     Query(#[from] QueryError),
     #[error("Internal error: {0}.")]
@@ -275,7 +275,7 @@ impl axum::response::IntoResponse for Error {
                     )
                 }
             }
-            Error::Unknown(e) => {
+            Error::UnknownData(e) => {
                 tracing::error!("Unknown data type: {e}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
