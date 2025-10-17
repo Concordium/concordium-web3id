@@ -280,7 +280,7 @@ impl axum::response::IntoResponse for Error {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     axum::Json(
-                        "Unknown data type from the future protocol. Please update the SDK version."
+                        "Unknown data type from a future protocol."
                             .to_string(),
                     ),
                 )
