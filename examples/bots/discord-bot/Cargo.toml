@@ -14,4 +14,4 @@ tokio = { version = "1.29", features = ["rt-multi-thread", "macros"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 some-verifier-lib = { version = "*", path = "../../some-verifier-lib" }
-concordium-rust-sdk = { version = "*", path = "../../../deps/concordium-rust-sdk" }
+concordium-rust-sdk = { path = "../../../deps/concordium-rust-sdk" }

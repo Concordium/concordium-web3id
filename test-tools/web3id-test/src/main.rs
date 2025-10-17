@@ -542,7 +542,8 @@ async fn main() -> anyhow::Result<()> {
             println!("The transaction is finalized in block {bh}.");
             if let Some(events) = result.contract_update_logs() {
                 println!("Credential registered.");
-                for (ca, events) in events {
+                for event in events {
+                    let (ca, events) = event.known_or_err()?;
                     if ca == registry {
                         for event in events {
                             if let Ok(event) = CredentialEvent::try_from(event) {

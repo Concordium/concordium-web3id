@@ -95,3 +95,7 @@ git submodule update --init --recursive
 ```
 
 Then run `cargo build --release` in this directory. That will produce a binary `web3id-test` in the `target/release`.
+
+## Forward-compatability
+
+The tool exists with error when received block update involving a contract has changes not reflected in the currently used Rust SDK.
