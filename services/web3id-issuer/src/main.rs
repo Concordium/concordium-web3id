@@ -279,10 +279,7 @@ impl axum::response::IntoResponse for Error {
                 tracing::error!("Unknown data type: {e}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    axum::Json(
-                        "Unknown data type from a future protocol."
-                            .to_string(),
-                    ),
+                    axum::Json("Unknown data type from a future protocol.".to_string()),
                 )
             }
         };
