@@ -4,6 +4,9 @@ resolver = "2"
 members = [
    "services/web3id-issuer",
    "services/web3id-verifier",
+   "examples/some-issuer",
+   "examples/some-verifier",
+   "examples/some-verifier-lib",
 ]
 
 # Exclude crates in submodules
