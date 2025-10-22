@@ -32,3 +32,5 @@ dist
 
 .vscode
 node_modules
+
+*.DS_STORE
