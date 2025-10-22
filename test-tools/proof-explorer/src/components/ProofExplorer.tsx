@@ -312,10 +312,10 @@ export default function ProofExplorer() {
                 </div>
 
                 <div className="col-sm">
-                    <div className="bg-black mb-3 p-3 text-white">
+                    <div className="bg-info mb-3 p-3 text-black">
                         Construct a statement about an identity credential
                     </div>
-                    <div className="bg-black mb-3 p-3 text-white">
+                    <div className="bg-info mb-3 p-3 text-black">
                         Select which identity providers to allow
                         {idCred_idpsDisplay}
                     </div>
@@ -414,7 +414,7 @@ export default function ProofExplorer() {
 
 
                             <button
-                                className="btn btn-secondary mt-2"
+                                className="btn btn-secondary bg-primary mt-2"
                                 onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
                             >
                                 Connect mobile
