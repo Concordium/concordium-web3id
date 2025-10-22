@@ -18,6 +18,9 @@ import { Statement } from './statements/StatementDisplay';
 import { AttributeInRange, AttributeInSet, RevealAttribute } from './statements/Web3IdStatementBuilders';
 import { AgeBound, AgeInRange, AttributeIn, DocumentExpiryNoEarlier, DocumentIssuerIn, EUAttributeIn } from './statements/AccountStatementBuilders';
 
+import { Toaster } from 'react-hot-toast';
+import  toast  from "react-hot-toast";
+
 const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
     return { value: ak, label: ak };
 });
@@ -70,8 +73,8 @@ export default function ProofExplorer() {
 
     const addIdentityCredentialStatement = (a: AtomicStatementV2[]) => {
         if (currentStatementType && currentStatementType != 'id') {
-                console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");   
-                alert("Warning: mixing statement types. Clear last credential statement first.");
+                console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");
+                toast.error("Warning: mixing statement types. Clear last credential statement first.");
                 return;
         }
 
@@ -102,7 +105,7 @@ export default function ProofExplorer() {
     const addAccountStatement = (a: AtomicStatementV2[]) => {
         if (currentStatementType && currentStatementType != 'account') {
             console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");   
-            alert("Warning: mixing statement types. Clear last credential statement first.");
+            toast.error("Warning: mixing statement types. Clear last credential statement first.");
             return;
         }
 
@@ -133,7 +136,7 @@ export default function ProofExplorer() {
 
         if (currentStatementType && currentStatementType != 'web3id') {
             console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");   
-            alert("Warning: mixing statement types. Clear last credential statement first.");
+            toast.error("Warning: mixing statement types. Clear last credential statement first.");
             return;
         }
 
@@ -171,8 +174,6 @@ export default function ProofExplorer() {
 
     const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
 
-    const [showDialog, setShowDialog] = useState(false);
-
     return (
         <main className="container">
             <nav className="navbar bg-black mb-3 justify-content-between">
@@ -191,6 +192,10 @@ export default function ProofExplorer() {
                 </div>
             </nav>
             <div className="row">
+                <Toaster
+                    position="bottom-center"
+                    reverseOrder={false}
+                />
                 <div className="col-sm">
                     <div className="bg-success mb-3 p-3 text-white">
                         {' '}
@@ -396,7 +401,7 @@ export default function ProofExplorer() {
                                         console.log("Successfully connected to browser wallet.");
                                     } catch (err) {
                                         console.error("Failed to connect to browser wallet (make sure it is installed):", err);
-                                        setShowDialog(true);
+                                        toast.error("Failed to connect to browser wallet, make sure it is installed.");
                                     } finally {
                                         console.log("Connection attempt to browser wallet finished.");
                                     }
@@ -406,19 +411,6 @@ export default function ProofExplorer() {
                                 Connect browser
                             </button>
 
-                {showDialog && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white p-6 rounded-lg shadow-lg w-80 text-center">
-                            <h2 className="text-lg font-semibold mb-2 text-red-600">
-                                Failed to connect wallet browser, make sure it is installed.
-                            </h2>
-                            <p className="mb-4">Please check your installation, connection and try again.</p>
-                            <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => setShowDialog(false)}>
-                                OK
-                            </button>
-                        </div>
-                    </div>
-                )}
 
 
                             <button
