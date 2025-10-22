@@ -12,7 +12,6 @@ on:
   workflow_dispatch: # allows manual trigger
 
 env:
-  RUST_VERSION: 1.85
   VITE_SOME_ISSUER_PLATFORM: "telegram" # To ensure that examples/some-issuer/frontend builds
 
 jobs:

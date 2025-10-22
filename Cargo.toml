@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+
+members = [
+   "services/web3id-issuer",
+   "services/web3id-verifier",
+]
+
+# Exclude crates in submodules
+exclude = ["deps"]
+
+[workspace.dependencies]
+concordium-rust-sdk = { path = "deps/concordium-rust-sdk" }
+concordium_base = { path = "deps/concordium-rust-sdk/concordium-base/rust-src/concordium_base" }
