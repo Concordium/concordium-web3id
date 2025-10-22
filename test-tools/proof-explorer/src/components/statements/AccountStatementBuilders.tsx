@@ -1,7 +1,7 @@
 import { useState, MouseEventHandler, ChangeEventHandler } from 'react';
 import {
     AttributeKeyString,
-    AccountStatementBuild,
+    IdentityStatementBuilder,
 } from '@concordium/web-sdk';
 import { AgeBoundProps, ExtendSetStatementProps, ExtendStatementProps, SpecialSetProps } from '../../types';
 
@@ -14,7 +14,7 @@ export function AgeBound({ younger, setStatement }: AgeBoundProps) {
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        const builder = new AccountStatementBuild();
+        const builder = new IdentityStatementBuilder();
         // since addMaximumage and addMinimumAge do some arithmetic with the
         // bound we have to parse it to avoid weird behaviour that results from
         // adding and subtracting numbers and strings
@@ -53,7 +53,7 @@ export function AgeInRange({ setStatement }: ExtendStatementProps) {
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        const builder = new AccountStatementBuild();
+        const builder = new IdentityStatementBuilder();
         // Since addAgeInRange does some arithmetic we need to parse inputs as integers
         // first. Otherwise we get unexpected behaviour.
         builder.addAgeInRange(parseInt(lower), parseInt(upper));
@@ -85,7 +85,7 @@ export function DocumentExpiryNoEarlier({ setStatement }: ExtendStatementProps) 
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        const builder = new AccountStatementBuild();
+        const builder = new IdentityStatementBuilder();
         builder.documentExpiryNoEarlierThan(lower);
         setStatement(builder.getStatement());
     };
@@ -111,7 +111,7 @@ export function DocumentIssuerIn({ setStatement }: ExtendStatementProps) {
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        const builder = new AccountStatementBuild();
+        const builder = new IdentityStatementBuilder();
         builder.addMembership(
             AttributeKeyString.idDocIssuer,
             set.split(',').map((e) => e.trim())
@@ -145,7 +145,7 @@ export function AttributeIn({ attribute, member, setStatement }: ExtendSetStatem
     };
 
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        const builder = new AccountStatementBuild();
+        const builder = new IdentityStatementBuilder();
         if (member) {
             builder.addMembership(
                 attribute,
@@ -176,7 +176,7 @@ export function AttributeIn({ attribute, member, setStatement }: ExtendSetStatem
 
 export function EUAttributeIn({ nationality, setStatement }: SpecialSetProps) {
     const onClickAdd: MouseEventHandler<HTMLButtonElement> = () => {
-        const builder = new AccountStatementBuild();
+        const builder = new IdentityStatementBuilder();
         if (nationality) {
             builder.addEUNationality();
         } else {

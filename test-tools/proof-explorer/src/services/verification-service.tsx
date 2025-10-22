@@ -16,6 +16,7 @@ async function submitProof(
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: string) => void  // optional param to store proof data
 ) {
+    console.log('starting submitProof');
     let proof: VerifiablePresentation;
     const challengeBuffer = new Uint8Array(32);
     crypto.getRandomValues(challengeBuffer);
@@ -23,6 +24,7 @@ async function submitProof(
     console.log(statement);
 
     try {
+        console.log("Requesting verifiable presentation from wallet...");
         proof = await provider.requestVerifiablePresentation(challenge, statement);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -81,6 +83,14 @@ export function SubmitProof(
                         issuers: s.statement.issuers,
                     },
                 } as CredentialStatement;
+            case 'id':
+                return {
+                    statement: s.statement.statement,
+                    idQualifier: {
+                        type: 'idCred',
+                        issuers: s.statement.idCred_idps.map((x) => x.id),
+                    },
+                } as CredentialStatement;    
         }
     });
 
