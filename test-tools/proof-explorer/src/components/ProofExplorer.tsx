@@ -6,6 +6,10 @@ import {
     ConcordiumGRPCClient,
     streamToList,
     ContractAddress,
+    VerifiablePresentationRequestV1,
+    AccountAddress,
+    buildAccountSigner,
+    CredentialStatementBuilder,
 } from '@concordium/web-sdk';
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
@@ -20,6 +24,7 @@ import { AgeBound, AgeInRange, AttributeIn, DocumentExpiryNoEarlier, DocumentIss
 
 import { Toaster } from 'react-hot-toast';
 import  toast  from "react-hot-toast";
+import { stat } from 'fs';
 
 const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
     return { value: ak, label: ak };
@@ -478,8 +483,24 @@ export default function ProofExplorer() {
                             {' '}
                             <button
                                 title="Simulate Anchor"
-                                onClick={() =>
-                                    console.log('Not implemented yet')
+                                onClick={() =>{
+                                    const SPONSOREE_KEY = '6fb89ee03ea03d038ba0bfa62dbc29eec6f30b154f797cfa5c296beb1c178428';
+                                    const signer = buildAccountSigner(SPONSOREE_KEY);
+                                    const builder = new CredentialStatementBuilder();
+                                    const statement = builder.forIdentityCredentials([0, 1, 2], (b) => b.revealAttribute(AttributeKeyString.firstName))
+                                                            .getStatements();
+                                    console.log("Creating and anchoring VPR");
+                                    VerifiablePresentationRequestV1.createAndAchor(
+                                        client.current,
+                                        AccountAddress.fromBase58('357EYHqrmMiJBmUZTVG5FuaMq4soAhgtgz6XNEAJaXHW3NHaUf'),
+                                        signer,
+                                        VerifiablePresentationRequestV1.createSimpleContext( Uint8Array.from([0, 1, 2, 3]),
+                                            '0102'.repeat(16),
+                                            'Wine payment'
+                                        ),
+                                        statement
+                                    )                                    
+                                }
                                 }
                                 type="button"
                                 className="btn btn-primary mt-1"

@@ -82,14 +82,6 @@ export function SubmitProof(
                         type: 'sci',
                         issuers: s.statement.issuers,
                     },
-                } as CredentialStatement;
-            case 'id':
-                return {
-                    statement: s.statement.statement,
-                    idQualifier: {
-                        type: 'idCred',
-                        issuers: s.statement.idCred_idps.map((x) => x.id),
-                    },
                 } as CredentialStatement;    
         }
     });
