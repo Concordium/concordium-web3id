@@ -11,7 +11,7 @@ import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '..
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 import { GRPC_WEB_CONFIG} from '../constants';
 import { version } from '../../package.json';
-import { AccountStatement, IdentityCreddentialStatement, TopLevelStatements, Web3IdStatement } from '../types';
+import { AccountStatement, IdentityCredentialStatement, TopLevelStatements, Web3IdStatement } from '../types';
 import { IdentityProviders, Issuers, parseIssuers } from '../services/credential-provider-services';
 import { SubmitProof} from '../services/verification-service';
 import { Statement } from './statements/StatementDisplay';
@@ -88,7 +88,7 @@ export default function ProofExplorer() {
                 console.log("Creating new identity credential statement lastAccount=", lastAccount, " new_statement=", new_statement, " statements.length=", statements.length);    
                 setLastAccount(true);
                 setNewStatement(false);
-                const statement: IdentityCreddentialStatement = {
+                const statement: IdentityCredentialStatement = {
                     idCred_idps: idps.filter(({ id }) => idCred_checked.includes(id)),
                     statement: a,
                 };
