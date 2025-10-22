@@ -2,9 +2,15 @@ import { AtomicStatementV2, ContractAddress } from "@concordium/web-sdk";
 
 export type TopLevelStatement =
     | { type: 'account'; statement: AccountStatement }
+    | { type: 'id'; statement: IdentityCreddentialStatement }
     | { type: 'web3id'; statement: Web3IdStatement };
 
 export type TopLevelStatements = TopLevelStatement[];
+
+export interface IdentityCreddentialStatement {
+    idCred_idps: { name: string; id: number }[];
+    statement: AtomicStatementV2[];
+}
 
 export interface AccountStatement {
     idps: { name: string; id: number }[];

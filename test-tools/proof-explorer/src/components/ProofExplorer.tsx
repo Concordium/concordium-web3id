@@ -11,7 +11,7 @@ import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '..
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 import { GRPC_WEB_CONFIG} from '../constants';
 import { version } from '../../package.json';
-import { AccountStatement, TopLevelStatements, Web3IdStatement } from '../types';
+import { AccountStatement, IdentityCreddentialStatement, TopLevelStatements, Web3IdStatement } from '../types';
 import { IdentityProviders, Issuers, parseIssuers } from '../services/credential-provider-services';
 import { SubmitProof} from '../services/verification-service';
 import { Statement } from './statements/StatementDisplay';
@@ -22,11 +22,13 @@ const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
     return { value: ak, label: ak };
 });
 
+
 /**
  * The main component.
  */
 export default function ProofExplorer() {
     const [provider, setProvider] = useState<WalletProvider>();
+    const [currentStatementType, setCurrentStatementType] = useState<'account' | 'id' | 'web3id' | undefined>(undefined);
 
     useEffect(() => {
         if (provider !== undefined) {
@@ -36,7 +38,7 @@ export default function ProofExplorer() {
         }
     }, [provider]);
 
-    const connectProvider = async (provider: WalletProvider) => {
+    const connectProvider = async (provider: WalletProvider) => {        
         await provider.connect();
         setProvider(provider);
     };
@@ -59,13 +61,57 @@ export default function ProofExplorer() {
 
     const [checked, idpsDisplay] = IdentityProviders({ idps });
 
+    const [idCred_checked, idCred_idpsDisplay] = IdentityProviders({ idps });
+
     const [lastAccount, setLastAccount] = useState<boolean>(true);
 
     const [new_statement, setNewStatement] = useState<boolean>(true);
 
-    const addAccountStatement = (a: AtomicStatementV2[]) => {
+
+    const addIdentityCredentialStatement = (a: AtomicStatementV2[]) => {
+        if (currentStatementType && currentStatementType != 'id') {
+                console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");   
+                alert("Warning: mixing statement types. Clear last credential statement first.");
+                return;
+        }
+
+        if(currentStatementType === undefined)
+            setCurrentStatementType('id');
+
         setStatement((statements) => {
+            console.log("Adding identity credential statement");
+         
             if (!lastAccount || new_statement || statements.length == 0) {
+                console.log("Creating new identity credential statement lastAccount=", lastAccount, " new_statement=", new_statement, " statements.length=", statements.length);    
+                setLastAccount(true);
+                setNewStatement(false);
+                const statement: IdentityCreddentialStatement = {
+                    idCred_idps: idps.filter(({ id }) => idCred_checked.includes(id)),
+                    statement: a,
+                };
+                return [...statements, { type: 'id', statement: statement }];
+            } else {
+                statements[statements.length - 1].statement.statement =
+                    statements[statements.length - 1].statement.statement.concat(a);
+                return [...statements]; // copy the array to force component updates.
+            }
+        });
+    };
+
+
+    const addAccountStatement = (a: AtomicStatementV2[]) => {
+        if (currentStatementType && currentStatementType != 'account') {
+            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");   
+            alert("Warning: mixing statement types. Clear last credential statement first.");
+            return;
+        }
+
+        if(currentStatementType === undefined) setCurrentStatementType('account');
+
+        setStatement((statements) => {
+            console.log("Adding account statement");
+            if (!lastAccount || new_statement || statements.length == 0) {
+                console.log("Creating new account statement lastAccount=", lastAccount, " new_statement=", new_statement, " statements.length=", statements.length);
                 setLastAccount(true);
                 setNewStatement(false);
                 const statement: AccountStatement = {
@@ -84,6 +130,16 @@ export default function ProofExplorer() {
     const [issuers, setIssuers] = useState<string>('');
 
     const addWeb3IdStatement = (a: AtomicStatementV2[]) => {
+
+        if (currentStatementType && currentStatementType != 'web3id') {
+            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");   
+            alert("Warning: mixing statement types. Clear last credential statement first.");
+            return;
+        }
+
+        if(currentStatementType === undefined) setCurrentStatementType('web3id');
+
+
         setStatement((statements) => {
             if (lastAccount || new_statement || statements.length == 0) {
                 setLastAccount(false);
@@ -114,6 +170,8 @@ export default function ProofExplorer() {
     const [web3IdAttributes, issuersDisplay] = Issuers(issuers, client.current);
 
     const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
+
+    const [showDialog, setShowDialog] = useState(false);
 
     return (
         <main className="container">
@@ -247,15 +305,122 @@ export default function ProofExplorer() {
                         />
                     </div>
                 </div>
+
+                <div className="col-sm">
+                    <div className="bg-black mb-3 p-3 text-white">
+                        Construct a statement about an identity credential
+                    </div>
+                    <div className="bg-black mb-3 p-3 text-white">
+                        Select which identity providers to allow
+                        {idCred_idpsDisplay}
+                    </div>
+                    <div>
+                        <RevealAttribute setStatement={addIdentityCredentialStatement} attributeOptions={accountAttributeNames} />
+                    </div>
+                    <div>
+                        <AgeBound younger={true} setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <AgeBound younger={false} setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <AgeInRange setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <DocumentExpiryNoEarlier setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <DocumentIssuerIn setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <AttributeIn
+                            attribute={AttributeKeyString.nationality}
+                            member={true}
+                            setStatement={addIdentityCredentialStatement}
+                        />
+                    </div>
+                    <div>
+                        <AttributeIn
+                            attribute={AttributeKeyString.nationality}
+                            member={false}
+                            setStatement={addIdentityCredentialStatement}
+                        />
+                    </div>
+                    <div>
+                        <AttributeIn
+                            attribute={AttributeKeyString.countryOfResidence}
+                            member={true}
+                            setStatement={addIdentityCredentialStatement}
+                        />
+                    </div>
+                    <div>
+                        <AttributeIn
+                            attribute={AttributeKeyString.countryOfResidence}
+                            member={false}
+                            setStatement={addIdentityCredentialStatement}
+                        />
+                    </div>
+                    <div>
+                        <EUAttributeIn nationality={true} setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <EUAttributeIn nationality={false} setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <AttributeInRange setStatement={addIdentityCredentialStatement} attributeOptions={accountAttributeNames} />
+                    </div>
+                    <div>
+                        <AttributeInSet
+                            member={true}
+                            setStatement={addIdentityCredentialStatement}
+                            attributeOptions={accountAttributeNames}
+                        />
+                    </div>
+                    <div>
+                        <AttributeInSet
+                            member={false}
+                            setStatement={addIdentityCredentialStatement}
+                            attributeOptions={accountAttributeNames}
+                        />
+                    </div>
+                </div>
+
                 <div className="col-sm">
                     <div className="row">
                         <div className="col-6">
                             <button
                                 className="btn btn-primary me-1"
-                                onClick={async () => connectProvider(await BrowserWalletProvider.getInstance())}
+                                onClick={async () => {
+                                    try {
+                                        connectProvider(await BrowserWalletProvider.getInstance());
+                                        console.log("Successfully connected to browser wallet.");
+                                    } catch (err) {
+                                        console.error("Failed to connect to browser wallet (make sure it is installed):", err);
+                                        setShowDialog(true);
+                                    } finally {
+                                        console.log("Connection attempt to browser wallet finished.");
+                                    }
+                                }
+                                }
                             >
                                 Connect browser
                             </button>
+
+                {showDialog && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white p-6 rounded-lg shadow-lg w-80 text-center">
+                            <h2 className="text-lg font-semibold mb-2 text-red-600">
+                                Failed to connect wallet browser, make sure it is installed.
+                            </h2>
+                            <p className="mb-4">Please check your installation, connection and try again.</p>
+                            <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={() => setShowDialog(false)}>
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+
                             <button
                                 className="btn btn-secondary mt-2"
                                 onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
@@ -286,7 +451,9 @@ export default function ProofExplorer() {
                             {' '}
                             <button
                                 title="Delete the last credential statement."
-                                onClick={() =>
+                                onClick={() => 
+                                    {
+                                    setCurrentStatementType(undefined);
                                     setStatement((oldStatement) => {
                                         if (oldStatement.length == 0) {
                                             return oldStatement;
@@ -294,6 +461,7 @@ export default function ProofExplorer() {
                                             return oldStatement.slice(0, oldStatement.length - 1);
                                         }
                                     })
+                                    }
                                 }
                                 type="button"
                                 className="btn btn-primary mt-1"
@@ -312,6 +480,21 @@ export default function ProofExplorer() {
                     >
                         {'Clear messages.'}
                     </button>
+
+                    <hr />
+                        <div className="col-sm">
+                            {' '}
+                            <button
+                                title="Simulate Anchor"
+                                onClick={() =>
+                                    console.log('Not implemented yet')
+                                }
+                                type="button"
+                                className="btn btn-primary mt-1"
+                            >
+                                {'Simulate button'}
+                            </button>{' '}
+                        </div>
 
                     <hr />
 

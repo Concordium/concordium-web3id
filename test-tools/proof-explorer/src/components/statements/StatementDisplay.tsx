@@ -2,7 +2,24 @@ import { StatementTypes } from '@concordium/web-sdk';
 import { TopLevelStatement, TopLevelStatements } from '../../types';
 
 function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
-    switch (outer_statement.type) {
+    console.log("type is ", outer_statement.type);
+    switch (outer_statement.type) {        
+        case 'id':
+            if (outer_statement.statement.idCred_idps.length == 0) {
+                return <div className="bg-danger"> No issuers selected for an identity credential statement. </div>;
+            } else {
+                return (
+                    <div className="bg-info p-1">
+                        <p> Statement about an identity credential </p>
+                        <p> Allowed issuers </p>
+                        <ul>
+                            {outer_statement.statement.idCred_idps.map(({ name, id }) => {
+                                return <li> {`${id}:${name}`} </li>;
+                            })}
+                        </ul>
+                    </div>
+                );
+            }
         case 'account':
             if (outer_statement.statement.idps.length == 0) {
                 return <div className="bg-danger"> No issuers selected for an account statement. </div>;
@@ -47,6 +64,7 @@ export function Statement({ inner, new_statement }: { inner: TopLevelStatements;
            <Issuer outer_statement={outer_statement} />
            <div>
                {outer_statement.statement.statement.map((s) => {
+                console.log("statement type ", s.type);
                    switch (s.type) {
                        case StatementTypes.RevealAttribute:
                            return (
