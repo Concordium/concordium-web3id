@@ -12,9 +12,10 @@ import {
     SequenceNumber,
 } from '@concordium/web-sdk';
 
+import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
 
 
-export const handleSimulateAnchorCreation = () => {
+export const handleSimulateAnchorCreation = (provider: BrowserWalletProvider) => {
 
     const context = VerifiablePresentationRequestV1.createSimpleContext(
             Uint8Array.from([0, 1, 2, 3]),
@@ -37,7 +38,7 @@ export const handleSimulateAnchorCreation = () => {
         nonce: SequenceNumber.create(1),
         sender: AccountAddress.fromBase58("4ZJBYQbVp3zVZyjCXfZAAYBVkJMyVj8UKUNj9ox5YqTCBdBq2M"),
     };
-    console.log("Transaction header data:", JSON.stringify(header, null, 2));
+    console.log("Transaction header data:", JSON.stringify(header, bigIntReplacer, 2));
     const copiedData = new Uint8Array(anchor);
     const registerData: RegisterDataPayload = { data: new DataBlob(copiedData.buffer) };
     const registerDataAccountTransaction: AccountTransaction = {
@@ -45,6 +46,31 @@ export const handleSimulateAnchorCreation = () => {
         payload: registerData,
         type: AccountTransactionType.RegisterData,
     };
-    console.log("RegisterData transaction data:", JSON.stringify(registerDataAccountTransaction, null, 2));
+    console.log("RegisterData transaction data:", JSON.stringify(registerDataAccountTransaction, bigIntReplacer, 2));
 
+    // sign message
+    //console.log("going to sign message");
+    //const signed = provider.signMessage(AccountAddress.fromBase58("4ZJBYQbVp3zVZyjCXfZAAYBVkJMyVj8UKUNj9ox5YqTCBdBq2M"), "bla");
+    //console.log("signed message:", signed);
+
+    //send transaction
+    console.log("sending transaction");
+    const result = provider.sendTransaction(
+        AccountAddress.fromBase58("4ZJBYQbVp3zVZyjCXfZAAYBVkJMyVj8UKUNj9ox5YqTCBdBq2M"), 
+        AccountTransactionType.RegisterData,
+        registerData
+    );
+    console.log("Done sending transaction with result:", result);
+}
+
+
+function bigIntReplacer(key: string, value: any) {    
+  // Check if the current value is a BigInt
+  if (typeof value === 'bigint') {
+    console.log("bigint detected, key:", key, "value:", value);
+    // Convert the BigInt to a string for JSON serialization
+    return value.toString();
+  }
+  // For all other types (strings, numbers, objects, arrays), return the value as is
+  return value;
 }

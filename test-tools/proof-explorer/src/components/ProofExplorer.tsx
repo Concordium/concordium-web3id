@@ -491,7 +491,14 @@ export default function ProofExplorer() {
                             {' '}
                             <button
                                 title="Simulate Create Anchor"
-                                onClick={handleSimulateAnchorCreation}
+                                onClick={() => { 
+                                    if(provider)
+                                        handleSimulateAnchorCreation(provider); 
+                                    else {
+                                        console.log("Cannot simulate anchor creation without a connected wallet provider.");
+                                    }
+                                    } 
+                                }
                                 type="button"
                                 className="btn btn-primary mt-1"
                             >

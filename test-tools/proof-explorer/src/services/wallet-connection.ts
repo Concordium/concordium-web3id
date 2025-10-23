@@ -1,10 +1,14 @@
-import { detectConcordiumProvider, WalletApi } from '@concordium/browser-wallet-api-helpers';
+import { detectConcordiumProvider, WalletApi, LaxNumberEnumValue } from '@concordium/browser-wallet-api-helpers';
 import { CredentialStatements, HexString, VerifiablePresentation } from '@concordium/web-sdk';
 import { SessionTypes, SignClientTypes } from '@walletconnect/types';
 import SignClient from '@walletconnect/sign-client';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 import EventEmitter from 'events';
 import JSONBigInt from 'json-bigint';
+import { AccountAddressSource, SignMessageObject } from '@concordium/browser-wallet-api-helpers';
+import { AccountTransactionSignature } from '@concordium/web-sdk';
+import { AccountTransactionType } from '@concordium/web-sdk';
+import { RegisterDataPayload } from '@concordium/web-sdk';
 
 const WALLET_CONNECT_PROJECT_ID = '76324905a70fe5c388bab46d3e0564dc';
 const WALLET_CONNECT_SESSION_NAMESPACE = 'ccd';
@@ -26,6 +30,7 @@ export abstract class WalletProvider extends EventEmitter {
         challenge: HexString,
         statement: CredentialStatements
     ): Promise<VerifiablePresentation>;
+
     disconnect?(): Promise<void>;
 
     /**
@@ -79,6 +84,23 @@ export class BrowserWalletProvider extends WalletProvider {
     ): Promise<VerifiablePresentation> {
         return this.provider.requestVerifiablePresentation(challenge, statement);
     }
+
+    //TODO: trying this out
+    async signMessage(
+        accountAddress: AccountAddressSource, 
+        message: string | SignMessageObject
+    ): Promise<AccountTransactionSignature> {
+        return this.provider.signMessage(accountAddress, message);
+    }
+
+    //TODO: trying this out also
+    async sendTransaction(
+        accountAddress: AccountAddressSource, 
+        type: LaxNumberEnumValue<AccountTransactionType.RegisterData>, 
+        payload: RegisterDataPayload): Promise<string> {
+            return this.provider.sendTransaction(accountAddress, type, payload);
+        }      
+    
 }
 
 const ID_METHOD = 'request_verifiable_presentation';
