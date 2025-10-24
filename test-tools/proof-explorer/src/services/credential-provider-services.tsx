@@ -144,7 +144,6 @@ export function IdentityProviders({ idps }: { idps: { name: string; id: number }
     return [
         checked,
         idps.map(({ name, id }) => (
-            console.log("Rendering idp ", name, id),
             <div className="form-check">
                 <input
                     className="form-check-input"

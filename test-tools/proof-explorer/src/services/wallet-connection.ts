@@ -75,6 +75,9 @@ export class BrowserWalletProvider extends WalletProvider {
     }
 
     async connect(): Promise<string[] | undefined> {
+        console.log("BrowserWalletProvider: provider.requestAccounts, connecting to wallet...");
+        const accounts = await this.provider.requestAccounts();
+        console.log("BrowserWalletProvider: connected accounts:", accounts);
         return this.provider.requestAccounts();
     }
 
@@ -99,7 +102,21 @@ export class BrowserWalletProvider extends WalletProvider {
         type: LaxNumberEnumValue<AccountTransactionType.RegisterData>, 
         payload: RegisterDataPayload): Promise<string> {
             return this.provider.sendTransaction(accountAddress, type, payload);
-        }      
+    }      
+
+    //TODO: trying this out also
+    async getMostRecentlySelectedAccount(): Promise<string | undefined> {
+        console.log("BrowserWalletProvider: getMostRecentlySelectedAccount", this.provider.getMostRecentlySelectedAccount);
+        return this.provider.getMostRecentlySelectedAccount();
+    }
+
+    //TODO: trying this out also
+    async sendTransferTransaction(
+        accountAddress: AccountAddressSource, 
+        type: LaxNumberEnumValue<AccountTransactionType.Transfer>, 
+        payload: any): Promise<string> {
+            return this.provider.sendTransaction(accountAddress, type, payload);
+    }
     
 }
 
