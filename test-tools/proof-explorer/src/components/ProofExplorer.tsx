@@ -187,6 +187,23 @@ export default function ProofExplorer() {
 
     const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
 
+    const [simulationResult, setSimulationResult] = useState<string | null>(null);
+
+    const runSimulation = async () => {
+        if (!provider) {
+            setSimulationResult('Please connect a wallet provider before running the simulation.');
+            return;
+        }
+
+        try {
+            const result = await handleSimulateAnchorCreation(provider);
+            setSimulationResult(`Simulation completed successfully: ${result}`);
+        } catch (err) {
+            console.error('Error during simulation:', err);
+            setSimulationResult(`Error during simulation: ${err}`);
+        }
+    };
+
     return (
         <main className="container">
             <nav className="navbar bg-black mb-3 justify-content-between">
@@ -491,19 +508,21 @@ export default function ProofExplorer() {
                             {' '}
                             <button
                                 title="Simulate Create Anchor"
-                                onClick={() => { 
-                                    if(provider)
-                                        handleSimulateAnchorCreation(provider); 
-                                    else {
-                                        console.log("Cannot simulate anchor creation without a connected wallet provider.");
-                                    }
-                                    } 
-                                }
+                                onClick={runSimulation} 
                                 type="button"
                                 className="btn btn-primary mt-1"
                             >
                                 {'Simulate Create Anchor button'}
-                            </button>{' '}
+                            </button>
+                            {' '}
+                            {simulationResult && (
+                                <details className="alert alert-info mt-2">
+                                    <summary><strong>Result:</strong> (click to expand)</summary>
+                                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                        {simulationResult}
+                                    </pre>
+                                </details>
+)}
                         </div>
 
                     <hr />

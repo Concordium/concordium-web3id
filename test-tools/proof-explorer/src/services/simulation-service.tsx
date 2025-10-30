@@ -5,16 +5,11 @@ import {
     AccountTransactionType,
     RegisterDataPayload,
     DataBlob,
-    AccountTransactionHeader,
-    AccountTransaction,
-    TransactionExpiry,
     CredentialStatementBuilder,
-    SequenceNumber,
 } from '@concordium/web-sdk';
 
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './wallet-connection';
 
-import { Buffer } from 'buffer';
 
 export const handleSimulateAnchorCreation = async (provider: WalletProvider) => {
 
@@ -49,6 +44,7 @@ export const handleSimulateAnchorCreation = async (provider: WalletProvider) => 
                 registerData
             );
             console.log("Done sending transaction with result:", result);
+            return result;
         } catch (err) {
             console.error("Error sending transaction:", err);
         }
