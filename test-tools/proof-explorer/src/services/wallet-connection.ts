@@ -85,7 +85,11 @@ export class BrowserWalletProvider extends WalletProvider {
         challenge: HexString,
         statement: CredentialStatements
     ): Promise<VerifiablePresentation> {
-        return this.provider.requestVerifiablePresentation(challenge, statement);
+        console.log("BrowserWalletProvider: requesting verifiable presentation with statement:", statement);
+        console.log("BrowserWalletProvider: requesting verifiable presentation with challenge:", challenge);
+        const result = this.provider.requestVerifiablePresentation(challenge, statement);
+        console.log("BrowserWalletProvider: received verifiable presentation.", result);
+        return result;
     }
 
     //TODO: trying this out
@@ -211,6 +215,7 @@ export class WalletConnectProvider extends WalletProvider {
         };
 
         const serializedParams = JSONBigInt.stringify(params);
+        console.log("WalletConnectProvider: requesting verifiable presentation with params:", serializedParams);
 
         try {
             const result = await this.client.request<{ verifiablePresentationJson: string }>({

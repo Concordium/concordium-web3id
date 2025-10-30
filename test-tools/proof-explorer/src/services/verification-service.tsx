@@ -59,13 +59,15 @@ async function submitProof(
 
 export function SubmitProof(
     all_statements: TopLevelStatements,
-    provider: WalletProvider | undefined
+    provider: WalletProvider | undefined,
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
     const [currentProof, setCurrentProof] = useState<string | null>(null);
     const [isProofDetailsOpen, setIsProofDetailsOpen] = useState<boolean>(false);
+    let currentCredentialType = undefined;
 
     const request = all_statements.map((s) => {
+        currentCredentialType = s.type;
         switch (s.type) {
             case 'account':
                 return {
@@ -81,6 +83,14 @@ export function SubmitProof(
                     idQualifier: {
                         type: 'sci',
                         issuers: s.statement.issuers,
+                    },
+                } as CredentialStatement;
+            case 'id':
+                return {
+                    statement: s.statement.statement,
+                    idQualifier: {
+                        type: 'cred',  //TODO: I am faking this for now to be the same type as credential statement
+                        issuers: s.statement.idCred_idps.map((x) => x.id),
                     },
                 } as CredentialStatement;    
         }

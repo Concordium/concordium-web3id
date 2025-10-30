@@ -55,7 +55,7 @@ export const handleSimulateAnchorCreation = async (provider: WalletProvider) => 
             console.error("Error sending transaction:", err);
         }
     } else if (provider instanceof WalletConnectProvider) {
-        console.log("Sending transaction via WalletConnectProvider.");
+        console.log("This is NOT fully implemented yet ----> Sending transaction via WalletConnectProvider.");
         try {
             const result = await provider.sendTransaction(
                     AccountAddress.fromBase58("3kJgxPSCuoUBtWp46GjSEbMEE6AymNwSxWhXnAwETmLJCr1fZQ"),  //this gives back an empty frame, account currently on my wallet browser
