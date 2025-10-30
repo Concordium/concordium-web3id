@@ -1,5 +1,5 @@
 import { detectConcordiumProvider, WalletApi, LaxNumberEnumValue } from '@concordium/browser-wallet-api-helpers';
-import { CredentialStatements, HexString, VerifiablePresentation } from '@concordium/web-sdk';
+import { CredentialStatements, HexString, VerifiablePresentation, AccountAddress, VerifiablePresentationRequestV1, CredentialStatementBuilder, AttributeKeyString, DataBlob, TransactionKindString } from '@concordium/web-sdk';
 import { SessionTypes, SignClientTypes } from '@walletconnect/types';
 import SignClient from '@walletconnect/sign-client';
 import QRCodeModal from '@walletconnect/qrcode-modal';
@@ -160,7 +160,7 @@ export class WalletConnectProvider extends WalletProvider {
         const { uri, approval } = await this.client.connect({
             requiredNamespaces: {
                 [WALLET_CONNECT_SESSION_NAMESPACE]: {
-                    methods: [ID_METHOD],
+                    methods: [ID_METHOD, "sign_and_send_transaction"],
                     chains: [CHAIN_ID],
                     events: ['accounts_changed'],
                 },
@@ -184,6 +184,8 @@ export class WalletConnectProvider extends WalletProvider {
 
         this.account = this.getAccount(session.namespaces);
         this.topic = session.topic;
+        console.log("WalletConnectProvider: connected account:", this.account);
+        console.log("WalletConnectProvider: session topic:", this.topic);
 
         // Close the QRCode modal in case it was open.
         QRCodeModal.close();
@@ -248,8 +250,68 @@ export class WalletConnectProvider extends WalletProvider {
         super.onAccountChanged(this.account);
     }
 
+    //TODO: trying this out also
+    async sendTransaction(accountAddress: AccountAddressSource, 
+        type: LaxNumberEnumValue<AccountTransactionType.RegisterData>, 
+        payload: RegisterDataPayload): Promise<string> {
+
+         if (!this.topic) {
+            throw new Error('No connection');
+        }
+
+        console.log("json stringified payload:", JSON.stringify(payload, bigIntReplacer,2));
+
+        const params = {
+            type: TransactionKindString.RegisterData,
+            sender: accountAddress,
+            payload: JSON.stringify(payload, bigIntReplacer,2),
+        };
+
+
+         try {
+            const result = await this.client.request<{ transactionHash: string }>({
+                topic: this.topic,
+                request: {
+                    method: 'sign_and_send_transaction',
+                    params
+                },
+                chainId: CHAIN_ID,
+            });
+            return result.transactionHash;
+            
+        } catch (e: any) {
+            if (isWalletConnectError(e)) {
+                throw new Error('Send transaction rejected in wallet');
+            }
+            throw e;
+        }
+
+
+    }
+
+/*    async sendTransaction(
+            accountAddress: AccountAddressSource, 
+            type: LaxNumberEnumValue<AccountTransactionType.RegisterData>, 
+            payload: RegisterDataPayload): Promise<string> {
+                return this.provider.sendTransaction(accountAddress, type, payload);
+    }      
+*/
+
     private getAccount(ns: SessionTypes.Namespaces): string | undefined {
         const [, , account] = ns[WALLET_CONNECT_SESSION_NAMESPACE].accounts[0].split(':');
         return account;
     }
+    
+}
+
+
+function bigIntReplacer(key: string, value: any) {    
+  // Check if the current value is a BigInt
+  if (typeof value === 'bigint') {
+    console.log("bigint detected, key:", key, "value:", value);
+    // Convert the BigInt to a string for JSON serialization
+    return value.toString();
+  }
+  // For all other types (strings, numbers, objects, arrays), return the value as is
+  return value;
 }
