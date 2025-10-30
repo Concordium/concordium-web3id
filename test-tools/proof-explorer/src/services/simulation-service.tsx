@@ -35,11 +35,17 @@ export const handleSimulateAnchorCreation = async (provider: WalletProvider) => 
     console.log("sending transaction");
     if(provider instanceof BrowserWalletProvider) {
         try {            
-            const a = await provider.getMostRecentlySelectedAccount();
+            const a = await provider.getMostRecentlySelectedAccount();            
+
+            if(a === undefined || a === null) {
+                console.error("No account selected in wallet.");
+                return;
+            }
+
             console.log("Most recently selected account:", a);
 
             const result = await provider.sendTransaction(
-                AccountAddress.fromBase58("3kJgxPSCuoUBtWp46GjSEbMEE6AymNwSxWhXnAwETmLJCr1fZQ"),  //this is my account currently on my wallet browser
+                AccountAddress.fromBase58(a),
                 AccountTransactionType.RegisterData,
                 registerData
             );
