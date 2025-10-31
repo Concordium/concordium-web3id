@@ -344,6 +344,86 @@ export default function ProofExplorer() {
                     </div>
                 </div>
 
+
+                <div className="col-sm">
+                    <div className="bg-info mb-3 p-3 text-black">
+                        Construct a statement about an identity credential below and then press Simulate Create Anchor button. Finally, prove.
+                    </div>
+                    <div className="bg-info mb-3 p-3 text-black">
+                        Select which identity providers to allow
+                        {idCred_idpsDisplay}
+                    </div>
+                    <div>
+                        <RevealAttribute setStatement={addIdentityCredentialStatement} attributeOptions={accountAttributeNames} />
+                    </div>
+                    <div>
+                        <AgeBound younger={true} setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <AgeBound younger={false} setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <AgeInRange setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <DocumentExpiryNoEarlier setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <DocumentIssuerIn setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <AttributeIn
+                            attribute={AttributeKeyString.nationality}
+                            member={true}
+                            setStatement={addIdentityCredentialStatement}
+                        />
+                    </div>
+                    <div>
+                        <AttributeIn
+                            attribute={AttributeKeyString.nationality}
+                            member={false}
+                            setStatement={addIdentityCredentialStatement}
+                        />
+                    </div>
+                    <div>
+                        <AttributeIn
+                            attribute={AttributeKeyString.countryOfResidence}
+                            member={true}
+                            setStatement={addIdentityCredentialStatement}
+                        />
+                    </div>
+                    <div>
+                        <AttributeIn
+                            attribute={AttributeKeyString.countryOfResidence}
+                            member={false}
+                            setStatement={addIdentityCredentialStatement}
+                        />
+                    </div>
+                    <div>
+                        <EUAttributeIn nationality={true} setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <EUAttributeIn nationality={false} setStatement={addIdentityCredentialStatement} />
+                    </div>
+                    <div>
+                        <AttributeInRange setStatement={addIdentityCredentialStatement} attributeOptions={accountAttributeNames} />
+                    </div>
+                    <div>
+                        <AttributeInSet
+                            member={true}
+                            setStatement={addIdentityCredentialStatement}
+                            attributeOptions={accountAttributeNames}
+                        />
+                    </div>
+                    <div>
+                        <AttributeInSet
+                            member={false}
+                            setStatement={addIdentityCredentialStatement}
+                            attributeOptions={accountAttributeNames}
+                        />
+                    </div>
+                </div>
+
                 <div className="col-sm">
                     <div className="row">
                         <div className="col-6">
@@ -459,86 +539,6 @@ export default function ProofExplorer() {
                 <br />
                 <br />
 
-                {simulationDone && (
-                <div className="col-sm">
-                    <div className="bg-info mb-3 p-3 text-black">
-                        Simulate Create Anchor first, then construct a statement about an identity credential below
-                    </div>
-                    <div className="bg-info mb-3 p-3 text-black">
-                        Select which identity providers to allow
-                        {idCred_idpsDisplay}
-                    </div>
-                    <div>
-                        <RevealAttribute setStatement={addIdentityCredentialStatement} attributeOptions={accountAttributeNames} />
-                    </div>
-                    <div>
-                        <AgeBound younger={true} setStatement={addIdentityCredentialStatement} />
-                    </div>
-                    <div>
-                        <AgeBound younger={false} setStatement={addIdentityCredentialStatement} />
-                    </div>
-                    <div>
-                        <AgeInRange setStatement={addIdentityCredentialStatement} />
-                    </div>
-                    <div>
-                        <DocumentExpiryNoEarlier setStatement={addIdentityCredentialStatement} />
-                    </div>
-                    <div>
-                        <DocumentIssuerIn setStatement={addIdentityCredentialStatement} />
-                    </div>
-                    <div>
-                        <AttributeIn
-                            attribute={AttributeKeyString.nationality}
-                            member={true}
-                            setStatement={addIdentityCredentialStatement}
-                        />
-                    </div>
-                    <div>
-                        <AttributeIn
-                            attribute={AttributeKeyString.nationality}
-                            member={false}
-                            setStatement={addIdentityCredentialStatement}
-                        />
-                    </div>
-                    <div>
-                        <AttributeIn
-                            attribute={AttributeKeyString.countryOfResidence}
-                            member={true}
-                            setStatement={addIdentityCredentialStatement}
-                        />
-                    </div>
-                    <div>
-                        <AttributeIn
-                            attribute={AttributeKeyString.countryOfResidence}
-                            member={false}
-                            setStatement={addIdentityCredentialStatement}
-                        />
-                    </div>
-                    <div>
-                        <EUAttributeIn nationality={true} setStatement={addIdentityCredentialStatement} />
-                    </div>
-                    <div>
-                        <EUAttributeIn nationality={false} setStatement={addIdentityCredentialStatement} />
-                    </div>
-                    <div>
-                        <AttributeInRange setStatement={addIdentityCredentialStatement} attributeOptions={accountAttributeNames} />
-                    </div>
-                    <div>
-                        <AttributeInSet
-                            member={true}
-                            setStatement={addIdentityCredentialStatement}
-                            attributeOptions={accountAttributeNames}
-                        />
-                    </div>
-                    <div>
-                        <AttributeInSet
-                            member={false}
-                            setStatement={addIdentityCredentialStatement}
-                            attributeOptions={accountAttributeNames}
-                        />
-                    </div>
-                </div>
-)}
 
             </div>
         </main>

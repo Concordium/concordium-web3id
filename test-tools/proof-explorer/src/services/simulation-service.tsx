@@ -14,9 +14,9 @@ import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './
 export const handleSimulateAnchorCreation = async (provider: WalletProvider) => {
 
     const context = VerifiablePresentationRequestV1.createSimpleContext(
-            Uint8Array.from([0, 1, 2, 3]),
+            window.crypto.getRandomValues(new Uint8Array(32)) ,
             '0102'.repeat(16),
-            'Wine payment'
+            'Concordium Proof Explorer'
         );
     const builder = new CredentialStatementBuilder();
     const statement = builder.forIdentityCredentials([0, 1, 2], (b) => b.revealAttribute(AttributeKeyString.firstName))
