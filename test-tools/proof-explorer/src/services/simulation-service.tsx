@@ -13,11 +13,24 @@ import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './
 
 export const handleSimulateAnchorCreation = async (provider: WalletProvider) => {
 
+    let connectionId ="";
+    if(provider instanceof BrowserWalletProvider) {
+        connectionId = "browser-wallet-proof-explorer";
+    } else if (provider instanceof WalletConnectProvider) {
+        connectionId = "to be decided"; //TODO: will need to be populated with topic?
+    } else {
+        //TODO: for ID-APP, need to figure out how to get connectionId
+        console.error("Unknown provider type, cannot create connectionId.");
+        return;
+    }
+
     const context = VerifiablePresentationRequestV1.createSimpleContext(
             window.crypto.getRandomValues(new Uint8Array(32)) ,
-            '0102'.repeat(16),
+            connectionId,
             'Concordium Proof Explorer'
         );
+
+    console.log("context data generated:", JSON.stringify(context, null, 2));    
     const builder = new CredentialStatementBuilder();
     const statement = builder.forIdentityCredentials([0, 1, 2], (b) => b.revealAttribute(AttributeKeyString.firstName))
                             .getStatements();
