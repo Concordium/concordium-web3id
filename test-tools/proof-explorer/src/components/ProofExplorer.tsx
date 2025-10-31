@@ -6,16 +6,6 @@ import {
     ConcordiumGRPCClient,
     streamToList,
     ContractAddress,
-    VerifiablePresentationRequestV1,
-    AccountAddress,
-    AccountTransactionType,
-    RegisterDataPayload,
-    DataBlob,
-    AccountTransactionHeader,
-    AccountTransaction,
-    TransactionExpiry,
-    CredentialStatementBuilder,
-    SequenceNumber,
 } from '@concordium/web-sdk';
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
@@ -30,7 +20,6 @@ import { AgeBound, AgeInRange, AttributeIn, DocumentExpiryNoEarlier, DocumentIss
 
 import { Toaster } from 'react-hot-toast';
 import  toast  from "react-hot-toast";
-import { stat } from 'fs';
 
 import { handleSimulateAnchorCreation } from '../services/simulation-service';
 
@@ -188,7 +177,6 @@ export default function ProofExplorer() {
     const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
 
     const [simulationResult, setSimulationResult] = useState<string | null>(null);
-    const [simulationDone, setSimulationDone] = useState(false);
 
     const runSimulation = async () => {
         if (!provider) {
@@ -197,13 +185,11 @@ export default function ProofExplorer() {
         }
 
         try {
-            const result = await handleSimulateAnchorCreation(provider);
-            setSimulationResult(`Simulation completed successfully: ${result}`);
-            setSimulationDone(true);
+            const result = await handleSimulateAnchorCreation(provider, currentStatementType, statement);
+            setSimulationResult(`Simulation completed successfully with anchor transaction hash: ${result}`);
         } catch (err) {
             console.error('Error during simulation:', err);
             setSimulationResult(`Error during simulation: ${err}`);
-            setSimulationDone(false);
         }
     };
 

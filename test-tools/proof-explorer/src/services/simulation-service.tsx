@@ -9,10 +9,12 @@ import {
 } from '@concordium/web-sdk';
 
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './wallet-connection';
+import { TopLevelStatement, TopLevelStatements } from '../types';
 
 
-export const handleSimulateAnchorCreation = async (provider: WalletProvider) => {
+export const handleSimulateAnchorCreation = async (provider: WalletProvider, currentStatementType: string | undefined, idCredStatement: TopLevelStatements) => {
 
+    console.log("Starting anchor creation simulation...", currentStatementType, idCredStatement);
     let connectionId ="";
     if(provider instanceof BrowserWalletProvider) {
         connectionId = "browser-wallet-proof-explorer";
@@ -21,7 +23,12 @@ export const handleSimulateAnchorCreation = async (provider: WalletProvider) => 
     } else {
         //TODO: for ID-APP, need to figure out how to get connectionId
         console.error("Unknown provider type, cannot create connectionId.");
-        return;
+        throw new Error("Unknown provider type. Cannot determine the required connectionId.");
+    }
+
+    if(currentStatementType == undefined || currentStatementType != 'id') {
+        console.error("Currently only identity credential statements are supported for anchor creation simulation.");
+        throw new Error("Currently only identity credential statements are supported for anchor creation simulation.");
     }
 
     const context = VerifiablePresentationRequestV1.createSimpleContext(
@@ -31,6 +38,7 @@ export const handleSimulateAnchorCreation = async (provider: WalletProvider) => 
         );
 
     console.log("context data generated:", JSON.stringify(context, null, 2));    
+    //TODO: need to build statements based on user input
     const builder = new CredentialStatementBuilder();
     const statement = builder.forIdentityCredentials([0, 1, 2], (b) => b.revealAttribute(AttributeKeyString.firstName))
                             .getStatements();
