@@ -9,7 +9,7 @@ import {
 } from '@concordium/web-sdk';
 
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from './wallet-connection';
-import { TopLevelStatement, TopLevelStatements } from '../types';
+import { TopLevelStatements } from '../types';
 
 
 export const handleSimulateAnchorCreation = async (provider: WalletProvider, currentStatementType: string | undefined, idCredStatement: TopLevelStatements) => {
@@ -39,14 +39,36 @@ export const handleSimulateAnchorCreation = async (provider: WalletProvider, cur
 
     console.log("context data generated:", JSON.stringify(context, null, 2));    
     //TODO: need to build statements based on user input
+
+    let providerIds: number[] = [];
+    idCredStatement.forEach((stmt, index) => {
+        if(stmt.type == 'id') {
+            stmt.statement.idCred_idps.forEach((idp, idpIndex) => {
+                console.log(`Issuer ${idpIndex}: id=${idp.id}, name=${idp.name}`);
+                providerIds.push(idp.id);
+            });
+
+            stmt.statement.statement.forEach((attr, attrIndex) => {
+                console.log(`Attribute ${attrIndex}: key=${attr.type}, value=${attr.attributeTag}`);
+            }
+            );
+        } else {
+            console.error(`Unsupported statement type at index ${index}: ${stmt.type}`);
+        }
+    });
+
     const builder = new CredentialStatementBuilder();
-    const statement = builder.forIdentityCredentials([0, 1, 2], (b) => b.revealAttribute(AttributeKeyString.firstName))
-                            .getStatements();
+    const statement = builder.forIdentityCredentials(providerIds, 
+        (b) => b.revealAttribute(AttributeKeyString.firstName)
+    ).getStatements();
+
     console.log("Statement data generated:", JSON.stringify(statement, null, 2));
     console.log("Generating anchor");
+
     const anchor = Uint8Array.from(VerifiablePresentationRequestV1.createAnchor(context, statement, {
             somePublicInfo: 'public info',
         }));   
+    
     console.log("Anchor data generated:", anchor.toString());
 
     //Create RegisterData payload
