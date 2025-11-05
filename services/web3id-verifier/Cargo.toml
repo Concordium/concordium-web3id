@@ -18,7 +18,10 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-util = { workspace = true, features = ["rt"] }
 futures.workspace = true
+parking_lot.workspace = true
+mocktail.workspace = true
 prometheus-client.workspace = true
+reqwest.workspace = true
 tonic = { workspace = true, features = ["tls", "tls-roots"] }
 tower-http = { workspace = true, features = ["trace", "limit", "cors", "timeout"] }
 tracing.workspace = true

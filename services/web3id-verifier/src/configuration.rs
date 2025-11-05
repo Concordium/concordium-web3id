@@ -3,7 +3,7 @@ use concordium_rust_sdk::v2;
 use concordium_rust_sdk::web3id::did::Network;
 use std::net::SocketAddr;
 
-#[derive(Parser)]
+#[derive(Clone, Parser)]
 pub struct Cli {
     /// the endpoint url for the node, takes the form of:
     /// http://example:port

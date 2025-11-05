@@ -14,7 +14,7 @@ use crate::{configuration::Cli, model::State, routes::{monitoring, presentation_
 /// Run Service function which parses the cli arguments and spawns the threads which handle monitoring/health and service api's
 pub async fn run_service(cli: Cli) -> anyhow::Result<()> {
 
-    let mut metrics_registry = Registry::default();
+    let metrics_registry = Registry::default();
     let cancel_token = CancellationToken::new();
 
     // Monitoring Task for health and metrics scraping
@@ -28,7 +28,7 @@ pub async fn run_service(cli: Cli) -> anyhow::Result<()> {
             cli.monitoring_listen
         );
         let monitoring_router = monitoring::monitoring_router(metrics_registry)?;
-        axum::serve(tcp_listener, monitoring_router)
+        axum::serve(tcp_listener, monitoring_router.into_make_service())
             .with_graceful_shutdown(stop_signal.cancelled_owned())
             .into_future()
     };
@@ -77,7 +77,7 @@ pub async fn run_service(cli: Cli) -> anyhow::Result<()> {
         info!("Server is running at {:?}", cli.listen_address);
 
         let presentation_verification_router = presentation_verification::verify_presentation_router(state)?;
-        axum::serve(tcp_listener, presentation_verification_router)
+        axum::serve(tcp_listener, presentation_verification_router.into_make_service())
             .with_graceful_shutdown(stop_signal.cancelled_owned())
             .into_future()
     };
