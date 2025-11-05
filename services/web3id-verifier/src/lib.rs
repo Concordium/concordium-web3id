@@ -1,6 +1,9 @@
 // configuration
 pub mod configuration;
 
+// domain model
+pub mod model;
+
 // routes
 pub mod routes;
 
