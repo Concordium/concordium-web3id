@@ -1,6 +1,7 @@
 use clap::Parser;
 use concordium_rust_sdk::v2;
 use concordium_rust_sdk::web3id::did::Network;
+use std::net::SocketAddr;
 
 #[derive(Parser)]
 pub struct Cli {
@@ -66,4 +67,12 @@ pub struct Cli {
         env = "CONCORDIUM_WEB3ID_VERIFIER_PROMETHEUS_ADDRESS"
     )]
     pub prometheus_address: Option<std::net::SocketAddr>,
+
+    /// Address to listen for monitoring related requests
+    #[arg(
+        long,
+        env = "WALLET_PROXY_MONITORING_ADDRESS",
+        default_value = "127.0.0.1:8003"
+    )]
+    pub monitoring_listen: SocketAddr,
 }

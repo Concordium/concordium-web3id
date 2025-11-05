@@ -18,7 +18,7 @@ use concordium_rust_sdk::{
     },
 };
 use futures::{Future, FutureExt};
-use web3id_verifier::configuration::Cli;
+use web3id_verifier::{configuration::Cli, service};
 use std::sync::Arc;
 use tonic::transport::ClientTlsConfig;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
@@ -121,20 +121,7 @@ async fn verify_presentation(
     }))
 }
 
-/// Struct returned by the `health` endpoint. It returns the version of the
-/// backend.
-#[derive(serde::Serialize)]
-struct Health {
-    version: &'static str,
-}
 
-/// Handles the `health` endpoint, returning the version of the backend.
-#[tracing::instrument(level = "info", skip_all)]
-async fn health() -> Json<Health> {
-    Json(Health {
-        version: env!("CARGO_PKG_VERSION"),
-    })
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -164,6 +151,7 @@ async fn main() -> anyhow::Result<()> {
         "Request timeout should be at least 1s."
     );
 
+    /* 
     let endpoint = if cli.endpoint.uri().scheme() == Some(&Scheme::HTTPS) {
         cli.endpoint
             .tls_config(ClientTlsConfig::new())
@@ -198,35 +186,9 @@ async fn main() -> anyhow::Result<()> {
         network: cli.network,
         params: Arc::new(params),
     };
-
-    let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
-        .with_prefix("web3id-verifier")
-        .with_default_metrics()
-        .build_pair();
-
-    let prometheus_handle = if let Some(prometheus_address) = cli.prometheus_address {
-        let prometheus_api = axum::Router::new()
-            .route(
-                "/metrics",
-                axum::routing::get(|| async move { metric_handle.render() }),
-            )
-            .layer(tower_http::timeout::TimeoutLayer::new(
-                std::time::Duration::from_millis(1000),
-            ))
-            .layer(tower_http::limit::RequestBodyLimitLayer::new(0));
-        Some(tokio::spawn(async move {
-            axum::Server::bind(&prometheus_address)
-                .serve(prometheus_api.into_make_service())
-                .with_graceful_shutdown(set_shutdown()?)
-                .await
-                .context("Unable to start Prometheus server.")?;
-            Ok::<(), anyhow::Error>(())
-        }))
-    } else {
-        None
-    };
-
+    */
     // build routes
+    /* 
     let server = Router::new()
         .route("/v0/verify", post(verify_presentation))
         .route("/v0/health", get(health))
@@ -266,43 +228,9 @@ async fn main() -> anyhow::Result<()> {
             .context("Server task join error.")?
             .context("Server crashed.")?;
     }
-    Ok(())
-}
+    */
 
-/// Construct a future for shutdown signals (for unix: SIGINT and SIGTERM) (for
-/// windows: ctrl c and ctrl break). The signal handler is set when the future
-/// is polled and until then the default signal handler.
-fn set_shutdown() -> anyhow::Result<impl Future<Output = ()>> {
-    #[cfg(unix)]
-    {
-        use tokio::signal::unix as unix_signal;
 
-        let mut terminate_stream = unix_signal::signal(unix_signal::SignalKind::terminate())?;
-        let mut interrupt_stream = unix_signal::signal(unix_signal::SignalKind::interrupt())?;
+    service::run_service(cli).await
 
-        Ok(async move {
-            futures::future::select(
-                Box::pin(terminate_stream.recv()),
-                Box::pin(interrupt_stream.recv()),
-            )
-            .map(|_| ())
-            .await
-        })
-    }
-    #[cfg(windows)]
-    {
-        use tokio::signal::windows as windows_signal;
-
-        let mut ctrl_break_stream = windows_signal::ctrl_break()?;
-        let mut ctrl_c_stream = windows_signal::ctrl_c()?;
-
-        Ok(async move {
-            futures::future::select(
-                Box::pin(ctrl_break_stream.recv()),
-                Box::pin(ctrl_c_stream.recv()),
-            )
-            .map(|_| ())
-            .await
-        })
-    }
 }
