@@ -18,62 +18,10 @@ use concordium_rust_sdk::{
     },
 };
 use futures::{Future, FutureExt};
+use web3id_verifier::configuration::Cli;
 use std::sync::Arc;
 use tonic::transport::ClientTlsConfig;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
-
-#[derive(clap::Parser, Debug)]
-#[clap(version, author)]
-struct App {
-    #[clap(
-        long = "node",
-        help = "GRPC V2 interface of the node.",
-        default_value = "http://localhost:20000",
-        env = "CONCORDIUM_WEB3ID_VERIFIER_NODE"
-    )]
-    endpoint: v2::Endpoint,
-    #[clap(
-        long = "listen-address",
-        default_value = "0.0.0.0:8080",
-        help = "Listen address for the server.",
-        env = "CONCORDIUM_WEB3ID_VERIFIER_API_LISTEN_ADDRESS"
-    )]
-    listen_address: std::net::SocketAddr,
-    #[clap(
-        long = "log-level",
-        default_value = "info",
-        help = "Maximum log level.",
-        env = "CONCORDIUM_WEB3ID_VERIFIER_LOG_LEVEL"
-    )]
-    log_level: tracing_subscriber::filter::LevelFilter,
-    #[clap(
-        long = "log-headers",
-        help = "Whether to log headers for requests and responses.",
-        env = "CONCORDIUM_WEB3ID_VERIFIER_LOG_HEADERS"
-    )]
-    log_headers: bool,
-    #[clap(
-        long = "request-timeout",
-        help = "Request timeout in milliseconds.",
-        default_value = "5000",
-        env = "CONCORDIUM_WEB3ID_VERIFIER_REQUEST_TIMEOUT"
-    )]
-    request_timeout: u64,
-    #[clap(
-        long = "network",
-        help = "Network to which the verifier is connected.",
-        default_value = "testnet",
-        env = "CONCORDIUM_WEB3ID_VERIFIER_NETWORK"
-    )]
-    network: Network,
-    #[clap(
-        long = "prometheus-address",
-        help = "Address to which the Prometheus server should bind. If not set, the Prometheus \
-                server will not start.",
-        env = "CONCORDIUM_WEB3ID_VERIFIER_PROMETHEUS_ADDRESS"
-    )]
-    prometheus_address: Option<std::net::SocketAddr>,
-}
 
 #[derive(Debug, thiserror::Error)]
 enum Error {
@@ -190,13 +138,14 @@ async fn health() -> Json<Health> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let app = App::parse();
+
+    let cli = Cli::parse();
 
     {
         use tracing_subscriber::prelude::*;
         let log_filter = tracing_subscriber::filter::Targets::new()
-            .with_target(module_path!(), app.log_level)
-            .with_target("tower_http", app.log_level);
+            .with_target(module_path!(), cli.log_level)
+            .with_target("tower_http", cli.log_level);
         tracing_subscriber::registry()
             .with(tracing_subscriber::fmt::layer())
             .with(log_filter)
@@ -205,27 +154,27 @@ async fn main() -> anyhow::Result<()> {
 
     {
         tracing::info!("Starting service version {}", env!("CARGO_PKG_VERSION"));
-        tracing::info!("Connecting to node at {}", app.endpoint.uri());
-        tracing::info!("On network: {}", app.network);
-        tracing::info!("Listening on: {}", app.listen_address);
+        tracing::info!("Connecting to node at {}", cli.endpoint.uri());
+        tracing::info!("On network: {}", cli.network);
+        tracing::info!("Listening on: {}", cli.listen_address);
     }
 
     anyhow::ensure!(
-        app.request_timeout >= 1000,
+        cli.request_timeout >= 1000,
         "Request timeout should be at least 1s."
     );
 
-    let endpoint = if app.endpoint.uri().scheme() == Some(&Scheme::HTTPS) {
-        app.endpoint
+    let endpoint = if cli.endpoint.uri().scheme() == Some(&Scheme::HTTPS) {
+        cli.endpoint
             .tls_config(ClientTlsConfig::new())
             .context("Unable to construct TLS configuration for Concordium API.")?
     } else {
-        app.endpoint
+        cli.endpoint
     };
 
     // Make it 500ms less than request timeout to make sure we can fail properly
     // with a connection timeout in case of node connectivity problems.
-    let node_timeout = std::time::Duration::from_millis(app.request_timeout - 500);
+    let node_timeout = std::time::Duration::from_millis(cli.request_timeout - 500);
 
     let endpoint = endpoint
         .connect_timeout(node_timeout)
@@ -246,7 +195,7 @@ async fn main() -> anyhow::Result<()> {
 
     let state = State {
         client,
-        network: app.network,
+        network: cli.network,
         params: Arc::new(params),
     };
 
@@ -255,7 +204,7 @@ async fn main() -> anyhow::Result<()> {
         .with_default_metrics()
         .build_pair();
 
-    let prometheus_handle = if let Some(prometheus_address) = app.prometheus_address {
+    let prometheus_handle = if let Some(prometheus_address) = cli.prometheus_address {
         let prometheus_api = axum::Router::new()
             .route(
                 "/metrics",
@@ -284,11 +233,11 @@ async fn main() -> anyhow::Result<()> {
         .with_state(state)
         .layer(
             tower_http::trace::TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::new().include_headers(app.log_headers))
-                .on_response(DefaultOnResponse::new().include_headers(app.log_headers)),
+                .make_span_with(DefaultMakeSpan::new().include_headers(cli.log_headers))
+                .on_response(DefaultOnResponse::new().include_headers(cli.log_headers)),
         )
         .layer(tower_http::timeout::TimeoutLayer::new(
-            std::time::Duration::from_millis(app.request_timeout),
+            std::time::Duration::from_millis(cli.request_timeout),
         ))
         .layer(tower_http::limit::RequestBodyLimitLayer::new(100_000)) // at most 100kB of data.
         .layer(tower_http::cors::CorsLayer::permissive().allow_methods([http::Method::POST]))
@@ -296,7 +245,7 @@ async fn main() -> anyhow::Result<()> {
 
     let shutdown_signal = set_shutdown()?;
     let server_handle = tokio::spawn(async move {
-        axum::Server::bind(&app.listen_address)
+        axum::Server::bind(&cli.listen_address)
             .serve(server.into_make_service())
             .with_graceful_shutdown(shutdown_signal)
             .await
