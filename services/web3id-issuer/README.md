@@ -153,3 +153,8 @@ stated defaults suffice.
 - `CONCORDIUM_WEB3ID_ISSUER_KEY` - The ed25519 keypair which is used by the
   issuer to sign commitments that are sent to the user. It must correspond to
   the issuer's public key registered in the contract.
+
+
+## Forward-compatability
+In if the node returns a type from a newer version of the protocol, an affected endpoint shall return status code `500`. The affected endpoints:
+- `status` - if the transaction is finilized but it's details represent a type from a newer protocol verstion.
