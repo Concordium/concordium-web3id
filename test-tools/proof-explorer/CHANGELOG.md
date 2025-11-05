@@ -1,5 +1,15 @@
 ## Unreleased changes.
 
+## 1.2.2
+
+- Make the verifier backend URL configurable, using the following priority order to determine its value:
+
+1️⃣ Run-time: `BACKEND_API` environment variable injected by Nginx / Docker via the `env.js` file.
+
+2️⃣ Build-time: Vite environment variable `VITE_BACKEND_API`.
+
+3️⃣ Fallback: Default URL pointing to the Concordium hosted testnet verifier.
+
 ## 1.2.1
 
 UI change, add ProofDetails component for improved visualization of verifiable presentations.

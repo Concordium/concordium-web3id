@@ -6,24 +6,24 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-axum = "0.6"
-clap = { version = "4.3", features = ["derive", "env"] }
-serde_json = "1.0"
-tokio = { version = "1.29", features = ["rt-multi-thread", "macros", "signal"] }
-tokio-postgres = { version = "0.7", features = [
+anyhow.workspace = true
+axum.workspace = true
+clap = { workspace = true, features = ["env", "derive"] }
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
+tokio-postgres = { workspace = true, features = [
   "with-serde_json-1",
   "array-impls",
 ] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
-concordium-rust-sdk = { path = "../../deps/concordium-rust-sdk" }
-serde = { version = "1.0", features = ["derive"] }
-futures = "0.3"
-axum-macros = "0.3"
-reqwest = { version = "0.11", features = ["json"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+concordium-rust-sdk.workspace = true
+serde = { workspace = true, features = ["derive"] }
+futures.workspace = true
+axum-macros.workspace = true
+reqwest = { workspace = true, features = ["json"] }
 some-verifier-lib = { version = "*", path = "../some-verifier-lib" }
-tower-http = { version = "0.4", features = [
+tower-http = { workspace = true, features = [
   "trace",
   "limit",
   "cors",
@@ -32,11 +32,11 @@ tower-http = { version = "0.4", features = [
   "compression-br",
   "compression-zstd",
 ] }
-http = "0.2"
-tonic = { version = "0.12", features = ["tls-roots", "tls"] }
-thiserror = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
-sha2 = "0.10"
-deadpool-postgres = "0.10"
-handlebars = "4.4"
-url = { version = "2.4.1", features = ["serde"] }
+http.workspace = true
+tonic = { workspace = true, features = ["tls", "tls-roots"] }
+thiserror.workspace = true
+chrono = { workspace = true, features = ["serde"] }
+sha2.workspace = true
+deadpool-postgres.workspace = true
+handlebars.workspace = true
+url = { workspace = true, features = ["serde"] }

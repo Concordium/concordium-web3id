@@ -1,57 +1,20 @@
-name: Fmt and Clippy
-
-# This job runs rustfmt and clippy linting,
+name: Build and test
 
 on:
   push:
     branches: main
 
   pull_request:
-    branches: main
 
   workflow_dispatch: # allows manual trigger
 
 env:
-  RUST_VERSION: 1.85
   VITE_SOME_ISSUER_PLATFORM: "telegram" # To ensure that examples/some-issuer/frontend builds
 
 jobs:
-  "lint_fmt":
-    name: lint:fmt
-    # Don't run on draft pull requests
-    if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        crates:
-          - services/web3id-issuer/Cargo.toml
-          - services/web3id-verifier/Cargo.toml
-          - test-tools/web3id-test/Cargo.toml
-          - test-tools/issuer-front-end/backend/Cargo.toml
-          - examples/some-issuer/Cargo.toml
-          - examples/some-verifier/Cargo.toml
-          - examples/some-verifier-lib/Cargo.toml
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ env.RUST_VERSION }}
-          override: true
-          components: rustfmt
-      - name: Format
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --manifest-path=${{ matrix.crates }} -- --check
 
-  "lint_clippy":
-    name: lint:clippy
-    needs: "lint_fmt"
-    # Don't run on draft pull requests
-    if: ${{ !github.event.pull_request.draft }}
+  rustfmt:
+    name: Rustfmt
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -65,22 +28,38 @@ jobs:
           - examples/some-verifier-lib/Cargo.toml
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+      - name: Run cargo fmt
+        run: |
+          rustup component add rustfmt
+          cargo fmt --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crates:
+          - services/web3id-issuer/Cargo.toml
+          - services/web3id-verifier/Cargo.toml
+          - test-tools/web3id-test/Cargo.toml
+          - test-tools/issuer-front-end/backend/Cargo.toml
+          - examples/some-issuer/Cargo.toml
+          - examples/some-verifier/Cargo.toml
+          - examples/some-verifier-lib/Cargo.toml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          profile: minimal
-          toolchain: ${{ env.RUST_VERSION }}
-          override: true
-          target: ${{ env.TARGET }}
-          components: rustfmt, clippy
-      - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --manifest-path ${{ matrix.crates }} --locked -- -D warnings
+          submodules: recursive
+      - name: Install Clippy
+        run: |
+          rustup component add clippy
+      - name: Run Clippy
+        run: |
+          cargo clippy --locked --all-targets --all-features --no-deps -- -D warnings
 
   "lint_ts":
     name: lint:check-typescript
