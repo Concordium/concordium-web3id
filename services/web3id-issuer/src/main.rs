@@ -192,7 +192,7 @@ enum Error {
     InvalidPath(#[from] PathRejection),
     #[error("Unable to submit transaction: {0}")]
     CouldNotSubmit(#[from] Cis4TransactionError),
-    #[error("Forward incompatible: {0}")]
+    #[error("Unknown data: {0}")]
     UnknownData(#[from] UnknownDataError),
     #[error("Transaction query error: {0}.")]
     Query(#[from] QueryError),
