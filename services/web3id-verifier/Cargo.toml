@@ -13,9 +13,15 @@ chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["env", "derive"] }
 concordium-rust-sdk.workspace = true
 serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
+tokio-util = { workspace = true, features = ["rt"] }
 futures.workspace = true
+parking_lot.workspace = true
+mocktail.workspace = true
+prometheus-client.workspace = true
+reqwest.workspace = true
 tonic = { workspace = true, features = ["tls", "tls-roots"] }
 tower-http = { workspace = true, features = ["trace", "limit", "cors", "timeout"] }
 tracing.workspace = true
