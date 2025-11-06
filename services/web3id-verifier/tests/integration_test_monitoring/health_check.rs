@@ -1,10 +1,11 @@
-use crate::integration_test_helpers::server;
+use crate::integration_test_helpers::{node_mock::NodeMock, server};
 use concordium_rust_sdk::v2::{generated::{self}};
 use reqwest::StatusCode;
 
 /// Test healthcheck endpoint
 #[tokio::test]
 async fn test_healthcheck() {
+
     let handle = server::start_server();
 
     // mock for get cryptographic parameters
