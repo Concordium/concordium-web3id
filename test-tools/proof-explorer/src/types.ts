@@ -1,4 +1,4 @@
-import { AtomicStatementV2, ContractAddress } from "@concordium/web-sdk";
+import { AtomicStatementV2, AttributesKeys, ContractAddress } from '@concordium/web-sdk';
 
 export type TopLevelStatement =
     | { type: 'account'; statement: AccountStatement }
@@ -41,7 +41,7 @@ export interface SetMembershipProps extends RevealAttributeProps {
 
 export interface ExtendSetStatementProps extends ExtendStatementProps {
     member: boolean;
-    attribute: string;
+    attribute: AttributesKeys;
 }
 
 export interface SpecialSetProps extends ExtendStatementProps {
@@ -51,7 +51,7 @@ export interface SpecialSetProps extends ExtendStatementProps {
 }
 
 export interface ProofDetailsProps {
-  proof: string | null;
-  isOpen: boolean;
-  onClose: () => void;
+    proof: string | null;
+    isOpen: boolean;
+    onClose: () => void;
 }

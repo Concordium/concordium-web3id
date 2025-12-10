@@ -97,18 +97,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@concordium/rust-bindings@npm:^3.3.0":
-  version: 3.3.0
-  resolution: "@concordium/rust-bindings@npm:3.3.0"
-  checksum: 79d1d6af5aef6ae42f3f323330da057d010d9ef7fec5fd9a8628fa13a40d87ff38fafedd7990bbfc08005ca10dcb08e89c6cab501f90a0eb73b23a5beb1eaa09
+"@concordium/rust-bindings@npm:^4.0.0-alpha.3":
+  version: 4.0.0-alpha.3
+  resolution: "@concordium/rust-bindings@npm:4.0.0-alpha.3"
+  checksum: f2cdc5296640a9f211f38dab3ab0d6914fcb6bada7d1a8298baf11c916ebe69af279d7ae7dd176703f9b8627fb9fbe9c193574442248efaac11eff55242e9c3b
   languageName: node
   linkType: hard
 
-"@concordium/web-sdk@npm:12.0.0-alpha.0":
-  version: 12.0.0-alpha.0
-  resolution: "@concordium/web-sdk@npm:12.0.0-alpha.0"
+"@concordium/web-sdk@npm:11.1.0-alpha.6":
+  version: 11.1.0-alpha.6
+  resolution: "@concordium/web-sdk@npm:11.1.0-alpha.6"
   dependencies:
-    "@concordium/rust-bindings": "npm:^3.3.0"
+    "@concordium/rust-bindings": "npm:^4.0.0-alpha.3"
     "@grpc/grpc-js": "npm:^1.14.0"
     "@noble/ed25519": "npm:^2.0.0"
     "@noble/hashes": "npm:^1.3.2"
@@ -128,7 +128,7 @@ __metadata:
   peerDependencies:
     "@protobuf-ts/runtime-rpc": ^2.8.2
     cbor2: ^1.12.0
-  checksum: 3ab71a938abbececbb62fa0018dd3157c79207f1321e5fac13dc71ec51556e082e5e0277a6c13a7442620a1b34451000dcbe16034a0deb0b3609de855c6823fc
+  checksum: c8094ccfe7ff81210277ec989c28f73a5d8a59266c1851df422a83b6e7bc090a70c26c161084f0679fc8db8053e0c5964df607fb9d2ede7c0c0a46146d229b51
   languageName: node
   linkType: hard
 
@@ -5534,7 +5534,7 @@ __metadata:
   resolution: "proof-explorer@workspace:."
   dependencies:
     "@concordium/browser-wallet-api-helpers": "npm:^3.0.0"
-    "@concordium/web-sdk": "npm:12.0.0-alpha.0"
+    "@concordium/web-sdk": "npm:11.1.0-alpha.6"
     "@types/json-bigint": "npm:^1"
     "@types/node": "npm:^18.11.14"
     "@types/react": "npm:^18.0.9"

@@ -1,9 +1,6 @@
 import { useState, MouseEventHandler, ChangeEventHandler } from 'react';
 import Select from 'react-select';
-import {
-    StatementTypes,
-    TimestampAttribute,
-} from '@concordium/web-sdk';
+import { StatementTypes, TimestampAttribute } from '@concordium/web-sdk';
 import { RevealAttributeProps, SetMembershipProps } from '../../types';
 
 // These components represent web3ID, the left column in the UI
