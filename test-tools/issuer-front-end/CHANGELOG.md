@@ -1,6 +1,9 @@
 ## Unreleased changes
 
-- Backend: Bumped the concordium rust-sdk dependency for the protocol 7 release
+- Backend: Updated the `concordium-rust-sdk` dependency to allow project to be forward-compatible.
+- Backend: Bumped the `concordium-rust-sdk` dependency for the protocol 9 release.
+- Backend: Bumped the `concordium-rust-sdk` dependency for the protocol 8 release.
+- Backend: Bumped the `concordium-rust-sdk` dependency for the protocol 7 release
 
 ## 1.0.14
 

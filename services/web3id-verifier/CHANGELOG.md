@@ -1,13 +1,15 @@
 ## Unreleased changes
 
+- Updated the `concordium-rust-sdk` dependency to allow project to be forward-compatible.
+
 ## 0.7.0
 
-- Bumped the concordium rust-sdk dependency for the protocol 9 release.
+- Bumped the `concordium-rust-sdk` dependency for the protocol 9 release.
 
 ## 0.6.0
 
-- Bumped the concordium rust-sdk dependency for the protocol 8 release.
-- Bumped the concordium rust-sdk dependency for the protocol 7 release.
+- Bumped the `concordium-rust-sdk` dependency for the protocol 8 release.
+- Bumped the `concordium-rust-sdk` dependency for the protocol 7 release.
 - Add health endpoint.
 
 ## 0.5.0

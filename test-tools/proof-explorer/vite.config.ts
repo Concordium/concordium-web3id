@@ -19,7 +19,7 @@ export default defineConfig({
   define: {
     global: 'globalThis',
     'process.env': {
-      BACKEND_API: process.env.BACKEND_API
+      VITE_BACKEND_API: process.env.VITE_BACKEND_API
     }
   },
 });

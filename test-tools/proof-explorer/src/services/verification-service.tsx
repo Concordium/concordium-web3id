@@ -1,13 +1,19 @@
 import { CredentialStatements, CredentialStatement, VerifiablePresentation } from '@concordium/web-sdk';
-import { VERIFIER_URL } from '../constants';
+import { CONCORDIUM_TESTNET_BACKEND_API } from '../constants';
 import { Buffer } from 'buffer';
 import { WalletProvider } from './wallet-connection';
 import { useState } from 'react';
 import { TopLevelStatements } from '../types';
 import ProofDetails from '../components/ProofDetails';
 
+// This allows the backend URL to come from three sources, in order of priority:
+// 1️⃣ Runtime value injected by Nginx / Docker via the `env.js` file.
+// 2️⃣ Build-time value from the Vite environment variable `VITE_BACKEND_API`.
+// 3️⃣ Default Concordium testnet verifier URL.
 export function getVerifierURL(): string {
-    return VERIFIER_URL;
+    return (window as any).BACKEND_API ||
+        process.env.VITE_BACKEND_API ||
+        CONCORDIUM_TESTNET_BACKEND_API;
 }
 
 async function submitProof(
@@ -143,7 +149,7 @@ export function SubmitProof(
                 </ol>
             </div>
             {/* Render the ProofDetails popup */}
-            <ProofDetails 
+            <ProofDetails
                 proof={currentProof}
                 isOpen={isProofDetailsOpen}
                 onClose={handleCloseDetails}
