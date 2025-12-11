@@ -6,6 +6,8 @@ import {
     ConcordiumGRPCClient,
     streamToList,
     ContractAddress,
+    VerificationRequestV1,
+    TransactionHash,
 } from '@concordium/web-sdk';
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
@@ -22,6 +24,7 @@ import { Toaster } from 'react-hot-toast';
 import toast from "react-hot-toast";
 
 import { handleSimulateAnchorCreation } from '../services/simulation-service';
+import { SubmitProofV1 } from '../services/verification-service-v1';
 
 const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
     return { value: ak, label: ak };
@@ -171,6 +174,11 @@ export default function ProofExplorer() {
 
     const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
 
+    const nonce = crypto.getRandomValues(new Uint8Array(32));
+    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example Context String');
+    const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(statement, context, transactionHash, provider);
+
     const [simulationResult, setSimulationResult] = useState<string | null>(null);
 
     const runSimulation = async () => {
@@ -178,10 +186,12 @@ export default function ProofExplorer() {
             setSimulationResult('Please connect a browser wallet provider before running the simulation.');
             return;
         }
+        setTransactionHash(undefined)
 
         try {
-            const result = await handleSimulateAnchorCreation(provider, statement);
-            setSimulationResult(`Simulation completed successfully with anchor transaction hash: ${result}`);
+            const transactionHash = await handleSimulateAnchorCreation(provider, statement, context);
+            setSimulationResult(`Simulation completed successfully with anchor transaction hash: ${transactionHash}`);
+            setTransactionHash(TransactionHash.fromHexString(transactionHash))
         } catch (err) {
             console.error('Error during simulation:', err);
             setSimulationResult(`Error during simulation: ${err}`);
@@ -503,11 +513,14 @@ export default function ProofExplorer() {
 
                     <button
                         title="Clear the list of responses from the wallet and the verifier."
-                        onClick={() => setMessages([])}
+                        onClick={() => {
+                            setMessages([]);
+                            setMessagesV1([]);
+                        }}
                         type="button"
                         className="btn btn-primary mt-1"
                     >
-                        {'Clear messages.'}
+                        {'Clear messages'}
                     </button>
 
                     <hr />
@@ -522,7 +535,7 @@ export default function ProofExplorer() {
                             type="button"
                             className="btn btn-primary mt-1"
                         >
-                            {'Simulate Create Anchor button'}
+                            {'Submit Anchor Transaction'}
                         </button>
                         {' '}
                         {simulationResult && (
@@ -534,6 +547,9 @@ export default function ProofExplorer() {
                         )}
                     </div>
 
+                    <div className="mt-3">
+                        {submitProofDisplayV1}
+                    </div>
                     <hr />
                     <pre>VerifiablePresention flow for account/web3id credentials</pre>
 
@@ -544,8 +560,6 @@ export default function ProofExplorer() {
                 </div>
                 <br />
                 <br />
-
-
             </div>
         </main>
     );

@@ -18,7 +18,8 @@ export enum ClaimsType {
 
 export const handleSimulateAnchorCreation = async (
     provider: WalletProvider,
-    idCredStatement: TopLevelStatements
+    idCredStatement: TopLevelStatements,
+    context:VerificationRequestV1.Context
 ) => {
     if (idCredStatement.length == 0) {
         console.error('Create the statement in the column on the left before submitting the anchor transaction.');
@@ -27,10 +28,7 @@ export const handleSimulateAnchorCreation = async (
         );
     }
 
-    const nonce = crypto.getRandomValues(new Uint8Array(32));
-    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example Context String');
-
-    console.log('context data generated:', JSON.stringify(context, null, 2));
+    console.log('context data:', JSON.stringify(context, null, 2));
 
     const subjectClaims: VerificationRequestV1.SubjectClaims[] = [];
 
