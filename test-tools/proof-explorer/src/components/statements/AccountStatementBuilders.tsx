@@ -1,5 +1,5 @@
 import { useState, MouseEventHandler, ChangeEventHandler } from 'react';
-import { AttributesKeys, IdStatementBuilder } from '@concordium/web-sdk';
+import { AttributeKey, AttributesKeys, IdStatementBuilder } from '@concordium/web-sdk';
 import { AgeBoundProps, ExtendSetStatementProps, ExtendStatementProps, SpecialSetProps } from '../../types';
 
 //Statements about ID, represeting the middle row in the UI
@@ -129,6 +129,15 @@ export function DocumentIssuerIn({ setStatement }: ExtendStatementProps) {
     );
 }
 
+export function toAttributesKeys(
+    key: string
+): AttributesKeys {
+    if (key in AttributesKeys) {
+        return AttributesKeys[key as AttributeKey];
+    }
+    throw Error(`Unkown attributes key: ${key}`)
+}
+
 /*
 Used for:
 - Prove nationality in/not in
@@ -145,12 +154,12 @@ export function AttributeIn({ attribute, member, setStatement }: ExtendSetStatem
         const builder = new IdStatementBuilder();
         if (member) {
             builder.addMembership(
-                attribute,
+                toAttributesKeys(attribute),
                 set.split(',').map((e) => e.trim())
             );
         } else {
             builder.addNonMembership(
-                attribute,
+                toAttributesKeys(attribute),
                 set.split(',').map((e) => e.trim())
             );
         }

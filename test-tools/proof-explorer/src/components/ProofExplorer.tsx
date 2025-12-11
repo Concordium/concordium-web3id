@@ -1,5 +1,5 @@
 /* eslint-disable no-alert */
-import { useEffect, useState, MouseEventHandler, ChangeEventHandler, useRef} from 'react';
+import { useEffect, useState, MouseEventHandler, ChangeEventHandler, useRef } from 'react';
 import {
     AttributeKeyString,
     AtomicStatementV2,
@@ -9,17 +9,17 @@ import {
 } from '@concordium/web-sdk';
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
-import { GRPC_WEB_CONFIG} from '../constants';
+import { GRPC_WEB_CONFIG } from '../constants';
 import { version } from '../../package.json';
 import { AccountStatement, IdentityCredentialStatement, TopLevelStatements, Web3IdStatement } from '../types';
 import { IdentityProviders, Issuers, parseIssuers } from '../services/credential-provider-services';
-import { SubmitProof} from '../services/verification-service';
+import { SubmitProof } from '../services/verification-service';
 import { Statement } from './statements/StatementDisplay';
 import { AttributeInRange, AttributeInSet, RevealAttribute } from './statements/Web3IdStatementBuilders';
 import { AgeBound, AgeInRange, AttributeIn, DocumentExpiryNoEarlier, DocumentIssuerIn, EUAttributeIn } from './statements/AccountStatementBuilders';
 
 import { Toaster } from 'react-hot-toast';
-import  toast  from "react-hot-toast";
+import toast from "react-hot-toast";
 
 import { handleSimulateAnchorCreation } from '../services/simulation-service';
 
@@ -43,7 +43,7 @@ export default function ProofExplorer() {
         }
     }, [provider]);
 
-    const connectProvider = async (provider: WalletProvider) => {        
+    const connectProvider = async (provider: WalletProvider) => {
         await provider.connect();
         setProvider(provider);
     };
@@ -75,19 +75,19 @@ export default function ProofExplorer() {
 
     const addIdentityCredentialStatement = (a: AtomicStatementV2[]) => {
         if (currentStatementType && currentStatementType != 'id') {
-                console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");
-                toast.error("Warning: mixing statement types. Clear last credential statement first.");
-                return;
+            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");
+            toast.error("Warning: mixing statement types. Clear last credential statement first.");
+            return;
         }
 
-        if(currentStatementType === undefined)
+        if (currentStatementType === undefined)
             setCurrentStatementType('id');
 
         setStatement((statements) => {
             console.log("Adding identity credential statement");
          
             if (!lastAccount || new_statement || statements.length == 0) {
-                console.log("Creating new identity credential statement lastAccount=", lastAccount, " new_statement=", new_statement, " statements.length=", statements.length);    
+                console.log("Creating new identity credential statement lastAccount=", lastAccount, " new_statement=", new_statement, " statements.length=", statements.length);
                 setLastAccount(true);
                 setNewStatement(false);
                 const statement: IdentityCredentialStatement = {
@@ -106,12 +106,12 @@ export default function ProofExplorer() {
 
     const addAccountStatement = (a: AtomicStatementV2[]) => {
         if (currentStatementType && currentStatementType != 'account') {
-            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");   
+            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");
             toast.error("Warning: mixing statement types. Clear last credential statement first.");
             return;
         }
 
-        if(currentStatementType === undefined) setCurrentStatementType('account');
+        if (currentStatementType === undefined) setCurrentStatementType('account');
 
         setStatement((statements) => {
             console.log("Adding account statement");
@@ -137,12 +137,12 @@ export default function ProofExplorer() {
     const addWeb3IdStatement = (a: AtomicStatementV2[]) => {
 
         if (currentStatementType && currentStatementType != 'web3id') {
-            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");   
+            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");
             toast.error("Warning: mixing statement types. Clear last credential statement first.");
             return;
         }
 
-        if(currentStatementType === undefined) setCurrentStatementType('web3id');
+        if (currentStatementType === undefined) setCurrentStatementType('web3id');
 
 
         setStatement((statements) => {
@@ -185,7 +185,7 @@ export default function ProofExplorer() {
         }
 
         try {
-            const result = await handleSimulateAnchorCreation(provider, currentStatementType, statement);
+            const result = await handleSimulateAnchorCreation(provider, statement);
             setSimulationResult(`Simulation completed successfully with anchor transaction hash: ${result}`);
         } catch (err) {
             console.error('Error during simulation:', err);
@@ -463,8 +463,7 @@ export default function ProofExplorer() {
                             {' '}
                             <button
                                 title="Delete the last credential statement."
-                                onClick={() => 
-                                    {
+                                onClick={() => {
                                     setCurrentStatementType(undefined);
                                     setStatement((oldStatement) => {
                                         if (oldStatement.length == 0) {
@@ -473,7 +472,7 @@ export default function ProofExplorer() {
                                             return oldStatement.slice(0, oldStatement.length - 1);
                                         }
                                     })
-                                    }
+                                }
                                 }
                                 type="button"
                                 className="btn btn-primary mt-1"
@@ -494,26 +493,25 @@ export default function ProofExplorer() {
                     </button>
 
                     <hr />
-                        <div className="col-sm">
-                            {' '}
-                            <button
-                                title="Simulate Create Anchor"
-                                onClick={runSimulation} 
-                                type="button"
-                                className="btn btn-primary mt-1"
-                            >
-                                {'Simulate Create Anchor button'}
-                            </button>
-                            {' '}
-                            {simulationResult && (
-                                <details className="alert alert-info mt-2">
-                                    <summary><strong>Result:</strong> (click to expand)</summary>
-                                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                        {simulationResult}
-                                    </pre>
-                                </details>
-)}
-                        </div>
+                    <div className="col-sm">
+                        {' '}
+                        <button
+                            title="Simulate Create Anchor"
+                            onClick={runSimulation}
+                            type="button"
+                            className="btn btn-primary mt-1"
+                        >
+                            {'Simulate Create Anchor button'}
+                        </button>
+                        {' '}
+                        {simulationResult && (
+                            <div className="alert alert-info mt-2">
+                                <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    {simulationResult}
+                                </pre>
+                            </div>
+                        )}
+                    </div>
 
                     <hr />
 
