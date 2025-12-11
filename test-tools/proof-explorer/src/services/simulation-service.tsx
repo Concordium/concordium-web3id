@@ -3,11 +3,11 @@ import {
     RegisterDataPayload,
     DataBlob,
     IdentityProviderDID,
-    Network,
 } from '@concordium/web-sdk';
 
 import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
 import { TopLevelStatements } from '../types';
+import { NETWORK } from '../constants';
 
 // TODO: pass into the `handleSimulateAnchorCreation` function 
 export enum ClaimsType {
@@ -37,7 +37,6 @@ export const handleSimulateAnchorCreation = async (
     idCredStatement.forEach((stmt, index) => {
         if (stmt.type == 'id') {
             // TODO: pass into the function
-            const network: Network = 'Testnet';
             let cred_type: VerificationRequestV1.IdentityCredType[] = ['identityCredential', 'accountCredential'];
 
             const identityProviderIndex: number[] = [];
@@ -47,7 +46,7 @@ export const handleSimulateAnchorCreation = async (
 
             let did: IdentityProviderDID[] = []
             identityProviderIndex.forEach(index => {
-                did.push(new IdentityProviderDID(network, index));
+                did.push(new IdentityProviderDID(NETWORK, index));
             });
 
             const subject_claim: VerificationRequestV1.SubjectClaims = {

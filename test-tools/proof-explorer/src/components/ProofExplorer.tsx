@@ -9,7 +9,7 @@ import {
 } from '@concordium/web-sdk';
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
-import { GRPC_WEB_CONFIG } from '../constants';
+import { GRPC_WEB_CONFIG, ID_METHOD, ID_METHOD_V1, SIGN_AND_SEND_TRANSACTION } from '../constants';
 import { version } from '../../package.json';
 import { AccountStatement, IdentityCredentialStatement, TopLevelStatements, Web3IdStatement } from '../types';
 import { IdentityProviders, Issuers, parseIssuers } from '../services/credential-provider-services';
@@ -42,11 +42,6 @@ export default function ProofExplorer() {
             };
         }
     }, [provider]);
-
-    const connectProvider = async (provider: WalletProvider) => {
-        await provider.connect();
-        setProvider(provider);
-    };
 
     const [statement, setStatement] = useState<TopLevelStatements>([]);
 
@@ -85,7 +80,7 @@ export default function ProofExplorer() {
 
         setStatement((statements) => {
             console.log("Adding identity credential statement");
-         
+
             if (!lastAccount || new_statement || statements.length == 0) {
                 console.log("Creating new identity credential statement lastAccount=", lastAccount, " new_statement=", new_statement, " statements.length=", statements.length);
                 setLastAccount(true);
@@ -180,7 +175,7 @@ export default function ProofExplorer() {
 
     const runSimulation = async () => {
         if (!provider) {
-            setSimulationResult('Please connect a wallet provider before running the simulation.');
+            setSimulationResult('Please connect a browser wallet provider before running the simulation.');
             return;
         }
 
@@ -412,37 +407,60 @@ export default function ProofExplorer() {
 
                 <div className="col-sm">
                     <div className="row">
-                        <div className="col-6">
-                            <button
-                                className="btn btn-primary me-1"
-                                onClick={async () => {
-                                    try {
-                                        connectProvider(await BrowserWalletProvider.getInstance());
-                                        console.log("Successfully connected to browser wallet.");
-                                    } catch (err) {
-                                        console.error("Failed to connect to browser wallet (make sure it is installed):", err);
-                                        toast.error("Failed to connect to browser wallet, make sure it is installed.");
-                                    } finally {
-                                        console.log("Connection attempt to browser wallet finished.");
-                                    }
+                        <button
+                            className="btn btn-primary me-1"
+                            onClick={async () => {
+                                try {
+                                    let provider = await BrowserWalletProvider.getInstance()
+                                    await provider.connect();
+                                    setProvider(provider);
+
+                                    console.log("Successfully connected to browser wallet.");
+                                } catch (err) {
+                                    console.error("Failed to connect to browser wallet (make sure it is installed):", err);
+                                    toast.error("Failed to connect to browser wallet, make sure it is installed.");
+                                } finally {
+                                    console.log("Connection attempt to browser wallet finished.");
                                 }
-                                }
-                            >
-                                Connect browser
-                            </button>
+                            }
+                            }
+                        >
+                            <div className="fw-bold">Connect Browser Wallet</div>
+                        </button>
 
+                        <button
+                            className="btn btn-secondary bg-primary mt-2"
+                            onClick={async () => {
+                                let provider = await WalletConnectProvider.getInstance()
+                                await provider.connect([ID_METHOD, SIGN_AND_SEND_TRANSACTION]);
+                                setProvider(provider);
+                            }}
+                        >
+                            <div className="fw-bold">Connect Mobile Wallet</div>
+                            <div className="small">
+                                Methods: {ID_METHOD}, {SIGN_AND_SEND_TRANSACTION}
+                            </div>
+                        </button>
 
-
-                            <button
-                                className="btn btn-secondary bg-primary mt-2"
-                                onClick={async () => connectProvider(await WalletConnectProvider.getInstance())}
-                            >
-                                Connect mobile
-                            </button>
-                        </div>
-                        {provider !== undefined && <div className="col-4 bg-info p-2 text-center"> Connected </div>}
+                        <button
+                            className="btn btn-secondary bg-primary mt-2"
+                            onClick={async () => {
+                                let provider = await WalletConnectProvider.getInstance()
+                                await provider.connect([ID_METHOD, ID_METHOD_V1, SIGN_AND_SEND_TRANSACTION]);
+                                setProvider(provider);
+                            }}
+                        >
+                            <div className="fw-bold">Connect Mobile Wallet</div>
+                            <div className="small">
+                                Methods: {ID_METHOD}, {ID_METHOD_V1}, {SIGN_AND_SEND_TRANSACTION}
+                            </div>
+                        </button>
+                    </div>
+                    <div>
+                        {provider !== undefined && <div className="bg-info p-2 text-center mt-3">
+                            Connected to {provider.connectedAccount}</div>}
                         {provider === undefined && (
-                            <div className="col-4 bg-danger p-2 text-center"> Not connected </div>
+                            <div className="bg-danger p-2 text-center mt-3"> Not connected </div>
                         )}
                     </div>
                     <hr />
@@ -493,6 +511,9 @@ export default function ProofExplorer() {
                     </button>
 
                     <hr />
+
+                    <pre>VerifiablePresentionV1 flow for identity credentials</pre>
+
                     <div className="col-sm">
                         {' '}
                         <button
@@ -514,6 +535,7 @@ export default function ProofExplorer() {
                     </div>
 
                     <hr />
+                    <pre>VerifiablePresention flow for account/web3id credentials</pre>
 
                     {submitProofDisplay}
 

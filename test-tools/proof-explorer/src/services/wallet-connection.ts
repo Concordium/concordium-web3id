@@ -1,5 +1,5 @@
 import { detectConcordiumProvider, WalletApi } from '@concordium/browser-wallet-api-helpers';
-import { CredentialStatements, HexString, VerifiablePresentation } from '@concordium/web-sdk';
+import { CredentialStatements, HexString, VerifiablePresentation, VerifiablePresentationV1, VerificationRequestV1 } from '@concordium/web-sdk';
 import { SessionTypes, SignClientTypes } from '@walletconnect/types';
 import SignClient from '@walletconnect/sign-client';
 import QRCodeModal from '@walletconnect/qrcode-modal';
@@ -7,7 +7,7 @@ import EventEmitter from 'events';
 import JSONBigInt from 'json-bigint';
 import { AccountTransactionType } from '@concordium/web-sdk';
 import { RegisterDataPayload } from '@concordium/web-sdk';
-import { CHAIN_ID, WALLET_CONNECT_PROJECT_ID, WALLET_CONNECT_SESSION_NAMESPACE } from '../constants';
+import { CHAIN_ID, ID_METHOD, ID_METHOD_V1, WALLET_CONNECT_PROJECT_ID, WALLET_CONNECT_SESSION_NAMESPACE } from '../constants';
 
 const walletConnectOpts: SignClientTypes.Options = {
     projectId: WALLET_CONNECT_PROJECT_ID,
@@ -21,7 +21,7 @@ const walletConnectOpts: SignClientTypes.Options = {
 
 export abstract class WalletProvider extends EventEmitter {
     connectedAccount: string | undefined;
-    abstract connect(): Promise<string[] | undefined>;
+
     abstract requestVerifiablePresentation(
         challenge: HexString,
         statement: CredentialStatements
@@ -102,10 +102,7 @@ export class BrowserWalletProvider extends WalletProvider {
             throw new Error("No connected account to send transaction.")
         }
     }
-
 }
-
-const ID_METHOD = 'request_verifiable_presentation';
 
 let walletConnectInstance: WalletConnectProvider | undefined;
 
@@ -137,11 +134,11 @@ export class WalletConnectProvider extends WalletProvider {
         return walletConnectInstance;
     }
 
-    async connect(): Promise<string[] | undefined> {
+    async connect(methods:string[]): Promise<string[] | undefined> {
         const { uri, approval } = await this.client.connect({
             requiredNamespaces: {
                 [WALLET_CONNECT_SESSION_NAMESPACE]: {
-                    methods: [ID_METHOD, 'sign_and_send_transaction'],
+                    methods: methods,
                     chains: [CHAIN_ID],
                     events: ['accounts_changed'],
                 },
@@ -207,6 +204,44 @@ export class WalletConnectProvider extends WalletProvider {
                 chainId: CHAIN_ID,
             });
             return VerifiablePresentation.fromString(result.verifiablePresentationJson);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (e: any) {
+            if (isWalletConnectError(e)) {
+                throw new Error('Proof request rejected in wallet');
+            }
+            throw e;
+        }
+    }
+
+    async requestVerifiablePresentationV1(
+        request: VerificationRequestV1.Type,
+    ): Promise<VerifiablePresentationV1.Type> {
+        if (!this.topic) {
+            throw new Error('No connection');
+        }
+        if (!this.connectedAccount) {
+            throw new Error("No connected account to send transaction.")
+        }
+
+        const params = {
+            request
+        };
+
+        const serializedParams = JSONBigInt.stringify(params);
+        console.log('WalletConnectProvider: requesting verifiable presentation V1 with params:', serializedParams);
+
+        try {
+            // TODO: check if this JSON parsing works
+            const result = await this.client.request<{ verifiablePresentationJson: VerifiablePresentationV1.JSON }>({
+                topic: this.topic,
+                request: {
+                    method: ID_METHOD_V1,
+                    params: { paramsJson: serializedParams },
+                },
+                chainId: CHAIN_ID,
+            });
+            return VerifiablePresentationV1.fromJSON(result.verifiablePresentationJson);
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
             if (isWalletConnectError(e)) {
