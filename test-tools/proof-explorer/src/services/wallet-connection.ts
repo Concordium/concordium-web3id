@@ -1,18 +1,13 @@
-import { detectConcordiumProvider, WalletApi, LaxNumberEnumValue } from '@concordium/browser-wallet-api-helpers';
-import { CredentialStatements, HexString, VerifiablePresentation, TransactionKindString } from '@concordium/web-sdk';
+import { detectConcordiumProvider, WalletApi } from '@concordium/browser-wallet-api-helpers';
+import { CredentialStatements, HexString, VerifiablePresentation } from '@concordium/web-sdk';
 import { SessionTypes, SignClientTypes } from '@walletconnect/types';
 import SignClient from '@walletconnect/sign-client';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 import EventEmitter from 'events';
 import JSONBigInt from 'json-bigint';
-import { AccountAddressSource, SignMessageObject } from '@concordium/browser-wallet-api-helpers';
-import { AccountTransactionSignature } from '@concordium/web-sdk';
 import { AccountTransactionType } from '@concordium/web-sdk';
 import { RegisterDataPayload } from '@concordium/web-sdk';
-
-const WALLET_CONNECT_PROJECT_ID = '76324905a70fe5c388bab46d3e0564dc';
-const WALLET_CONNECT_SESSION_NAMESPACE = 'ccd';
-const CHAIN_ID = `${WALLET_CONNECT_SESSION_NAMESPACE}:testnet`;
+import { CHAIN_ID, WALLET_CONNECT_PROJECT_ID, WALLET_CONNECT_SESSION_NAMESPACE } from '../constants';
 
 const walletConnectOpts: SignClientTypes.Options = {
     projectId: WALLET_CONNECT_PROJECT_ID,
@@ -25,6 +20,7 @@ const walletConnectOpts: SignClientTypes.Options = {
 };
 
 export abstract class WalletProvider extends EventEmitter {
+    connectedAccount: string | undefined;
     abstract connect(): Promise<string[] | undefined>;
     abstract requestVerifiablePresentation(
         challenge: HexString,
@@ -37,6 +33,7 @@ export abstract class WalletProvider extends EventEmitter {
      * @param account string when account is changed, undefined when disconnected
      */
     protected onAccountChanged(account: string | undefined) {
+        this.connectedAccount = account;
         this.emit('accountChanged', account);
     }
 }
@@ -57,10 +54,13 @@ export class BrowserWalletProvider extends WalletProvider {
     constructor(private provider: WalletApi) {
         super();
 
-        provider.on('accountChanged', (account) => super.onAccountChanged(account));
-        provider.on('accountDisconnected', async () =>
-            super.onAccountChanged((await provider.getMostRecentlySelectedAccount()) ?? undefined)
-        );
+        provider.on('accountChanged', (account) => {
+            super.onAccountChanged(account)
+        });
+        provider.on('accountDisconnected', async () => {
+            const newAccount = (await provider.getMostRecentlySelectedAccount()) ?? undefined;
+            super.onAccountChanged(newAccount)
+        });
     }
     /**
      * @description gets a singleton instance, allowing existing session to be restored.
@@ -78,7 +78,8 @@ export class BrowserWalletProvider extends WalletProvider {
         console.log('BrowserWalletProvider: provider.requestAccounts, connecting to wallet...');
         const accounts = await this.provider.requestAccounts();
         console.log('BrowserWalletProvider: connected accounts:', accounts);
-        return this.provider.requestAccounts();
+        this.connectedAccount = accounts[0];
+        return accounts
     }
 
     async requestVerifiablePresentation(
@@ -92,40 +93,16 @@ export class BrowserWalletProvider extends WalletProvider {
         return result;
     }
 
-    //TODO: trying this out
-    async signMessage(
-        accountAddress: AccountAddressSource,
-        message: string | SignMessageObject
-    ): Promise<AccountTransactionSignature> {
-        return this.provider.signMessage(accountAddress, message);
-    }
-
-    //TODO: trying this out also
-    async sendTransaction(
-        accountAddress: AccountAddressSource,
-        type: LaxNumberEnumValue<AccountTransactionType.RegisterData>,
+    async sendRegisterDataTransaction(
         payload: RegisterDataPayload
     ): Promise<string> {
-        return this.provider.sendTransaction(accountAddress, type, payload);
+        if (this.connectedAccount) {
+            return this.provider.sendTransaction(this.connectedAccount, AccountTransactionType.RegisterData, payload);
+        } else {
+            throw new Error("No connected account to send transaction.")
+        }
     }
 
-    //TODO: trying this out also
-    async getMostRecentlySelectedAccount(): Promise<string | undefined> {
-        console.log(
-            'BrowserWalletProvider: getMostRecentlySelectedAccount',
-            this.provider.getMostRecentlySelectedAccount
-        );
-        return this.provider.getMostRecentlySelectedAccount();
-    }
-
-    //TODO: trying this out also
-    async sendTransferTransaction(
-        accountAddress: AccountAddressSource,
-        type: LaxNumberEnumValue<AccountTransactionType.Transfer>,
-        payload: any
-    ): Promise<string> {
-        return this.provider.sendTransaction(accountAddress, type, payload);
-    }
 }
 
 const ID_METHOD = 'request_verifiable_presentation';
@@ -133,22 +110,18 @@ const ID_METHOD = 'request_verifiable_presentation';
 let walletConnectInstance: WalletConnectProvider | undefined;
 
 export class WalletConnectProvider extends WalletProvider {
-    private account: string | undefined;
     private topic: string | undefined;
 
     constructor(private client: SignClient) {
         super();
 
         this.client.on('session_update', ({ params }) => {
-            this.account = this.getAccount(params.namespaces);
-            super.onAccountChanged(this.account);
+            super.onAccountChanged(this.getAccount(params.namespaces));
         });
 
-        this.client.on('session_delete', () => {
-            this.account = undefined;
+        this.client.on("session_delete", () => {
             this.topic = undefined;
-
-            super.onAccountChanged(this.account);
+            super.onAccountChanged(undefined);
         });
     }
 
@@ -177,10 +150,10 @@ export class WalletConnectProvider extends WalletProvider {
 
         // Connecting to an existing pairing; it can be assumed that the account is already available.
         if (!uri) {
-            if (this.account == undefined) {
+            if (this.connectedAccount == undefined) {
                 return undefined;
             } else {
-                return [this.account];
+                return [this.connectedAccount];
             }
         }
 
@@ -190,18 +163,18 @@ export class WalletConnectProvider extends WalletProvider {
         // Await session approval from the wallet.
         const session = await approval();
 
-        this.account = this.getAccount(session.namespaces);
+        this.connectedAccount = this.getAccount(session.namespaces);
         this.topic = session.topic;
-        console.log('WalletConnectProvider: connected account:', this.account);
+        console.log('WalletConnectProvider: connected account:', this.connectedAccount);
         console.log('WalletConnectProvider: session topic:', this.topic);
 
         // Close the QRCode modal in case it was open.
         QRCodeModal.close();
 
-        if (this.account == undefined) {
+        if (this.connectedAccount == undefined) {
             return undefined;
         } else {
-            return [this.account];
+            return [this.connectedAccount];
         }
     }
 
@@ -211,6 +184,9 @@ export class WalletConnectProvider extends WalletProvider {
     ): Promise<VerifiablePresentation> {
         if (!this.topic) {
             throw new Error('No connection');
+        }
+        if (!this.connectedAccount) {
+            throw new Error("No connected account to send transaction.")
         }
 
         const params = {
@@ -253,61 +229,14 @@ export class WalletConnectProvider extends WalletProvider {
             },
         });
 
-        this.account = undefined;
+        this.connectedAccount = undefined;
         this.topic = undefined;
 
-        super.onAccountChanged(this.account);
-    }
-
-    //TODO: trying this out also
-    async sendTransaction(
-        accountAddress: AccountAddressSource,
-        type: LaxNumberEnumValue<AccountTransactionType.RegisterData>,
-        payload: RegisterDataPayload
-    ): Promise<string> {
-        if (!this.topic) {
-            throw new Error('No connection');
-        }
-
-        console.log('json stringified payload:', JSON.stringify(payload, bigIntReplacer, 2));
-
-        const params = {
-            type: TransactionKindString.RegisterData,
-            sender: accountAddress,
-            payload: JSON.stringify(payload, bigIntReplacer, 2),
-        };
-
-        try {
-            const result = await this.client.request<{ transactionHash: string }>({
-                topic: this.topic,
-                request: {
-                    method: 'sign_and_send_transaction',
-                    params,
-                },
-                chainId: CHAIN_ID,
-            });
-            return result.transactionHash;
-        } catch (e: any) {
-            if (isWalletConnectError(e)) {
-                throw new Error('Send transaction rejected in wallet');
-            }
-            throw e;
-        }
+        super.onAccountChanged(this.connectedAccount);
     }
 
     private getAccount(ns: SessionTypes.Namespaces): string | undefined {
         const [, , account] = ns[WALLET_CONNECT_SESSION_NAMESPACE].accounts[0].split(':');
         return account;
     }
-}
-
-function bigIntReplacer(key: string, value: any) {
-    // Check if the current value is a BigInt
-    if (typeof value === 'bigint') {
-        console.log('bigint detected, key:', key, 'value:', value);
-        // Convert the BigInt to a string for JSON serialization
-        return value.toString();
-    }
-    // For all other types (strings, numbers, objects, arrays), return the value as is
-    return value;
 }
