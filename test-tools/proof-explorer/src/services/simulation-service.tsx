@@ -72,11 +72,9 @@ export const handleSimulateAnchorCreation = async (
 
     console.log('Anchor data generated:', anchor.toString());
 
-    //Create RegisterData payload
     const registerData: RegisterDataPayload = { data: new DataBlob(anchor.buffer) };
 
-    //send transaction
-    console.log('sending transaction');
+    console.log('Sending anchor transaction');
 
     try {
         if (provider instanceof BrowserWalletProvider) {

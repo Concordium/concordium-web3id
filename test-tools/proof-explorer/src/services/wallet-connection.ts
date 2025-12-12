@@ -134,9 +134,9 @@ export class WalletConnectProvider extends WalletProvider {
         return walletConnectInstance;
     }
 
-    async connect(methods:string[]): Promise<string[] | undefined> {
+    async connect(methods: string[]): Promise<string[] | undefined> {
         const { uri, approval } = await this.client.connect({
-            requiredNamespaces: {
+            optionalNamespaces: {
                 [WALLET_CONNECT_SESSION_NAMESPACE]: {
                     methods: methods,
                     chains: [CHAIN_ID],

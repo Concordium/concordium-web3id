@@ -19,17 +19,14 @@ import { SubmitProof } from '../services/verification-service';
 import { Statement } from './statements/StatementDisplay';
 import { AttributeInRange, AttributeInSet, RevealAttribute } from './statements/Web3IdStatementBuilders';
 import { AgeBound, AgeInRange, AttributeIn, DocumentExpiryNoEarlier, DocumentIssuerIn, EUAttributeIn } from './statements/AccountStatementBuilders';
-
 import { Toaster } from 'react-hot-toast';
 import toast from "react-hot-toast";
-
 import { handleSimulateAnchorCreation } from '../services/simulation-service';
 import { SubmitProofV1 } from '../services/verification-service-v1';
 
 const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
     return { value: ak, label: ak };
 });
-
 
 /**
  * The main component.
@@ -177,7 +174,9 @@ export default function ProofExplorer() {
     const nonce = crypto.getRandomValues(new Uint8Array(32));
     const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example Context String');
     const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
-    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(statement, context, transactionHash, provider);
+    // TODO: Remove the `dummyTransactionHash` later again
+    let dummyTransactionHash = TransactionHash.fromHexString("3aa2949882155c131808717b84961b8dd4f6d1f6512d849aa82f221b8e2ffc91")
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(statement, context, dummyTransactionHash, provider);
 
     const [simulationResult, setSimulationResult] = useState<string | null>(null);
 
