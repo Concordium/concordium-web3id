@@ -222,13 +222,8 @@ export class WalletConnectProvider extends WalletProvider {
         if (!this.connectedAccount) {
             throw new Error("No connected account to send transaction.")
         }
-
-        const params = {
-            request
-        };
-
-        const serializedParams = JSONBigInt.stringify(params);
-        console.log('WalletConnectProvider: requesting verifiable presentation V1 with params:', serializedParams);
+        
+        console.log('WalletConnectProvider: requesting verifiable presentation V1 with params:', request);
 
         try {
             // TODO: check if this JSON parsing works
@@ -236,7 +231,7 @@ export class WalletConnectProvider extends WalletProvider {
                 topic: this.topic,
                 request: {
                     method: ID_METHOD_V1,
-                    params: { paramsJson: serializedParams },
+                    params: request,
                 },
                 chainId: CHAIN_ID,
             });
