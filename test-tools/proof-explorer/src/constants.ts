@@ -8,8 +8,10 @@ export const GRPC_WEB_CONFIG = { baseUrl: 'https://grpc.testnet.concordium.com:2
 export const CONCORDIUM_TESTNET_BACKEND_API = 'https://web3id-verifier.testnet.concordium.com';
 
 export const WALLET_CONNECT_PROJECT_ID = '76324905a70fe5c388bab46d3e0564dc';
-export const WALLET_CONNECT_SESSION_NAMESPACE = 'ccd'; // ccd // concordium
-export const CHAIN_ID = `ccd:testnet`; // ccd:testnet // ccd:9dd9ca4d19e9393877d2c44b70f89acb (testnet?) // ccd:4221332d34e1694168c2a0c0b3fd0f27 (mainnet?)
+export const WALLET_CONNECT_SESSION_NAMESPACE = 'concordium'; // ccd // concordium
+export const CHAIN_ID = `ccd:4221332d34e1694168c2a0c0b3fd0f27`; 
+
+// ccd:testnet // ccd:4221332d34e1694168c2a0c0b3fd0f27 (testnet?) // ccd:9dd9ca4d19e9393877d2c44b70f89acb (mainnet?)
 
 export const NETWORK: Network = `Testnet`
 
