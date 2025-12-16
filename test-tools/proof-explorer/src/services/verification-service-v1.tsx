@@ -1,17 +1,19 @@
-import { VerificationRequestV1, IdentityProviderDID, VerifiablePresentationV1, TransactionHash } from '@concordium/web-sdk';
+import { VerificationRequestV1, IdentityProviderDID, VerifiablePresentationV1, TransactionHash, CryptographicParameters, VerificationAuditRecordV1 } from '@concordium/web-sdk';
 import { NETWORK } from '../constants';
 import { WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { useState } from 'react';
 import { TopLevelStatements } from '../types';
 import ProofDetails from '../components/ProofDetails';
+import { ConcordiumGRPCClient } from '@concordium/web-sdk';
 
 async function submitProof(
     subjectClaims: VerificationRequestV1.SubjectClaims[],
     context: VerificationRequestV1.Context,
     anchorTransactionHash: TransactionHash.Type | undefined,
     provider: WalletProvider,
+    client: ConcordiumGRPCClient,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
-    setProofData?: (proof: string) => void  // optional param to store proof data
+    setProofData?: (proof: string) => void, // optional param to store proof data
 ) {
 
     if (anchorTransactionHash == undefined) {
@@ -44,10 +46,10 @@ async function submitProof(
         return;
     }
 
-    // TODO: check proof
-    const is_proof_valid = true;
+    const audit_record_id = "12345";
+    let verification_result = await VerificationAuditRecordV1.createChecked(audit_record_id, verification_request, proof, client, NETWORK)
 
-    if (is_proof_valid) {
+    if (verification_result.type == `success`) {
         setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
         if (setProofData) {
             setProofData(proof.toString());
@@ -65,6 +67,7 @@ export function SubmitProofV1(
     context: VerificationRequestV1.Context,
     anchorTransactionHash: TransactionHash.Type | undefined,
     provider: WalletProvider | undefined,
+    client: ConcordiumGRPCClient,
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
     const [currentProof, setCurrentProof] = useState<string | null>(null);
@@ -74,7 +77,7 @@ export function SubmitProofV1(
 
     idCredStatement.forEach((stmt, index) => {
         if (stmt.type == 'id') {
-            // TODO: to be handed in via function
+            // TODO: pass into the function
             let cred_type: VerificationRequestV1.IdentityCredType[] = ['identityCredential', 'accountCredential'];
 
             const identityProviderIndex: number[] = [];
@@ -120,7 +123,7 @@ export function SubmitProofV1(
                     <button
                         title="Submit the statement as a verified presentation request to the wallet."
                         onClick={
-                            () => submitProof(subjectClaims, context, anchorTransactionHash, provider, setMessages, setCurrentProof)
+                            () => submitProof(subjectClaims, context, anchorTransactionHash, provider, client, setMessages, setCurrentProof)
                         }
                         type="button"
                         className="col-sm-4 btn btn-primary"

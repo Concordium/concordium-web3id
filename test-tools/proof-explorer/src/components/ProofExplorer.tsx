@@ -171,12 +171,15 @@ export default function ProofExplorer() {
 
     const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
 
-    const nonce = crypto.getRandomValues(new Uint8Array(32));
+    const nonceRef = useRef<Uint8Array | null>(null);
+    if (!nonceRef.current) {
+        nonceRef.current = crypto.getRandomValues(new Uint8Array(32));
+    }
+    const nonce = nonceRef.current;
+
     const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example rescource id')
     const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
-    // TODO: remove and use above `transactionHash`
-    const dummy_tx_hash:TransactionHash.Type=TransactionHash.fromHexString("c888fdaf2e4a466d394c9840ab9f4d1f6a2b612464e369bc88e3634da301586e");
-    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(statement, context, dummy_tx_hash, provider);
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(statement, context, transactionHash, provider, client.current);
 
     const [simulationResult, setSimulationResult] = useState<string | null>(null);
 
@@ -459,7 +462,7 @@ export default function ProofExplorer() {
                                 setProvider(provider);
                             }}
                         >
-                            <div className="fw-bold">Connect Mobile Wallet</div>
+                            <div className="fw-bold">Connect Mobile Wallet or ID app</div>
                             <div className="small">
                                 Methods: {ID_METHOD}, {ID_METHOD_V1}, {SIGN_AND_SEND_TRANSACTION}
                             </div>

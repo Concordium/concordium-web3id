@@ -222,12 +222,11 @@ export class WalletConnectProvider extends WalletProvider {
         if (!this.connectedAccount) {
             throw new Error("No connected account to send transaction.")
         }
-        
+
         console.log('WalletConnectProvider: requesting verifiable presentation V1 with params:', request);
 
         try {
-            // TODO: check if this JSON parsing works
-            const result = await this.client.request({
+            const result = await this.client.request<{ verifiablePresentationJson: VerifiablePresentationV1.JSON }>({
                 topic: this.topic,
                 request: {
                     method: ID_METHOD_V1,
@@ -237,10 +236,7 @@ export class WalletConnectProvider extends WalletProvider {
             });
             console.log(result)
 
-            // TODO: properly parse return parameter:
-            // const result = await this.client.request<{ verifiablePresentationJson: VerifiablePresentationV1.JSON }>({ ... })
-            // return VerifiablePresentationV1.fromJSON(result.verifiablePresentationJson);
-            return VerifiablePresentationV1.fromJSON({} as any as VerifiablePresentationV1.JSON);
+            return VerifiablePresentationV1.fromJSON(result.verifiablePresentationJson);
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (e: any) {
