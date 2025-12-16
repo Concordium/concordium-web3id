@@ -172,10 +172,10 @@ export default function ProofExplorer() {
     const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
 
     const nonce = crypto.getRandomValues(new Uint8Array(32));
-    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example Context String');
+    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example rescource id')
     const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
     // TODO: remove and use above `transactionHash`
-    const dummy_tx_hash:TransactionHash.Type=TransactionHash.fromHexString("a5858c7dd535c4ce0b2ce3f5554b9b765bdc1c464980cd08233dc86b882e7dd3");
+    const dummy_tx_hash:TransactionHash.Type=TransactionHash.fromHexString("c888fdaf2e4a466d394c9840ab9f4d1f6a2b612464e369bc88e3634da301586e");
     const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(statement, context, dummy_tx_hash, provider);
 
     const [simulationResult, setSimulationResult] = useState<string | null>(null);
