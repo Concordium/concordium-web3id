@@ -177,9 +177,10 @@ export default function ProofExplorer() {
     }
     const nonce = nonceRef.current;
 
+    const [withPublicInfo, setWithPublicInfo] = useState(false);
     const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example rescource id')
     const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
-    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(statement, context, transactionHash, provider, client.current);
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, statement, context, transactionHash,);
 
     const [simulationResult, setSimulationResult] = useState<string | null>(null);
 
@@ -191,7 +192,7 @@ export default function ProofExplorer() {
         setTransactionHash(undefined)
 
         try {
-            const transactionHash = await handleSimulateAnchorCreation(provider, statement, context);
+            const transactionHash = await handleSimulateAnchorCreation(provider, statement, context, withPublicInfo);
             setSimulationResult(`Simulation completed successfully with anchor transaction hash: ${transactionHash}`);
             setTransactionHash(TransactionHash.fromHexString(transactionHash))
         } catch (err) {
@@ -530,6 +531,18 @@ export default function ProofExplorer() {
                     <pre>VerifiablePresentionV1 flow for identity credentials</pre>
 
                     <div className="col-sm">
+                        <div className="form-check form-switch">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id="publicInfoToggle"
+                                checked={withPublicInfo}
+                                onChange={() => setWithPublicInfo(prev => !prev)}
+                            />
+                            <label className="form-check-label" htmlFor="publicInfoToggle">
+                                {withPublicInfo ? 'Add some public info to anchor' : 'No public info in anchor'}
+                            </label>
+                        </div>
                         {' '}
                         <button
                             title="Simulate Create Anchor"

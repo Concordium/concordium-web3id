@@ -1,4 +1,4 @@
-import { VerificationRequestV1, IdentityProviderDID, VerifiablePresentationV1, TransactionHash, CryptographicParameters, VerificationAuditRecordV1 } from '@concordium/web-sdk';
+import { VerificationRequestV1, IdentityProviderDID, VerifiablePresentationV1, TransactionHash, VerificationAuditRecordV1 } from '@concordium/web-sdk';
 import { NETWORK } from '../constants';
 import { WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { useState } from 'react';
@@ -7,11 +7,11 @@ import ProofDetails from '../components/ProofDetails';
 import { ConcordiumGRPCClient } from '@concordium/web-sdk';
 
 async function submitProof(
+    provider: WalletProvider,
+    client: ConcordiumGRPCClient,
     subjectClaims: VerificationRequestV1.SubjectClaims[],
     context: VerificationRequestV1.Context,
     anchorTransactionHash: TransactionHash.Type | undefined,
-    provider: WalletProvider,
-    client: ConcordiumGRPCClient,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: string) => void, // optional param to store proof data
 ) {
@@ -63,11 +63,11 @@ async function submitProof(
 }
 
 export function SubmitProofV1(
+    provider: WalletProvider | undefined,
+    client: ConcordiumGRPCClient,
     idCredStatement: TopLevelStatements,
     context: VerificationRequestV1.Context,
     anchorTransactionHash: TransactionHash.Type | undefined,
-    provider: WalletProvider | undefined,
-    client: ConcordiumGRPCClient,
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
     const [currentProof, setCurrentProof] = useState<string | null>(null);
@@ -123,7 +123,7 @@ export function SubmitProofV1(
                     <button
                         title="Submit the statement as a verified presentation request to the wallet."
                         onClick={
-                            () => submitProof(subjectClaims, context, anchorTransactionHash, provider, client, setMessages, setCurrentProof)
+                            () => submitProof(provider, client, subjectClaims, context, anchorTransactionHash, setMessages, setCurrentProof)
                         }
                         type="button"
                         className="col-sm-4 btn btn-primary"

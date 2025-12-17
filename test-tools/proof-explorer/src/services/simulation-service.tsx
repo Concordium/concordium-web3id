@@ -19,7 +19,8 @@ export enum ClaimsType {
 export const handleSimulateAnchorCreation = async (
     provider: WalletProvider,
     idCredStatement: TopLevelStatements,
-    context: VerificationRequestV1.Context
+    context: VerificationRequestV1.Context,
+    withPublicInfo: boolean,
 ) => {
     if (idCredStatement.length == 0) {
         console.error('Create the statement in the column on the left before submitting the anchor transaction.');
@@ -63,16 +64,19 @@ export const handleSimulateAnchorCreation = async (
         }
     });
 
-    const anchor = Uint8Array.from(
-        VerificationRequestV1.createAnchor(context, subjectClaims, {
-            // TODO: maybe add toggle for with/without public info
-            somePublicInfo: 'public info',
-        })
-    );
+    const anchor = withPublicInfo
+        ? (console.log('Generating anchor with public info'),
+            VerificationRequestV1.createAnchor(
+                context,
+                subjectClaims,
+                { somePublicInfo: 'public info' }
+            ))
+        : (console.log('Generating anchor without public info'),
+            VerificationRequestV1.createAnchor(context, subjectClaims));
 
     console.log('Anchor data generated:', anchor.toString());
 
-    const registerData: RegisterDataPayload = { data: new DataBlob(anchor.buffer) };
+    const registerData: RegisterDataPayload = { data: new DataBlob(Uint8Array.from(anchor).buffer) };
 
     console.log('Sending anchor transaction');
 
