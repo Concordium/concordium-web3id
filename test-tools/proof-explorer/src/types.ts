@@ -1,3 +1,4 @@
+import { VerifiablePresentation } from '@concordium/web-sdk';
 import { AtomicStatementV2, ContractAddress } from '@concordium/web-sdk';
 
 export type TopLevelStatement =
@@ -51,7 +52,7 @@ export interface SpecialSetProps extends ExtendStatementProps {
 }
 
 export interface ProofDetailsProps {
-    proof: string | null;
+    proof: VerifiablePresentation | null;
     isOpen: boolean;
     onClose: () => void;
 }

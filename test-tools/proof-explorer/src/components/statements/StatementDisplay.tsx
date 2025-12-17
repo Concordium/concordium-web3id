@@ -2,7 +2,6 @@ import { StatementTypes } from '@concordium/web-sdk';
 import { TopLevelStatement, TopLevelStatements } from '../../types';
 
 function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
-    console.log("type is ", outer_statement.type);
     switch (outer_statement.type) {
         case 'id':
             if (outer_statement.statement.idCred_idps.length == 0) {

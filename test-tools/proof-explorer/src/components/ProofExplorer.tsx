@@ -86,7 +86,7 @@ export default function ProofExplorer() {
     );
     const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example rescource id')
     const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
-    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, subjectClaims, context, transactionHash,);
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, subjectClaims, context, transactionHash);
 
     const [simulationResult, setSimulationResult] = useState<string | null>(null);
 

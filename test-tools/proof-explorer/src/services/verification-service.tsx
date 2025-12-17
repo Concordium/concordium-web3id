@@ -20,7 +20,7 @@ async function submitProof(
     all_statements: TopLevelStatements,
     provider: WalletProvider,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
-    setProofData?: (proof: string) => void  // optional param to store proof data
+    setProofData?: (proof: VerifiablePresentation) => void  // optional param to store proof data
 ) {
     let currentCredentialType = undefined;
     const statement = all_statements.map((s) => {
@@ -81,7 +81,7 @@ async function submitProof(
     if (resp.ok) {
         setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
         if (setProofData) {
-            setProofData(proof.toString());
+            setProofData(proof);
         }
     } else {
         const body = await resp.json();
@@ -94,7 +94,7 @@ export function SubmitProof(
     provider: WalletProvider | undefined,
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
-    const [currentProof, setCurrentProof] = useState<string | null>(null);
+    const [currentProof, setCurrentProof] = useState<VerifiablePresentation | null>(null);
     const [isProofDetailsOpen, setIsProofDetailsOpen] = useState<boolean>(false);
 
     const handleViewDetails = () => {
