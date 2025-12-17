@@ -1,4 +1,4 @@
-import { CredentialStatements, CredentialStatement, VerifiablePresentation } from '@concordium/web-sdk';
+import { CredentialStatement, VerifiablePresentation } from '@concordium/web-sdk';
 import { CONCORDIUM_TESTNET_BACKEND_API } from '../constants';
 import { Buffer } from 'buffer';
 import { WalletProvider } from './wallet-connection';
@@ -17,11 +17,37 @@ export function getVerifierURL(): string {
 }
 
 async function submitProof(
-    statement: CredentialStatements,
+    all_statements: TopLevelStatements,
     provider: WalletProvider,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: string) => void  // optional param to store proof data
 ) {
+    let currentCredentialType = undefined;
+    const statement = all_statements.map((s) => {
+        currentCredentialType = s.type;
+        switch (s.type) {
+            case 'account':
+                return {
+                    statement: s.statement.statement,
+                    idQualifier: {
+                        type: 'cred',
+                        issuers: s.statement.idps.map((x) => x.id),
+                    },
+                } as CredentialStatement;
+            case 'web3id':
+                return {
+                    statement: s.statement.statement,
+                    idQualifier: {
+                        type: 'sci',
+                        issuers: s.statement.issuers,
+                    },
+                } as CredentialStatement;
+            case 'id':
+                console.error(`Identity credentials cannot be proven by this flow.`);
+                throw new Error(`Identity credentials cannot be proven by this flow.`)
+        }
+    });
+
     console.log('starting submitProof');
     let proof: VerifiablePresentation;
     const challengeBuffer = new Uint8Array(32);
@@ -70,37 +96,6 @@ export function SubmitProof(
     const [messages, setMessages] = useState<string[]>([]);
     const [currentProof, setCurrentProof] = useState<string | null>(null);
     const [isProofDetailsOpen, setIsProofDetailsOpen] = useState<boolean>(false);
-    let currentCredentialType = undefined;
-
-    const request = all_statements.map((s) => {
-        currentCredentialType = s.type;
-        switch (s.type) {
-            case 'account':
-                return {
-                    statement: s.statement.statement,
-                    idQualifier: {
-                        type: 'cred',
-                        issuers: s.statement.idps.map((x) => x.id),
-                    },
-                } as CredentialStatement;
-            case 'web3id':
-                return {
-                    statement: s.statement.statement,
-                    idQualifier: {
-                        type: 'sci',
-                        issuers: s.statement.issuers,
-                    },
-                } as CredentialStatement;
-            case 'id':
-                return {
-                    statement: s.statement.statement,
-                    idQualifier: {
-                        type: 'cred',  //TODO: I am faking this for now to be the same type as credential statement
-                        issuers: s.statement.idCred_idps.map((x) => x.id),
-                    },
-                } as CredentialStatement;    
-        }
-    });
 
     const handleViewDetails = () => {
         if (currentProof) {
@@ -119,7 +114,7 @@ export function SubmitProof(
                 {provider !== undefined && (
                     <button
                         title="Submit the statement as a verified presentation request to the wallet."
-                        onClick={() => submitProof(request, provider, setMessages, setCurrentProof)}
+                        onClick={() => submitProof(all_statements, provider, setMessages, setCurrentProof)}
                         type="button"
                         className="col-sm-4 btn btn-primary"
                     >
