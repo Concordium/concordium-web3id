@@ -8,10 +8,11 @@ import {
     ContractAddress,
     VerificationRequestV1,
     TransactionHash,
+    IdentityProviderDID,
 } from '@concordium/web-sdk';
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
-import { GRPC_WEB_CONFIG, ID_METHOD, ID_METHOD_V1, SIGN_AND_SEND_TRANSACTION } from '../constants';
+import { GRPC_WEB_CONFIG, ID_METHOD, ID_METHOD_V1, NETWORK, SIGN_AND_SEND_TRANSACTION } from '../constants';
 import { version } from '../../package.json';
 import { AccountStatement, IdentityCredentialStatement, TopLevelStatements, Web3IdStatement } from '../types';
 import { IdentityProviders, Issuers, parseIssuers } from '../services/credential-provider-services';
@@ -44,6 +45,7 @@ export default function ProofExplorer() {
     }, [provider]);
 
     const [statement, setStatement] = useState<TopLevelStatements>([]);
+    const [subjectClaims, setSubjectClaims] = useState<VerificationRequestV1.IdentityClaims[]>([]);
 
     const client = useRef(new ConcordiumGRPCClient(new GrpcWebFetchTransport(GRPC_WEB_CONFIG)));
 
@@ -163,6 +165,48 @@ export default function ProofExplorer() {
         setNewStatement(true);
     };
 
+    useEffect(() => {
+        const subjectClaims: VerificationRequestV1.IdentityClaims[] = [];
+
+        statement.forEach((stmt, index) => {
+            if (stmt.type == 'id') {
+                // TODO: use a toggle
+                enum ClaimsType {
+                    AccountOrIdentityClaims,
+                    OnlyAccountClaims,
+                    OnlyIdentityClaims
+                }
+                // TODO: pass into the function
+                let cred_type: VerificationRequestV1.IdentityCredType[] = ['identityCredential', 'accountCredential'];
+
+                const identityProviderIndex: number[] = [];
+                stmt.statement.idCred_idps.forEach(idp => {
+                    identityProviderIndex.push(idp.id);
+                });
+
+                let did: IdentityProviderDID[] = []
+                identityProviderIndex.forEach(index => {
+                    did.push(new IdentityProviderDID(NETWORK, index));
+                });
+
+                const subject_claim: VerificationRequestV1.SubjectClaims = {
+                    type: 'identity',
+                    source: cred_type,
+                    // @ts-ignore
+                    statements: stmt.statement.statement,
+                    issuers: did,
+                };
+
+                subjectClaims.push(subject_claim);
+            } else {
+                console.error(`Unsupported statement type at index ${index}: ${stmt.type}.
+                       Only identity credential statements are supported for proving in this flow.`);
+            }
+        });
+
+        setSubjectClaims(subjectClaims)
+    }, [statement]);
+
     const onIssuersChange: ChangeEventHandler<HTMLInputElement> = (e) => {
         setIssuers(e.target.value);
     };
@@ -180,7 +224,7 @@ export default function ProofExplorer() {
     const [withPublicInfo, setWithPublicInfo] = useState(false);
     const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example rescource id')
     const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
-    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, statement, context, transactionHash,);
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, subjectClaims, context, transactionHash,);
 
     const [simulationResult, setSimulationResult] = useState<string | null>(null);
 
@@ -192,7 +236,7 @@ export default function ProofExplorer() {
         setTransactionHash(undefined)
 
         try {
-            const transactionHash = await handleSimulateAnchorCreation(provider, statement, context, withPublicInfo);
+            const transactionHash = await handleSimulateAnchorCreation(provider, subjectClaims, context, withPublicInfo);
             setSimulationResult(`Simulation completed successfully with anchor transaction hash: ${transactionHash}`);
             setTransactionHash(TransactionHash.fromHexString(transactionHash))
         } catch (err) {

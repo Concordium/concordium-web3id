@@ -1,8 +1,7 @@
-import { VerificationRequestV1, IdentityProviderDID, VerifiablePresentationV1, TransactionHash, VerificationAuditRecordV1 } from '@concordium/web-sdk';
+import { VerificationRequestV1, VerifiablePresentationV1, TransactionHash, VerificationAuditRecordV1 } from '@concordium/web-sdk';
 import { NETWORK } from '../constants';
 import { WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { useState } from 'react';
-import { TopLevelStatements } from '../types';
 import ProofDetails from '../components/ProofDetails';
 import { ConcordiumGRPCClient } from '@concordium/web-sdk';
 
@@ -15,6 +14,12 @@ async function submitProof(
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: string) => void, // optional param to store proof data
 ) {
+    if (subjectClaims.length == 0) {
+        console.error('Create the statement in the column on the left and submit the anchor transaction first.');
+        throw new Error(
+            'Create the statement in the column on the left and submit the anchor transaction first.'
+        );
+    }
 
     if (anchorTransactionHash == undefined) {
         console.error(`Submit an anchor transaction first.`);
@@ -65,45 +70,13 @@ async function submitProof(
 export function SubmitProofV1(
     provider: WalletProvider | undefined,
     client: ConcordiumGRPCClient,
-    idCredStatement: TopLevelStatements,
+    subjectClaims: VerificationRequestV1.IdentityClaims[],
     context: VerificationRequestV1.Context,
     anchorTransactionHash: TransactionHash.Type | undefined,
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
     const [currentProof, setCurrentProof] = useState<string | null>(null);
     const [isProofDetailsOpen, setIsProofDetailsOpen] = useState<boolean>(false);
-
-    const subjectClaims: VerificationRequestV1.IdentityClaims[] = [];
-
-    idCredStatement.forEach((stmt, index) => {
-        if (stmt.type == 'id') {
-            // TODO: pass into the function
-            let cred_type: VerificationRequestV1.IdentityCredType[] = ['identityCredential', 'accountCredential'];
-
-            const identityProviderIndex: number[] = [];
-            stmt.statement.idCred_idps.forEach(idp => {
-                identityProviderIndex.push(idp.id);
-            });
-
-            let did: IdentityProviderDID[] = []
-            identityProviderIndex.forEach(index => {
-                did.push(new IdentityProviderDID(NETWORK, index));
-            });
-
-            const subject_claim: VerificationRequestV1.SubjectClaims = {
-                type: 'identity',
-                source: cred_type,
-                // @ts-ignore
-                statements: stmt.statement.statement,
-                issuers: did,
-            };
-
-            subjectClaims.push(subject_claim);
-        } else {
-            console.error(`Unsupported statement type at index ${index}: ${stmt.type}.
-                   Only identity credential statements are supported for proving in this flow.`);
-        }
-    });
 
     const handleViewDetails = () => {
         if (currentProof) {

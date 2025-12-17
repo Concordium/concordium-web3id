@@ -2,27 +2,17 @@ import {
     VerificationRequestV1,
     RegisterDataPayload,
     DataBlob,
-    IdentityProviderDID,
 } from '@concordium/web-sdk';
 
 import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
-import { TopLevelStatements } from '../types';
-import { NETWORK } from '../constants';
-
-// TODO: pass into the `handleSimulateAnchorCreation` function 
-export enum ClaimsType {
-    AccountOrIdentityClaims,
-    OnlyAccountClaims,
-    OnlyIdentityClaims
-}
 
 export const handleSimulateAnchorCreation = async (
     provider: WalletProvider,
-    idCredStatement: TopLevelStatements,
+    subjectClaims: VerificationRequestV1.IdentityClaims[],
     context: VerificationRequestV1.Context,
     withPublicInfo: boolean,
 ) => {
-    if (idCredStatement.length == 0) {
+    if (subjectClaims.length == 0) {
         console.error('Create the statement in the column on the left before submitting the anchor transaction.');
         throw new Error(
             'Create the statement in the column on the left before submitting the anchor transaction.'
@@ -30,39 +20,6 @@ export const handleSimulateAnchorCreation = async (
     }
 
     console.log('context data:', JSON.stringify(context, null, 2));
-
-    const subjectClaims: VerificationRequestV1.SubjectClaims[] = [];
-
-    idCredStatement.forEach((stmt, index) => {
-        if (stmt.type == 'id') {
-            // TODO: pass into the function
-            let cred_type: VerificationRequestV1.IdentityCredType[] = ['identityCredential', 'accountCredential'];
-
-            const identityProviderIndex: number[] = [];
-            stmt.statement.idCred_idps.forEach(idp => {
-                identityProviderIndex.push(idp.id);
-            });
-
-            let did: IdentityProviderDID[] = []
-            identityProviderIndex.forEach(index => {
-                did.push(new IdentityProviderDID(NETWORK, index));
-            });
-
-            const subject_claim: VerificationRequestV1.SubjectClaims = {
-                type: 'identity',
-                source: cred_type,
-                // @ts-ignore
-                statements: stmt.statement.statement,
-                issuers: did,
-            };
-
-            subjectClaims.push(subject_claim);
-
-        } else {
-            console.error(`Unsupported statement type at index ${index}: ${stmt.type}.
-               Only identity credential statements are supported for anchor creation simulation.`);
-        }
-    });
 
     const anchor = withPublicInfo
         ? (console.log('Generating anchor with public info'),
