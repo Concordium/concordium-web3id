@@ -46,7 +46,6 @@ async function submitProof(
         }
     });
 
-    console.log('starting submitProof');
     let proof: VerifiablePresentation;
     const challengeBuffer = new Uint8Array(32);
     crypto.getRandomValues(challengeBuffer);

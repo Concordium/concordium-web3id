@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StatementTypes, AtomicStatementV2 } from '@concordium/web-sdk';
-import { ProofDetailsProps, Proof } from '../types';
+import { ProofDetailsProps, Proof, ProofType } from '../types';
 
 function ProofDetails({ proof, isOpen, onClose }: ProofDetailsProps) {
   const [viewMode, setViewMode] = useState<'structured' | 'raw'>('structured');
@@ -20,6 +20,17 @@ const formatSize = (bytes: number) => {
   else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
   else return (bytes / 1048576).toFixed(1) + ' MB';
 };
+
+function getProofType(proof: Proof) {
+  switch (proof.type) {
+    case ProofType.VerifiablePresentationV1:
+      return proof.value.toJSON().type;
+    case ProofType.VerifiablePresentation:
+      return proof.value.type;
+    default:
+      throw new Error('Not supported proof type.');
+  }
+}
 
 const formatDate = (dateStr: string) => {
   try {
@@ -314,6 +325,7 @@ const renderStructuredView = (
         {credentialSubject && (
           <div className="mt-4 border-top pt-1">
 
+            {/* Statement section */}
             {credentialSubject.statement && (
               <div className="mt-2">
                 <SectionTitle title="Statements" />
@@ -366,6 +378,8 @@ const renderStructuredView = (
     );
   };
 
+  let proofType = getProofType(proof);
+
   return (
     <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
       style={{ zIndex: 1050, backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -401,15 +415,15 @@ const renderStructuredView = (
             </div>
           )}
           {/* TODO: display type of proof*/}
-          {/* {proof.value.type && (
+          {proofType && (
             <div className="mb-3">
               <strong>Type:</strong>{' '}
-              {Array.isArray(proof.type)
-                ? proof.type.map((t: string, i: number) => <TypeBadge key={i} type={t} />)
-                : <TypeBadge type={proof.value.proof.type} />
+              {Array.isArray(proofType)
+                ? proofType.map((t: string, i: number) => <TypeBadge key={i} type={t} />)
+                : <TypeBadge type={proofType} />
               }
             </div>
-          )} */}
+          )}
         </div>
 
         {/* Verifiable credentials */}

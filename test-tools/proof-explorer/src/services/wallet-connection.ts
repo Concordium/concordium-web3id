@@ -75,9 +75,7 @@ export class BrowserWalletProvider extends WalletProvider {
     }
 
     async connect(): Promise<string[] | undefined> {
-        console.log('BrowserWalletProvider: provider.requestAccounts, connecting to wallet...');
         const accounts = await this.provider.requestAccounts();
-        console.log('BrowserWalletProvider: connected accounts:', accounts);
         this.connectedAccount = accounts[0];
         return accounts
     }
@@ -86,11 +84,7 @@ export class BrowserWalletProvider extends WalletProvider {
         challenge: HexString,
         statement: CredentialStatements
     ): Promise<VerifiablePresentation> {
-        console.log('BrowserWalletProvider: requesting verifiable presentation with statement:', statement);
-        console.log('BrowserWalletProvider: requesting verifiable presentation with challenge:', challenge);
-        const result = this.provider.requestVerifiablePresentation(challenge, statement);
-        console.log('BrowserWalletProvider: received verifiable presentation.', result);
-        return result;
+        return this.provider.requestVerifiablePresentation(challenge, statement);
     }
 
     async sendRegisterDataTransaction(
@@ -223,7 +217,6 @@ export class WalletConnectProvider extends WalletProvider {
             throw new Error("No connected account to send transaction.")
         }
 
-        console.log('WalletConnectProvider: requesting verifiable presentation V1 with params:', request);
 
         try {
             const result = await this.client.request<{ verifiablePresentationJson: VerifiablePresentationV1.JSON }>({
@@ -234,8 +227,6 @@ export class WalletConnectProvider extends WalletProvider {
                 },
                 chainId: CHAIN_ID,
             });
-            console.log(result)
-
             return VerifiablePresentationV1.fromJSON(result.verifiablePresentationJson);
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

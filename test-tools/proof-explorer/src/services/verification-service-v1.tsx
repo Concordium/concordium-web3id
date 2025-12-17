@@ -29,14 +29,10 @@ async function submitProof(
 
     let verification_request = VerificationRequestV1.create(context, subjectClaims, anchorTransactionHash);
 
-    console.log('Starting submitProof');
     let proof: VerifiablePresentationV1.Type;
-
 
     try {
         if (provider instanceof WalletConnectProvider) {
-            console.log("Requesting verifiable presentation V1 from wallet...");
-
             proof = await provider.requestVerifiablePresentationV1(verification_request);
             console.log(JSON.stringify(proof));
             console.log(proof);

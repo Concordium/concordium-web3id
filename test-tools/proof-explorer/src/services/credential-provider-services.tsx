@@ -129,15 +129,11 @@ export function IdentityProviders({ idps }: { idps: { name: string; id: number }
     const [checked, setChecked] = useState<number[]>([]);
     const handleCheck = (event: ChangeEvent<HTMLInputElement>) => {
         let updatedList = [...checked];
-        console.log("Checkbox event for ", event.target.value, " checked=", event.target.checked);
-        console.log("Current checked list: ", checked);
-        console.log("Updated list before change: ", updatedList);
         if (event.target.checked) {
             updatedList = [...checked, parseInt(event.target.value)];
         } else {
             updatedList.splice(checked.indexOf(parseInt(event.target.value)), 1);
         }
-        console.log("Updated list after change: ", updatedList);
         setChecked(updatedList);
     };
 
