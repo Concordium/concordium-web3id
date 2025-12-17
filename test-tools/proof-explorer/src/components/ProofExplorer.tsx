@@ -14,7 +14,7 @@ import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '..
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 import { GRPC_WEB_CONFIG, ID_METHOD, ID_METHOD_V1, NETWORK, SIGN_AND_SEND_TRANSACTION } from '../constants';
 import { version } from '../../package.json';
-import { AccountStatement, IdentityCredentialStatement, TopLevelStatements, Web3IdStatement } from '../types';
+import { AccountStatement, IdentityCredentialStatement, SubjectClaimsType, TopLevelStatements, Web3IdStatement } from '../types';
 import { IdentityProviders, Issuers, parseIssuers } from '../services/credential-provider-services';
 import { SubmitProof } from '../services/verification-service';
 import { Statement } from './statements/StatementDisplay';
@@ -69,6 +69,26 @@ export default function ProofExplorer() {
 
     const [new_statement, setNewStatement] = useState<boolean>(true);
 
+    const [issuers, setIssuers] = useState<string>('');
+    const [web3IdAttributes, issuersDisplay] = Issuers(issuers, client.current);
+
+    const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
+
+    const nonceRef = useRef<Uint8Array | null>(null);
+    if (!nonceRef.current) {
+        nonceRef.current = crypto.getRandomValues(new Uint8Array(32));
+    }
+    const nonce = nonceRef.current;
+
+    const [withPublicInfo, setWithPublicInfo] = useState(false);
+    const [claimsType, setClaimsType] = useState<SubjectClaimsType>(
+        SubjectClaimsType.AccountOrIdentityClaims
+    );
+    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example rescource id')
+    const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, subjectClaims, context, transactionHash,);
+
+    const [simulationResult, setSimulationResult] = useState<string | null>(null);
 
     const addIdentityCredentialStatement = (a: AtomicStatementV2[]) => {
         if (currentStatementType && currentStatementType != 'id') {
@@ -129,8 +149,6 @@ export default function ProofExplorer() {
         });
     };
 
-    const [issuers, setIssuers] = useState<string>('');
-
     const addWeb3IdStatement = (a: AtomicStatementV2[]) => {
 
         if (currentStatementType && currentStatementType != 'web3id') {
@@ -170,14 +188,13 @@ export default function ProofExplorer() {
 
         statement.forEach((stmt, index) => {
             if (stmt.type == 'id') {
-                // TODO: use a toggle
-                enum ClaimsType {
-                    AccountOrIdentityClaims,
-                    OnlyAccountClaims,
-                    OnlyIdentityClaims
-                }
-                // TODO: pass into the function
-                let cred_type: VerificationRequestV1.IdentityCredType[] = ['identityCredential', 'accountCredential'];
+
+                const source: VerificationRequestV1.IdentityCredType[] =
+                    claimsType === SubjectClaimsType.AccountOrIdentityClaims
+                        ? ['identityCredential', 'accountCredential']
+                        : claimsType === SubjectClaimsType.OnlyAccountClaims
+                            ? ['accountCredential']
+                            : ['identityCredential'];
 
                 const identityProviderIndex: number[] = [];
                 stmt.statement.idCred_idps.forEach(idp => {
@@ -191,7 +208,7 @@ export default function ProofExplorer() {
 
                 const subject_claim: VerificationRequestV1.SubjectClaims = {
                     type: 'identity',
-                    source: cred_type,
+                    source,
                     // @ts-ignore
                     statements: stmt.statement.statement,
                     issuers: did,
@@ -205,28 +222,11 @@ export default function ProofExplorer() {
         });
 
         setSubjectClaims(subjectClaims)
-    }, [statement]);
+    }, [statement, claimsType]);
 
     const onIssuersChange: ChangeEventHandler<HTMLInputElement> = (e) => {
         setIssuers(e.target.value);
     };
-
-    const [web3IdAttributes, issuersDisplay] = Issuers(issuers, client.current);
-
-    const [setMessages, submitProofDisplay] = SubmitProof(statement, provider);
-
-    const nonceRef = useRef<Uint8Array | null>(null);
-    if (!nonceRef.current) {
-        nonceRef.current = crypto.getRandomValues(new Uint8Array(32));
-    }
-    const nonce = nonceRef.current;
-
-    const [withPublicInfo, setWithPublicInfo] = useState(false);
-    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example rescource id')
-    const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
-    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, subjectClaims, context, transactionHash,);
-
-    const [simulationResult, setSimulationResult] = useState<string | null>(null);
 
     const runSimulation = async () => {
         if (!provider) {
@@ -575,7 +575,24 @@ export default function ProofExplorer() {
                     <pre>VerifiablePresentionV1 flow for identity credentials</pre>
 
                     <div className="col-sm">
-                        <div className="form-check form-switch">
+
+                        Select Credential Type Source:
+                        <select
+                            value={claimsType}
+                            onChange={e => setClaimsType(e.target.value as SubjectClaimsType)}
+                            className="form-select mt-1"
+                        >
+                            <option value={SubjectClaimsType.AccountOrIdentityClaims}>
+                                Account or Identity
+                            </option>
+                            <option value={SubjectClaimsType.OnlyAccountClaims}>
+                                Account only
+                            </option>
+                            <option value={SubjectClaimsType.OnlyIdentityClaims}>
+                                Identity only
+                            </option>
+                        </select>
+                        <div className="form-check form-switch mt-2">
                             <input
                                 className="form-check-input"
                                 type="checkbox"
@@ -584,10 +601,9 @@ export default function ProofExplorer() {
                                 onChange={() => setWithPublicInfo(prev => !prev)}
                             />
                             <label className="form-check-label" htmlFor="publicInfoToggle">
-                                {withPublicInfo ? 'Add some public info to anchor' : 'No public info in anchor'}
+                                {withPublicInfo ? 'Added some dummy public info to anchor' : 'No public info in anchor'}
                             </label>
                         </div>
-                        {' '}
                         <button
                             title="Simulate Create Anchor"
                             onClick={runSimulation}

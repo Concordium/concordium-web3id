@@ -55,3 +55,9 @@ export interface ProofDetailsProps {
     isOpen: boolean;
     onClose: () => void;
 }
+
+export enum SubjectClaimsType {
+    AccountOrIdentityClaims = 'AccountOrIdentityClaims',
+    OnlyAccountClaims = 'OnlyAccountClaims',
+    OnlyIdentityClaims = 'OnlyIdentityClaims',
+}
