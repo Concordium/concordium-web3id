@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { StatementTypes, AtomicStatementV2, VerifiablePresentation } from '@concordium/web-sdk';
-import { ProofDetailsProps } from '../types';
+import { StatementTypes, AtomicStatementV2 } from '@concordium/web-sdk';
+import { ProofDetailsProps, Proof } from '../types';
 
 function ProofDetails({ proof, isOpen, onClose }: ProofDetailsProps) {
   const [viewMode, setViewMode] = useState<'structured' | 'raw'>('structured');
@@ -238,7 +238,7 @@ const renderProofItem = (proofItem: any, index: number) => {
 
 // Raw data view 
 const renderRawView = (
-  proof: VerifiablePresentation,
+  proof: Proof,
   proofSize: number,
   onClose: () => void,
   onSwitchView?: () => void
@@ -266,7 +266,7 @@ const renderRawView = (
 
       <pre className="bg-light p-3 rounded small"
         style={{ maxHeight: '70vh', overflow: 'auto', wordWrap: 'break-word', whiteSpace: 'pre-wrap' }}>
-        {JSON.stringify(JSON.parse(proof.toString()), null, 2)}
+        {JSON.stringify(proof.value, null, 2)}
       </pre>
 
       <div className="d-flex justify-content-between mt-3">
@@ -288,7 +288,7 @@ const renderRawView = (
 
 // Structured view
 const renderStructuredView = (
-  proof: VerifiablePresentation,
+  proof: Proof,
   proofSize: number,
   onClose: () => void,
   onSwitchView?: () => void
@@ -392,28 +392,31 @@ const renderStructuredView = (
 
         {/* Basic info */}
         <div className="mb-3 p-3 bg-white rounded shadow-sm">
-          {proof.presentationContext && (
+          {proof.value.presentationContext && (
             <div className="mb-3">
               <strong>Presentation Context:</strong>{' '}
-              <TruncatedText text={proof.presentationContext} />
+              <pre className="my-2 bg-light p-2 rounded small">
+                {JSON.stringify(proof.value.presentationContext, null, 2)}
+              </pre>
             </div>
           )}
-          {proof.type && (
+          {/* TODO: display type of proof*/}
+          {/* {proof.value.type && (
             <div className="mb-3">
               <strong>Type:</strong>{' '}
               {Array.isArray(proof.type)
                 ? proof.type.map((t: string, i: number) => <TypeBadge key={i} type={t} />)
-                : <TypeBadge type={proof.type} />
+                : <TypeBadge type={proof.value.proof.type} />
               }
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Verifiable credentials */}
-        {proof.verifiableCredential && proof.verifiableCredential.length > 0 && (
+        {proof.value.verifiableCredential && proof.value.verifiableCredential.length > 0 && (
           <div className="mb-3">
             <h5 className="mb-3">Verifiable Credentials</h5>
-            {proof.verifiableCredential.map((credential: any, index: number) => (
+            {proof.value.verifiableCredential.map((credential: any, index: number) => (
               <div key={index}>
                 {renderCredential(credential)}
               </div>

@@ -3,7 +3,7 @@ import { CONCORDIUM_TESTNET_BACKEND_API } from '../constants';
 import { Buffer } from 'buffer';
 import { WalletProvider } from './wallet-connection';
 import { useState } from 'react';
-import { TopLevelStatements } from '../types';
+import { ProofType, TopLevelStatements } from '../types';
 import ProofDetails from '../components/ProofDetails';
 
 // This allows the backend URL to come from three sources, in order of priority:
@@ -22,9 +22,7 @@ async function submitProof(
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: VerifiablePresentation) => void  // optional param to store proof data
 ) {
-    let currentCredentialType = undefined;
     const statement = all_statements.map((s) => {
-        currentCredentialType = s.type;
         switch (s.type) {
             case 'account':
                 return {
@@ -144,11 +142,16 @@ export function SubmitProof(
                 </ol>
             </div>
             {/* Render the ProofDetails popup */}
-            <ProofDetails
-                proof={currentProof}
-                isOpen={isProofDetailsOpen}
-                onClose={handleCloseDetails}
-            />
+            {currentProof && (
+                <ProofDetails
+                    proof={{
+                        type: ProofType.VerifiablePresentation,
+                        value: currentProof,
+                    }}
+                    isOpen={isProofDetailsOpen}
+                    onClose={handleCloseDetails}
+                />
+            )}
         </div>,
     ];
 }

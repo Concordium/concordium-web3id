@@ -1,4 +1,4 @@
-import { VerifiablePresentation } from '@concordium/web-sdk';
+import { VerifiablePresentation, VerifiablePresentationV1 } from '@concordium/web-sdk';
 import { AtomicStatementV2, ContractAddress } from '@concordium/web-sdk';
 
 export type TopLevelStatement =
@@ -52,7 +52,7 @@ export interface SpecialSetProps extends ExtendStatementProps {
 }
 
 export interface ProofDetailsProps {
-    proof: VerifiablePresentation | null;
+    proof: Proof | null;
     isOpen: boolean;
     onClose: () => void;
 }
@@ -62,3 +62,18 @@ export enum SubjectClaimsType {
     OnlyAccountClaims = 'OnlyAccountClaims',
     OnlyIdentityClaims = 'OnlyIdentityClaims',
 }
+
+export enum ProofType {
+    VerifiablePresentation,
+    VerifiablePresentationV1,
+}
+
+export type Proof =
+    | {
+        type: ProofType.VerifiablePresentation;
+        value: VerifiablePresentation;
+    }
+    | {
+        type: ProofType.VerifiablePresentationV1;
+        value: VerifiablePresentationV1.Type;
+    };

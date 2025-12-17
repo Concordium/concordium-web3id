@@ -4,6 +4,7 @@ import { WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { useState } from 'react';
 import ProofDetails from '../components/ProofDetails';
 import { ConcordiumGRPCClient } from '@concordium/web-sdk';
+import { ProofType } from '../types';
 
 async function submitProof(
     provider: WalletProvider,
@@ -12,7 +13,7 @@ async function submitProof(
     context: VerificationRequestV1.Context,
     anchorTransactionHash: TransactionHash.Type | undefined,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
-    setProofData?: (proof: string) => void, // optional param to store proof data
+    setProofData?: (proof: VerifiablePresentationV1.Type) => void, // optional param to store proof data
 ) {
     if (subjectClaims.length == 0) {
         console.error('Create the statement in the column on the left and submit the anchor transaction first.');
@@ -37,7 +38,7 @@ async function submitProof(
             console.log("Requesting verifiable presentation V1 from wallet...");
 
             proof = await provider.requestVerifiablePresentationV1(verification_request);
-            console.log(proof.toString());
+            console.log(JSON.stringify(proof));
             console.log(proof);
         } else {
             throw new Error(`Verifiable presentation V1 flow is not implemented for the browser wallet yet.`);
@@ -57,7 +58,7 @@ async function submitProof(
     if (verification_result.type == `success`) {
         setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
         if (setProofData) {
-            setProofData(proof.toString());
+            setProofData(proof);
         }
     } else {
         // const body = await resp.json();
@@ -75,7 +76,7 @@ export function SubmitProofV1(
     anchorTransactionHash: TransactionHash.Type | undefined,
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
-    const [currentProof, setCurrentProof] = useState<string | null>(null);
+    const [currentProof, setCurrentProof] = useState<VerifiablePresentationV1.Type | null>(null);
     const [isProofDetailsOpen, setIsProofDetailsOpen] = useState<boolean>(false);
 
     const handleViewDetails = () => {
@@ -127,11 +128,16 @@ export function SubmitProofV1(
                 </ol>
             </div>
             {/* Render the ProofDetails popup */}
-            <ProofDetails
-                proof={currentProof}
-                isOpen={isProofDetailsOpen}
-                onClose={handleCloseDetails}
-            />
+            {currentProof && (
+                <ProofDetails
+                    proof={{
+                        type: ProofType.VerifiablePresentationV1,
+                        value: currentProof,
+                    }}
+                    isOpen={isProofDetailsOpen}
+                    onClose={handleCloseDetails}
+                />
+            )}
         </div>,
     ];
 }
