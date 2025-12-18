@@ -5,19 +5,24 @@ import {
 } from '@concordium/web-sdk';
 
 import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
+import { getSubjectClaims } from '../components/ProofExplorer';
+import { SubjectClaimsType, TopLevelStatements } from '../types';
 
 export const handleSimulateAnchorCreation = async (
     provider: WalletProvider,
-    subjectClaims: VerificationRequestV1.IdentityClaims[],
+    statements: TopLevelStatements,
+    claimsType: SubjectClaimsType,
     context: VerificationRequestV1.Context,
     withPublicInfo: boolean,
 ) => {
-    if (subjectClaims.length == 0) {
+    if (statements.length == 0) {
         console.error('Create the statement in the column on the left before submitting the anchor transaction.');
         throw new Error(
             'Create the statement in the column on the left before submitting the anchor transaction.'
         );
     }
+
+    const subjectClaims = getSubjectClaims(statements, claimsType);
 
     console.log('context data:', JSON.stringify(context, null, 2));
 

@@ -1,5 +1,7 @@
 /* eslint-disable no-alert */
 import { useEffect, useState, MouseEventHandler, ChangeEventHandler, useRef } from 'react';
+import { Toaster } from 'react-hot-toast';
+import toast from "react-hot-toast";
 import {
     AttributeKeyString,
     AtomicStatementV2,
@@ -10,8 +12,8 @@ import {
     TransactionHash,
     IdentityProviderDID,
 } from '@concordium/web-sdk';
-import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
+import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
 import { GRPC_WEB_CONFIG, ID_METHOD, ID_METHOD_V1, NETWORK, SIGN_AND_SEND_TRANSACTION } from '../constants';
 import { version } from '../../package.json';
 import { AccountStatement, IdentityCredentialStatement, SubjectClaimsType, TopLevelStatements, Web3IdStatement } from '../types';
@@ -20,8 +22,6 @@ import { SubmitProof } from '../services/verification-service';
 import { Statement } from './statements/StatementDisplay';
 import { AttributeInRange, AttributeInSet, RevealAttribute } from './statements/Web3IdStatementBuilders';
 import { AgeBound, AgeInRange, AttributeIn, DocumentExpiryNoEarlier, DocumentIssuerIn, EUAttributeIn } from './statements/AccountStatementBuilders';
-import { Toaster } from 'react-hot-toast';
-import toast from "react-hot-toast";
 import { handleSimulateAnchorCreation } from '../services/simulation-service';
 import { SubmitProofV1 } from '../services/verification-service-v1';
 
@@ -29,6 +29,46 @@ const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
     return { value: ak, label: ak };
 });
 
+// Convert statements into subject claims for V1 flow
+export function getSubjectClaims(statement: TopLevelStatements, claimsType: SubjectClaimsType): VerificationRequestV1.IdentityClaims[] {
+    const subjectClaims: VerificationRequestV1.IdentityClaims[] = [];
+
+    statement.forEach((stmt, index) => {
+        if (stmt.type == 'id') {
+            const source: VerificationRequestV1.IdentityCredType[] =
+                claimsType === SubjectClaimsType.AccountOrIdentityClaims
+                    ? ['identityCredential', 'accountCredential']
+                    : claimsType === SubjectClaimsType.OnlyAccountClaims
+                        ? ['accountCredential']
+                        : ['identityCredential'];
+
+            const identityProviderIndex: number[] = [];
+            stmt.statement.idCred_idps.forEach(idp => {
+                identityProviderIndex.push(idp.id);
+            });
+
+            let did: IdentityProviderDID[] = []
+            identityProviderIndex.forEach(index => {
+                did.push(new IdentityProviderDID(NETWORK, index));
+            });
+
+            const subject_claim: VerificationRequestV1.SubjectClaims = {
+                type: 'identity',
+                source,
+                // @ts-ignore
+                statements: stmt.statement.statement,
+                issuers: did,
+            };
+
+            subjectClaims.push(subject_claim);
+        } else {
+            console.error(`Unsupported statement type at index ${index}: ${stmt.type}.
+                       Only identity credential statements are supported for proving in V1 flow.`);
+        }
+    });
+
+    return subjectClaims
+}
 /**
  * The main component.
  */
@@ -45,7 +85,6 @@ export default function ProofExplorer() {
     }, [provider]);
 
     const [statement, setStatement] = useState<TopLevelStatements>([]);
-    const [subjectClaims, setSubjectClaims] = useState<VerificationRequestV1.IdentityClaims[]>([]);
 
     const client = useRef(new ConcordiumGRPCClient(new GrpcWebFetchTransport(GRPC_WEB_CONFIG)));
 
@@ -86,7 +125,7 @@ export default function ProofExplorer() {
     );
     const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example rescource id')
     const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
-    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, subjectClaims, context, transactionHash);
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, statement, claimsType, context, transactionHash);
 
     const [simulationResult, setSimulationResult] = useState<string | null>(null);
 
@@ -159,7 +198,6 @@ export default function ProofExplorer() {
 
         if (currentStatementType === undefined) setCurrentStatementType('web3id');
 
-
         setStatement((statements) => {
             if (lastAccount || new_statement || statements.length == 0) {
                 setLastAccount(false);
@@ -183,47 +221,6 @@ export default function ProofExplorer() {
         setNewStatement(true);
     };
 
-    useEffect(() => {
-        const subjectClaims: VerificationRequestV1.IdentityClaims[] = [];
-
-        statement.forEach((stmt, index) => {
-            if (stmt.type == 'id') {
-
-                const source: VerificationRequestV1.IdentityCredType[] =
-                    claimsType === SubjectClaimsType.AccountOrIdentityClaims
-                        ? ['identityCredential', 'accountCredential']
-                        : claimsType === SubjectClaimsType.OnlyAccountClaims
-                            ? ['accountCredential']
-                            : ['identityCredential'];
-
-                const identityProviderIndex: number[] = [];
-                stmt.statement.idCred_idps.forEach(idp => {
-                    identityProviderIndex.push(idp.id);
-                });
-
-                let did: IdentityProviderDID[] = []
-                identityProviderIndex.forEach(index => {
-                    did.push(new IdentityProviderDID(NETWORK, index));
-                });
-
-                const subject_claim: VerificationRequestV1.SubjectClaims = {
-                    type: 'identity',
-                    source,
-                    // @ts-ignore
-                    statements: stmt.statement.statement,
-                    issuers: did,
-                };
-
-                subjectClaims.push(subject_claim);
-            } else {
-                console.error(`Unsupported statement type at index ${index}: ${stmt.type}.
-                       Only identity credential statements are supported for proving in this flow.`);
-            }
-        });
-
-        setSubjectClaims(subjectClaims)
-    }, [statement, claimsType]);
-
     const onIssuersChange: ChangeEventHandler<HTMLInputElement> = (e) => {
         setIssuers(e.target.value);
     };
@@ -236,7 +233,7 @@ export default function ProofExplorer() {
         setTransactionHash(undefined)
 
         try {
-            const transactionHash = await handleSimulateAnchorCreation(provider, subjectClaims, context, withPublicInfo);
+            const transactionHash = await handleSimulateAnchorCreation(provider, statement, claimsType, context, withPublicInfo);
             setSimulationResult(`Simulation completed successfully with anchor transaction hash: ${transactionHash}`);
             setTransactionHash(TransactionHash.fromHexString(transactionHash))
         } catch (err) {
@@ -471,13 +468,9 @@ export default function ProofExplorer() {
                                     let provider = await BrowserWalletProvider.getInstance()
                                     await provider.connect();
                                     setProvider(provider);
-
-                                    console.log("Successfully connected to browser wallet.");
                                 } catch (err) {
                                     console.error("Failed to connect to browser wallet (make sure it is installed):", err);
                                     toast.error("Failed to connect to browser wallet, make sure it is installed.");
-                                } finally {
-                                    console.log("Connection attempt to browser wallet finished.");
                                 }
                             }
                             }

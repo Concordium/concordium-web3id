@@ -414,7 +414,6 @@ const renderStructuredView = (
               </pre>
             </div>
           )}
-          {/* TODO: display type of proof*/}
           {proofType && (
             <div className="mb-3">
               <strong>Type:</strong>{' '}

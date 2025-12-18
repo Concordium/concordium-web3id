@@ -63,7 +63,6 @@ export function Statement({ inner, new_statement }: { inner: TopLevelStatements;
             <Issuer outer_statement={outer_statement} />
             <div>
                 {outer_statement.statement.statement.map((s,index) => {
-                    console.log("statement type ", s.type);
                     switch (s.type) {
                         case StatementTypes.RevealAttribute:
                             return (

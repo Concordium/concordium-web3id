@@ -4,18 +4,21 @@ import { WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { useState } from 'react';
 import ProofDetails from '../components/ProofDetails';
 import { ConcordiumGRPCClient } from '@concordium/web-sdk';
-import { ProofType } from '../types';
+import { ProofType, SubjectClaimsType, TopLevelStatements } from '../types';
+import { getSubjectClaims } from '../components/ProofExplorer';
 
 async function submitProof(
     provider: WalletProvider,
     client: ConcordiumGRPCClient,
-    subjectClaims: VerificationRequestV1.SubjectClaims[],
+    statements: TopLevelStatements,
+    claimsType: SubjectClaimsType,
     context: VerificationRequestV1.Context,
     anchorTransactionHash: TransactionHash.Type | undefined,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: VerifiablePresentationV1.Type) => void, // optional param to store proof data
 ) {
-    if (subjectClaims.length == 0) {
+
+    if (statements.length == 0) {
         console.error('Create the statement in the column on the left and submit the anchor transaction first.');
         throw new Error(
             'Create the statement in the column on the left and submit the anchor transaction first.'
@@ -26,6 +29,8 @@ async function submitProof(
         console.error(`Submit an anchor transaction first.`);
         throw new Error(`Submit an anchor transaction first.`)
     }
+
+    const subjectClaims = getSubjectClaims(statements, claimsType);
 
     let verification_request = VerificationRequestV1.create(context, subjectClaims, anchorTransactionHash);
 
@@ -67,7 +72,8 @@ async function submitProof(
 export function SubmitProofV1(
     provider: WalletProvider | undefined,
     client: ConcordiumGRPCClient,
-    subjectClaims: VerificationRequestV1.IdentityClaims[],
+    statements: TopLevelStatements,
+    claimsType: SubjectClaimsType,
     context: VerificationRequestV1.Context,
     anchorTransactionHash: TransactionHash.Type | undefined,
 ): [(messages: string[]) => any, React.JSX.Element] {
@@ -93,7 +99,7 @@ export function SubmitProofV1(
                     <button
                         title="Submit the statement as a verified presentation request to the wallet."
                         onClick={
-                            () => submitProof(provider, client, subjectClaims, context, anchorTransactionHash, setMessages, setCurrentProof)
+                            () => submitProof(provider, client, statements, claimsType, context, anchorTransactionHash, setMessages, setCurrentProof)
                         }
                         type="button"
                         className="col-sm-4 btn btn-primary"
