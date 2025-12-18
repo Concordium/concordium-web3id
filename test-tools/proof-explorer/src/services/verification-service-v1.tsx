@@ -1,10 +1,11 @@
-import { VerificationRequestV1, VerifiablePresentationV1, TransactionHash, VerificationAuditRecordV1 } from '@concordium/web-sdk';
+import { useState } from 'react';
+
+import { ConcordiumGRPCClient, VerificationRequestV1, VerifiablePresentationV1, TransactionHash, VerificationAuditRecordV1 } from '@concordium/web-sdk';
+
 import { NETWORK } from '../constants';
 import { WalletConnectProvider, WalletProvider } from './wallet-connection';
-import { useState } from 'react';
-import ProofDetails from '../components/ProofDetails';
-import { ConcordiumGRPCClient } from '@concordium/web-sdk';
 import { ProofType, SubjectClaimsType, TopLevelStatements } from '../types';
+import ProofDetails from '../components/ProofDetails';
 import { getSubjectClaims } from '../components/ProofExplorer';
 
 async function submitProof(
@@ -32,13 +33,13 @@ async function submitProof(
 
     const subjectClaims = getSubjectClaims(statements, claimsType);
 
-    let verification_request = VerificationRequestV1.create(context, subjectClaims, anchorTransactionHash);
+    let verificationRequest = VerificationRequestV1.create(context, subjectClaims, anchorTransactionHash);
 
     let proof: VerifiablePresentationV1.Type;
 
     try {
         if (provider instanceof WalletConnectProvider) {
-            proof = await provider.requestVerifiablePresentationV1(verification_request);
+            proof = await provider.requestVerifiablePresentationV1(verificationRequest);
             console.log(JSON.stringify(proof));
             console.log(proof);
         } else {
@@ -53,10 +54,10 @@ async function submitProof(
         return;
     }
 
-    const audit_record_id = "12345";
-    let verification_result = await VerificationAuditRecordV1.createChecked(audit_record_id, verification_request, proof, client, NETWORK)
+    const auditRecordID = "12345";
+    let verificationResult = await VerificationAuditRecordV1.createChecked(auditRecordID, verificationRequest, proof, client, NETWORK)
 
-    if (verification_result.type == `success`) {
+    if (verificationResult.type == `success`) {
         setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
         if (setProofData) {
             setProofData(proof);
@@ -104,7 +105,7 @@ export function SubmitProofV1(
                         type="button"
                         className="col-sm-4 btn btn-primary"
                     >
-                        {'Prove'}
+                        {'ProveV1'}
                     </button>
                 )}
             </div>

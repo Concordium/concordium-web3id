@@ -17,12 +17,12 @@ export function getVerifierURL(): string {
 }
 
 async function submitProof(
-    all_statements: TopLevelStatements,
+    allStatements: TopLevelStatements,
     provider: WalletProvider,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: VerifiablePresentation) => void  // optional param to store proof data
 ) {
-    const statement = all_statements.map((s) => {
+    const statement = allStatements.map((s) => {
         switch (s.type) {
             case 'account':
                 return {
@@ -87,7 +87,7 @@ async function submitProof(
 }
 
 export function SubmitProof(
-    all_statements: TopLevelStatements,
+    allStatements: TopLevelStatements,
     provider: WalletProvider | undefined,
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
@@ -111,7 +111,7 @@ export function SubmitProof(
                 {provider !== undefined && (
                     <button
                         title="Submit the statement as a verified presentation request to the wallet."
-                        onClick={() => submitProof(all_statements, provider, setMessages, setCurrentProof)}
+                        onClick={() => submitProof(allStatements, provider, setMessages, setCurrentProof)}
                         type="button"
                         className="col-sm-4 btn btn-primary"
                     >

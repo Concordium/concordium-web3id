@@ -14,7 +14,7 @@ import {
 } from '@concordium/web-sdk';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
-import { GRPC_WEB_CONFIG, ID_METHOD, ID_METHOD_V1, NETWORK, SIGN_AND_SEND_TRANSACTION } from '../constants';
+import { GRPC_WEB_CONFIG, NETWORK, REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, SIGN_AND_SEND_TRANSACTION_METHOD } from '../constants';
 import { version } from '../../package.json';
 import { AccountStatement, IdentityCredentialStatement, SubjectClaimsType, TopLevelStatements, Web3IdStatement } from '../types';
 import { IdentityProviders, Issuers, parseIssuers } from '../services/credential-provider-services';
@@ -22,7 +22,7 @@ import { SubmitProof } from '../services/verification-service';
 import { Statement } from './statements/StatementDisplay';
 import { AttributeInRange, AttributeInSet, RevealAttribute } from './statements/Web3IdStatementBuilders';
 import { AgeBound, AgeInRange, AttributeIn, DocumentExpiryNoEarlier, DocumentIssuerIn, EUAttributeIn } from './statements/AccountStatementBuilders';
-import { handleSimulateAnchorCreation } from '../services/simulation-service';
+import { createAnchorAndSubmitService } from '../services/anchor-service';
 import { SubmitProofV1 } from '../services/verification-service-v1';
 
 const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
@@ -52,7 +52,7 @@ export function getSubjectClaims(statement: TopLevelStatements, claimsType: Subj
                 did.push(new IdentityProviderDID(NETWORK, index));
             });
 
-            const subject_claim: VerificationRequestV1.SubjectClaims = {
+            const subjectClaim: VerificationRequestV1.SubjectClaims = {
                 type: 'identity',
                 source,
                 // @ts-ignore
@@ -60,7 +60,7 @@ export function getSubjectClaims(statement: TopLevelStatements, claimsType: Subj
                 issuers: did,
             };
 
-            subjectClaims.push(subject_claim);
+            subjectClaims.push(subjectClaim);
         } else {
             console.error(`Unsupported statement type at index ${index}: ${stmt.type}.
                        Only identity credential statements are supported for proving in V1 flow.`);
@@ -101,12 +101,11 @@ export default function ProofExplorer() {
     }, []);
 
     const [checked, idpsDisplay] = IdentityProviders({ idps });
-
     const [idCred_checked, idCred_idpsDisplay] = IdentityProviders({ idps });
 
     const [lastAccount, setLastAccount] = useState<boolean>(true);
 
-    const [new_statement, setNewStatement] = useState<boolean>(true);
+    const [newStatement, setNewStatement] = useState<boolean>(true);
 
     const [issuers, setIssuers] = useState<string>('');
     const [web3IdAttributes, issuersDisplay] = Issuers(issuers, client.current);
@@ -123,16 +122,16 @@ export default function ProofExplorer() {
     const [claimsType, setClaimsType] = useState<SubjectClaimsType>(
         SubjectClaimsType.AccountOrIdentityClaims
     );
-    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example rescource id')
-    const [transactionHash, setTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
-    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, statement, claimsType, context, transactionHash);
+    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example Resource ID')
+    const [anchorTransactionHash, setAnchorTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, statement, claimsType, context, anchorTransactionHash);
 
-    const [simulationResult, setSimulationResult] = useState<string | null>(null);
+    const [anchorSubmissionResult, setAnchorSubmissionResult] = useState<string | null>(null);
 
     const addIdentityCredentialStatement = (a: AtomicStatementV2[]) => {
         if (currentStatementType && currentStatementType != 'id') {
-            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");
-            toast.error("Warning: mixing statement types. Clear last credential statement first.");
+            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement or start a new credential statement first.");
+            toast.error("Warning: mixing statement types. Clear last credential statement or start a new credential statement first.");
             return;
         }
 
@@ -140,10 +139,7 @@ export default function ProofExplorer() {
             setCurrentStatementType('id');
 
         setStatement((statements) => {
-            console.log("Adding identity credential statement");
-
-            if (!lastAccount || new_statement || statements.length == 0) {
-                console.log("Creating new identity credential statement lastAccount=", lastAccount, " new_statement=", new_statement, " statements.length=", statements.length);
+            if (!lastAccount || newStatement || statements.length == 0) {
                 setLastAccount(true);
                 setNewStatement(false);
                 const statement: IdentityCredentialStatement = {
@@ -162,17 +158,15 @@ export default function ProofExplorer() {
 
     const addAccountStatement = (a: AtomicStatementV2[]) => {
         if (currentStatementType && currentStatementType != 'account') {
-            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");
-            toast.error("Warning: mixing statement types. Clear last credential statement first.");
+            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement or start a new credential statement first.");
+            toast.error("Warning: mixing statement types. Clear last credential statement or start a new credential statement first.");
             return;
         }
 
         if (currentStatementType === undefined) setCurrentStatementType('account');
 
         setStatement((statements) => {
-            console.log("Adding account statement");
-            if (!lastAccount || new_statement || statements.length == 0) {
-                console.log("Creating new account statement lastAccount=", lastAccount, " new_statement=", new_statement, " statements.length=", statements.length);
+            if (!lastAccount || newStatement || statements.length == 0) {
                 setLastAccount(true);
                 setNewStatement(false);
                 const statement: AccountStatement = {
@@ -191,15 +185,15 @@ export default function ProofExplorer() {
     const addWeb3IdStatement = (a: AtomicStatementV2[]) => {
 
         if (currentStatementType && currentStatementType != 'web3id') {
-            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement first.");
-            toast.error("Warning: mixing statement types. Clear last credential statement first.");
+            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement or start a new credential statement first.");
+            toast.error("Warning: mixing statement types. Clear last credential statement or start a new credential statement first.");
             return;
         }
 
         if (currentStatementType === undefined) setCurrentStatementType('web3id');
 
         setStatement((statements) => {
-            if (lastAccount || new_statement || statements.length == 0) {
+            if (lastAccount || newStatement || statements.length == 0) {
                 setLastAccount(false);
                 setNewStatement(false);
                 const statement: Web3IdStatement = {
@@ -219,26 +213,28 @@ export default function ProofExplorer() {
 
     const handleAddTopLevel: MouseEventHandler<HTMLButtonElement> = () => {
         setNewStatement(true);
+        setCurrentStatementType(undefined)
     };
 
     const onIssuersChange: ChangeEventHandler<HTMLInputElement> = (e) => {
         setIssuers(e.target.value);
     };
 
-    const runSimulation = async () => {
+    const createAnchorAndSubmit = async () => {
         if (!provider) {
-            setSimulationResult('Please connect a browser wallet provider before running the simulation.');
+            console.error('Please connect a browser wallet provider before running the simulation.');
+            setAnchorSubmissionResult('Please connect a browser wallet provider before running the simulation.');
             return;
         }
-        setTransactionHash(undefined)
+        setAnchorTransactionHash(undefined)
 
         try {
-            const transactionHash = await handleSimulateAnchorCreation(provider, statement, claimsType, context, withPublicInfo);
-            setSimulationResult(`Simulation completed successfully with anchor transaction hash: ${transactionHash}`);
-            setTransactionHash(TransactionHash.fromHexString(transactionHash))
+            const anchorTransactionHash = await createAnchorAndSubmitService(provider, statement, claimsType, context, withPublicInfo);
+            setAnchorSubmissionResult(`Simulation completed successfully with anchor transaction hash: ${anchorTransactionHash}`);
+            setAnchorTransactionHash(TransactionHash.fromHexString(anchorTransactionHash))
         } catch (err) {
             console.error('Error during simulation:', err);
-            setSimulationResult(`Error during simulation: ${err}`);
+            setAnchorSubmissionResult(`Error during simulation: ${err}`);
         }
     };
 
@@ -267,7 +263,7 @@ export default function ProofExplorer() {
                 <div className="col-sm">
                     <div className="bg-success mb-3 p-3 text-white">
                         {' '}
-                        Construct a statement about a web3id credential.{' '}
+                        Construct a statement about a web3id credential below and then press `Prove` button.
                     </div>
                     <div className="bg-success mb-3 p-3 text-white">
                         <p> List of allowed issuers, e.g., 5916,5830 </p>
@@ -302,7 +298,7 @@ export default function ProofExplorer() {
                 </div>
                 <div className="col-sm">
                     <div className="bg-black mb-3 p-3 text-white">
-                        Construct a statement about an account credential
+                        Construct a statement about an account credential below and then press `Prove` button.
                     </div>
                     <div className="bg-black mb-3 p-3 text-white">
                         Select which identity providers to allow
@@ -382,7 +378,7 @@ export default function ProofExplorer() {
 
                 <div className="col-sm">
                     <div className="bg-info mb-3 p-3 text-black">
-                        Construct a statement about an identity credential below and then press Simulate Create Anchor button. Finally, prove.
+                        Construct a statement about an identity credential below and then press `Submit Anchor Transaction` button. Finally, press `ProveV1` button.
                     </div>
                     <div className="bg-info mb-3 p-3 text-black">
                         Select which identity providers to allow
@@ -469,8 +465,8 @@ export default function ProofExplorer() {
                                     await provider.connect();
                                     setProvider(provider);
                                 } catch (err) {
-                                    console.error("Failed to connect to browser wallet (make sure it is installed):", err);
-                                    toast.error("Failed to connect to browser wallet, make sure it is installed.");
+                                    console.error(`Failed to connect to browser wallet, make sure it is installed: ${err}`);
+                                    toast.error(`Failed to connect to browser wallet, make sure it is installed: ${err}`);
                                 }
                             }
                             }
@@ -482,13 +478,13 @@ export default function ProofExplorer() {
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
                                 let provider = await WalletConnectProvider.getInstance()
-                                await provider.connect([ID_METHOD, SIGN_AND_SEND_TRANSACTION]);
+                                await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_METHOD, SIGN_AND_SEND_TRANSACTION_METHOD]);
                                 setProvider(provider);
                             }}
                         >
                             <div className="fw-bold">Connect Mobile Wallet</div>
                             <div className="small">
-                                Methods: {ID_METHOD}, {SIGN_AND_SEND_TRANSACTION}
+                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD}, {SIGN_AND_SEND_TRANSACTION_METHOD}
                             </div>
                         </button>
 
@@ -496,13 +492,13 @@ export default function ProofExplorer() {
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
                                 let provider = await WalletConnectProvider.getInstance()
-                                await provider.connect([ID_METHOD, ID_METHOD_V1, SIGN_AND_SEND_TRANSACTION]);
+                                await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, SIGN_AND_SEND_TRANSACTION_METHOD]);
                                 setProvider(provider);
                             }}
                         >
                             <div className="fw-bold">Connect Mobile Wallet or ID app</div>
                             <div className="small">
-                                Methods: {ID_METHOD}, {ID_METHOD_V1}, {SIGN_AND_SEND_TRANSACTION}
+                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD}, {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}, {SIGN_AND_SEND_TRANSACTION_METHOD}
                             </div>
                         </button>
                     </div>
@@ -566,9 +562,7 @@ export default function ProofExplorer() {
                     <hr />
 
                     <pre>VerifiablePresentionV1 flow for identity credentials</pre>
-
                     <div className="col-sm">
-
                         Select Credential Type Source:
                         <select
                             value={claimsType}
@@ -599,35 +593,34 @@ export default function ProofExplorer() {
                         </div>
                         <button
                             title="Simulate Create Anchor"
-                            onClick={runSimulation}
+                            onClick={createAnchorAndSubmit}
                             type="button"
                             className="btn btn-primary mt-1"
                         >
                             {'Submit Anchor Transaction'}
                         </button>
                         {' '}
-                        {simulationResult && (
+                        {anchorSubmissionResult && (
                             <div className="alert alert-info mt-2">
                                 <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                    {simulationResult}
+                                    {anchorSubmissionResult}
                                 </pre>
                             </div>
                         )}
                     </div>
-
                     <div className="mt-3">
                         {submitProofDisplayV1}
                     </div>
+
                     <hr />
+
                     <pre>VerifiablePresention flow for account/web3id credentials</pre>
-
-                    {submitProofDisplay}
-
+                    <div className="mt-3">
+                        {submitProofDisplay}
+                    </div>
                     <hr />
-                    <Statement inner={statement} new_statement={new_statement} />
+                    <Statement inner={statement} newStatement={newStatement} />
                 </div>
-                <br />
-                <br />
             </div>
         </main>
     );

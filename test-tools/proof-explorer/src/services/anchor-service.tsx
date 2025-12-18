@@ -5,10 +5,10 @@ import {
 } from '@concordium/web-sdk';
 
 import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
-import { getSubjectClaims } from '../components/ProofExplorer';
 import { SubjectClaimsType, TopLevelStatements } from '../types';
+import { getSubjectClaims } from '../components/ProofExplorer';
 
-export const handleSimulateAnchorCreation = async (
+export const createAnchorAndSubmitService = async (
     provider: WalletProvider,
     statements: TopLevelStatements,
     claimsType: SubjectClaimsType,
@@ -35,8 +35,6 @@ export const handleSimulateAnchorCreation = async (
             ))
         : (console.log('Generating anchor without public info'),
             VerificationRequestV1.createAnchor(context, subjectClaims));
-
-    console.log('Anchor data generated:', anchor.toString());
 
     const registerData: RegisterDataPayload = { data: new DataBlob(Uint8Array.from(anchor).buffer) };
 

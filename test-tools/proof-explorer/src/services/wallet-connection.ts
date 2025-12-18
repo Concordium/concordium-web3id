@@ -7,7 +7,7 @@ import EventEmitter from 'events';
 import JSONBigInt from 'json-bigint';
 import { AccountTransactionType } from '@concordium/web-sdk';
 import { RegisterDataPayload } from '@concordium/web-sdk';
-import { CHAIN_ID, ID_METHOD, ID_METHOD_V1, WALLET_CONNECT_PROJECT_ID, WALLET_CONNECT_SESSION_NAMESPACE } from '../constants';
+import { CHAIN_ID, REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, WALLET_CONNECT_PROJECT_ID, WALLET_CONNECT_SESSION_NAMESPACE } from '../constants';
 
 const walletConnectOpts: SignClientTypes.Options = {
     projectId: WALLET_CONNECT_PROJECT_ID,
@@ -129,6 +129,8 @@ export class WalletConnectProvider extends WalletProvider {
     }
 
     async connect(methods: string[]): Promise<string[] | undefined> {
+        // TODO: Once mobile wallets/ID App are aligend, use aligned walletConnect setting.
+        // E.g. use `requiredNamespaces`
         const { uri, approval } = await this.client.connect({
             optionalNamespaces: {
                 [WALLET_CONNECT_SESSION_NAMESPACE]: {
@@ -192,7 +194,7 @@ export class WalletConnectProvider extends WalletProvider {
             const result = await this.client.request<{ verifiablePresentationJson: string }>({
                 topic: this.topic,
                 request: {
-                    method: ID_METHOD,
+                    method: REQUEST_VERIFIABLE_PRESENTATION_METHOD,
                     params: { paramsJson: serializedParams },
                 },
                 chainId: CHAIN_ID,
@@ -222,7 +224,7 @@ export class WalletConnectProvider extends WalletProvider {
             const result = await this.client.request<{ verifiablePresentationJson: VerifiablePresentationV1.JSON }>({
                 topic: this.topic,
                 request: {
-                    method: ID_METHOD_V1,
+                    method: REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD,
                     params: request,
                 },
                 chainId: CHAIN_ID,

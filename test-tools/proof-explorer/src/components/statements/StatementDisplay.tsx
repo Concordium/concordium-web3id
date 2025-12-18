@@ -1,10 +1,10 @@
 import { StatementTypes } from '@concordium/web-sdk';
 import { TopLevelStatement, TopLevelStatements } from '../../types';
 
-function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
-    switch (outer_statement.type) {
+function Issuer({ outerStatement }: { outerStatement: TopLevelStatement }) {
+    switch (outerStatement.type) {
         case 'id':
-            if (outer_statement.statement.idCred_idps.length == 0) {
+            if (outerStatement.statement.idCred_idps.length == 0) {
                 return <div className="bg-danger"> No issuers selected for an identity credential statement. </div>;
             } else {
                 return (
@@ -12,7 +12,7 @@ function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
                         <p> Statement about an identity credential </p>
                         <p> Allowed issuers </p>
                         <ul>
-                            {outer_statement.statement.idCred_idps.map(({ name, id }) => {
+                            {outerStatement.statement.idCred_idps.map(({ name, id }) => {
                                 return <li key={id}> {`${id}:${name}`} </li>;
                             })}
                         </ul>
@@ -20,7 +20,7 @@ function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
                 );
             }
         case 'account':
-            if (outer_statement.statement.idps.length == 0) {
+            if (outerStatement.statement.idps.length == 0) {
                 return <div className="bg-danger"> No issuers selected for an account statement. </div>;
             } else {
                 return (
@@ -28,7 +28,7 @@ function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
                         <p> Statement about an account credential </p>
                         <p> Allowed issuers </p>
                         <ul>
-                            {outer_statement.statement.idps.map(({ name, id }) => {
+                            {outerStatement.statement.idps.map(({ name, id }) => {
                                 return <li> {`${id}:${name}`} </li>;
                             })}
                         </ul>
@@ -36,7 +36,7 @@ function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
                 );
             }
         case 'web3id':
-            if (outer_statement.statement.issuers.length == 0) {
+            if (outerStatement.statement.issuers.length == 0) {
                 return <div className="bg-danger"> No issuers selected for Web3Id credential statement. </div>;
             } else {
                 return (
@@ -45,7 +45,7 @@ function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
                         <p> Allowed issuers </p>
 
                         <ul className="bg-success">
-                            {outer_statement.statement.issuers.map((inst) => {
+                            {outerStatement.statement.issuers.map((inst) => {
                                 return <li> {[inst.index, inst.subindex].toString()} </li>;
                             })}
                         </ul>
@@ -57,12 +57,12 @@ function Issuer({ outer_statement }: { outer_statement: TopLevelStatement }) {
 /**
 * Component to display the statement.
 */
-export function Statement({ inner, new_statement }: { inner: TopLevelStatements; new_statement: boolean }) {
-    const statements = inner.map((outer_statement) => (
+export function Statement({ inner, newStatement }: { inner: TopLevelStatements; newStatement: boolean }) {
+    const statements = inner.map((outerStatement) => (
         <>
-            <Issuer outer_statement={outer_statement} />
+            <Issuer outerStatement={outerStatement} />
             <div>
-                {outer_statement.statement.statement.map((s,index) => {
+                {outerStatement.statement.statement.map((s, index) => {
                     switch (s.type) {
                         case StatementTypes.RevealAttribute:
                             return (
@@ -141,7 +141,7 @@ export function Statement({ inner, new_statement }: { inner: TopLevelStatements;
             </div>{' '}
         </>
     ));
-    if (new_statement) {
+    if (newStatement) {
         return (
             <>
                 {' '}
