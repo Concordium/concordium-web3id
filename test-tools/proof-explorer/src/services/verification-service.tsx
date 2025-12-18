@@ -41,8 +41,8 @@ async function submitProof(
                     },
                 } as CredentialStatement;
             case 'id':
-                console.error(`Identity credentials cannot be proven by this flow.`);
-                throw new Error(`Identity credentials cannot be proven by this flow.`)
+                console.error(`Identity credentials cannot be proven by this flow. Use V1 flow instead.`);
+                throw new Error(`Identity credentials cannot be proven by this flow. Use V1 flow instead.`)
         }
     });
 
@@ -53,7 +53,6 @@ async function submitProof(
     console.log(statement);
 
     try {
-        console.log("Requesting verifiable presentation from wallet...");
         proof = await provider.requestVerifiablePresentation(challenge, statement);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {

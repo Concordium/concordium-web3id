@@ -1,5 +1,7 @@
 ## Unreleased changes.
 
+- Add V1 proving and verifying flow for identity credentials.
+
 ## 1.2.2
 
 -   Make the verifier backend URL configurable, using the following priority order to determine its value:

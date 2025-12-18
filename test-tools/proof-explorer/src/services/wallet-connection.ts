@@ -1,12 +1,13 @@
-import { detectConcordiumProvider, WalletApi } from '@concordium/browser-wallet-api-helpers';
-import { CredentialStatements, HexString, VerifiablePresentation, VerifiablePresentationV1, VerificationRequestV1 } from '@concordium/web-sdk';
+import EventEmitter from 'events';
+import JSONBigInt from 'json-bigint';
+
 import { SessionTypes, SignClientTypes } from '@walletconnect/types';
 import SignClient from '@walletconnect/sign-client';
 import QRCodeModal from '@walletconnect/qrcode-modal';
-import EventEmitter from 'events';
-import JSONBigInt from 'json-bigint';
-import { AccountTransactionType } from '@concordium/web-sdk';
-import { RegisterDataPayload } from '@concordium/web-sdk';
+import { detectConcordiumProvider, WalletApi } from '@concordium/browser-wallet-api-helpers';
+import { AccountTransactionType, RegisterDataPayload } from '@concordium/web-sdk';
+import { CredentialStatements, HexString, VerifiablePresentation, VerifiablePresentationV1, VerificationRequestV1 } from '@concordium/web-sdk';
+
 import { CHAIN_ID, REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, WALLET_CONNECT_PROJECT_ID, WALLET_CONNECT_SESSION_NAMESPACE } from '../constants';
 
 const walletConnectOpts: SignClientTypes.Options = {
@@ -219,7 +220,7 @@ export class WalletConnectProvider extends WalletProvider {
             throw new Error("No connected account to send transaction.")
         }
 
-
+        console.log('WalletConnectProvider: requesting verifiable presentation V1 with request: ', JSON.stringify(request));
         try {
             const result = await this.client.request<{ verifiablePresentationJson: VerifiablePresentationV1.JSON }>({
                 topic: this.topic,

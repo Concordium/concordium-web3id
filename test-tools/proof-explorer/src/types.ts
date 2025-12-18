@@ -1,5 +1,4 @@
-import { VerifiablePresentation, VerifiablePresentationV1 } from '@concordium/web-sdk';
-import { AtomicStatementV2, ContractAddress } from '@concordium/web-sdk';
+import { AtomicStatementV2, ContractAddress, VerifiablePresentation, VerifiablePresentationV1 } from '@concordium/web-sdk';
 
 export type TopLevelStatement =
     | { type: 'account'; statement: AccountStatement }

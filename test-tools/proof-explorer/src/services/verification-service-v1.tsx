@@ -63,10 +63,7 @@ async function submitProof(
             setProofData(proof);
         }
     } else {
-        // const body = await resp.json();
-        // setMessages((oldMessages) => [...oldMessages, `Proof not OK: (${resp.status}) ${body}`]);
-
-        setMessages((oldMessages) => [...oldMessages, `Proof not OK`]);
+        setMessages((oldMessages) => [...oldMessages, `Proof not OK: ${JSON.stringify(verificationResult)}`]);
     }
 }
 
