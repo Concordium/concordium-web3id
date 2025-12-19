@@ -1,8 +1,10 @@
 ## Unreleased changes.
 
+- Add V1 proving and verifying flow for identity credentials.
+
 ## 1.2.2
 
-- Make the verifier backend URL configurable, using the following priority order to determine its value:
+-   Make the verifier backend URL configurable, using the following priority order to determine its value:
 
 1️⃣ Run-time: `BACKEND_API` environment variable injected by Nginx / Docker via the `env.js` file.
 
