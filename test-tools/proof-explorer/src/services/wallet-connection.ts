@@ -135,14 +135,14 @@ export class WalletConnectProvider extends WalletProvider {
 
     async connect(methods: string[], useOldWalletConnectConstants: boolean): Promise<string[] | undefined> {
 
-        let sessionNamespace = useOldWalletConnectConstants ? WALLET_CONNECT_SESSION_NAMESPACE_OLD : WALLET_CONNECT_SESSION_NAMESPACE;
-        let chainID = useOldWalletConnectConstants ? CHAIN_ID_OLD : CHAIN_ID;
-
+        const sessionNamespace = useOldWalletConnectConstants ? WALLET_CONNECT_SESSION_NAMESPACE_OLD : WALLET_CONNECT_SESSION_NAMESPACE;
+        const chainID = useOldWalletConnectConstants ? CHAIN_ID_OLD : CHAIN_ID;
         this.walletConnectSessionNamespace = sessionNamespace
         this.chainID = chainID
 
+        // TODO: Once mobile wallets/ID App are aligend use `requiredNamespaces`.
         const { uri, approval } = await this.client.connect({
-            requiredNamespaces: {
+            optionalNamespaces: {
                 [this.walletConnectSessionNamespace]: {
                     methods: methods,
                     chains: [this.chainID],

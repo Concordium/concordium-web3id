@@ -478,11 +478,11 @@ export default function ProofExplorer() {
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
                                 let provider = await WalletConnectProvider.getInstance()
-                                await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_METHOD, SIGN_AND_SEND_TRANSACTION_METHOD], true);
+                                await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_METHOD], true);
                                 setProvider(provider);
                             }}
                         >
-                            <div className="fw-bold">Connect Old Mobile Wallets</div>
+                            <div className="fw-bold">Connect Mobile Wallets for V0 Flow (inaudible flow)</div>
                             <div className="small">
                                 `WALLET_CONNECT_SESSION_NAMESPACE={WALLET_CONNECT_SESSION_NAMESPACE_OLD}`
                             </div>
@@ -490,7 +490,7 @@ export default function ProofExplorer() {
                                 `CHAIN_ID={CHAIN_ID_OLD}`
                             </div>
                             <div className="small">
-                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD}, {SIGN_AND_SEND_TRANSACTION_METHOD}
+                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD},
                             </div>
                         </button>
 
@@ -498,11 +498,12 @@ export default function ProofExplorer() {
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
                                 let provider = await WalletConnectProvider.getInstance()
-                                await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, SIGN_AND_SEND_TRANSACTION_METHOD], true);
+                                await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD], true);
                                 setProvider(provider);
                             }}
                         >
-                            <div className="fw-bold">Connect Old Mobile Wallets</div>
+                            {/* TODO: Temporal button for testing Android/iOS wallets until namespace/chainID update */}
+                            <div className="fw-bold">Connect Mobile Wallets for V0/V1 Flow (inaudible/audible flow)</div>
                             <div className="small">
                                 `WALLET_CONNECT_SESSION_NAMESPACE={WALLET_CONNECT_SESSION_NAMESPACE_OLD}`
                             </div>
@@ -510,7 +511,7 @@ export default function ProofExplorer() {
                                 `CHAIN_ID={CHAIN_ID_OLD}`
                             </div>
                             <div className="small">
-                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD}, {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}, {SIGN_AND_SEND_TRANSACTION_METHOD}
+                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD}, {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}
                             </div>
                         </button>
 
@@ -518,11 +519,11 @@ export default function ProofExplorer() {
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
                                 let provider = await WalletConnectProvider.getInstance()
-                                await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, SIGN_AND_SEND_TRANSACTION_METHOD], false);
+                                await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD], false);
                                 setProvider(provider);
                             }}
                         >
-                            <div className="fw-bold">Connect New Mobile Wallet or ID App</div>
+                            <div className="fw-bold">Connect Mobile Wallets or ID App for V1 Flow (audible flow)</div>
                             <div className="small">
                                 `WALLET_CONNECT_SESSION_NAMESPACE={WALLET_CONNECT_SESSION_NAMESPACE}`
                             </div>
@@ -530,7 +531,7 @@ export default function ProofExplorer() {
                                 `CHAIN_ID={CHAIN_ID}`
                             </div>
                             <div className="small">
-                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD}, {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}, {SIGN_AND_SEND_TRANSACTION_METHOD}
+                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}
                             </div>
                         </button>
                     </div>
