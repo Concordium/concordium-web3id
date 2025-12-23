@@ -8,7 +8,7 @@ import { detectConcordiumProvider, WalletApi } from '@concordium/browser-wallet-
 import { AccountTransactionType, RegisterDataPayload } from '@concordium/web-sdk';
 import { CredentialStatements, HexString, VerifiablePresentation, VerifiablePresentationV1, VerificationRequestV1 } from '@concordium/web-sdk';
 
-import { CHAIN_ID, REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, WALLET_CONNECT_PROJECT_ID, WALLET_CONNECT_SESSION_NAMESPACE } from '../constants';
+import { CHAIN_ID, CHAIN_ID_OLD, REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, WALLET_CONNECT_PROJECT_ID, WALLET_CONNECT_SESSION_NAMESPACE, WALLET_CONNECT_SESSION_NAMESPACE_OLD } from '../constants';
 
 const walletConnectOpts: SignClientTypes.Options = {
     projectId: WALLET_CONNECT_PROJECT_ID,
@@ -103,6 +103,10 @@ let walletConnectInstance: WalletConnectProvider | undefined;
 
 export class WalletConnectProvider extends WalletProvider {
     private topic: string | undefined;
+    // Gets replaced with the old  or new `WALLET_CONNECT_SESSION_NAMESPACE` and `CHAIN_ID` 
+    // from the `constants.ts` file when the connection to the wallet gets established.
+    private walletConnectSessionNamespace: string = WALLET_CONNECT_SESSION_NAMESPACE;
+    private chainID: string = CHAIN_ID;
 
     constructor(private client: SignClient) {
         super();
@@ -129,14 +133,19 @@ export class WalletConnectProvider extends WalletProvider {
         return walletConnectInstance;
     }
 
-    async connect(methods: string[]): Promise<string[] | undefined> {
-        // TODO: Once mobile wallets/ID App are aligend, use aligned walletConnect setting.
-        // E.g. use `requiredNamespaces`
+    async connect(methods: string[], useOldWalletConnectConstants: boolean): Promise<string[] | undefined> {
+
+        const sessionNamespace = useOldWalletConnectConstants ? WALLET_CONNECT_SESSION_NAMESPACE_OLD : WALLET_CONNECT_SESSION_NAMESPACE;
+        const chainID = useOldWalletConnectConstants ? CHAIN_ID_OLD : CHAIN_ID;
+        this.walletConnectSessionNamespace = sessionNamespace
+        this.chainID = chainID
+
+        // TODO: Once mobile wallets/ID App are aligend use `requiredNamespaces`.
         const { uri, approval } = await this.client.connect({
             optionalNamespaces: {
-                [WALLET_CONNECT_SESSION_NAMESPACE]: {
+                [this.walletConnectSessionNamespace]: {
                     methods: methods,
-                    chains: [CHAIN_ID],
+                    chains: [this.chainID],
                     events: ['accounts_changed'],
                 },
             },
@@ -198,7 +207,7 @@ export class WalletConnectProvider extends WalletProvider {
                     method: REQUEST_VERIFIABLE_PRESENTATION_METHOD,
                     params: { paramsJson: serializedParams },
                 },
-                chainId: CHAIN_ID,
+                chainId: this.chainID,
             });
             return VerifiablePresentation.fromString(result.verifiablePresentationJson);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -228,7 +237,7 @@ export class WalletConnectProvider extends WalletProvider {
                     method: REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD,
                     params: request,
                 },
-                chainId: CHAIN_ID,
+                chainId: this.chainID,
             });
             return VerifiablePresentationV1.fromJSON(result.verifiablePresentationJson);
 
@@ -261,7 +270,7 @@ export class WalletConnectProvider extends WalletProvider {
     }
 
     private getAccount(ns: SessionTypes.Namespaces): string | undefined {
-        const [, , account] = ns[WALLET_CONNECT_SESSION_NAMESPACE].accounts[0].split(':');
+        const [, , account] = ns[this.walletConnectSessionNamespace].accounts[0].split(':');
         return account;
     }
 }
