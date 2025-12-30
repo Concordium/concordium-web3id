@@ -1,1 +1,1 @@
-declare const BACKEND_API: string
+declare const BACKEND_API: string;

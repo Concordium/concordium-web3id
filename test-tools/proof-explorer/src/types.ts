@@ -1,10 +1,16 @@
-import { AtomicStatementV2, ContractAddress } from "@concordium/web-sdk";
+import { AtomicStatementV2, ContractAddress, VerifiablePresentation, VerifiablePresentationV1 } from '@concordium/web-sdk';
 
 export type TopLevelStatement =
     | { type: 'account'; statement: AccountStatement }
+    | { type: 'id'; statement: IdentityCredentialStatement }
     | { type: 'web3id'; statement: Web3IdStatement };
 
 export type TopLevelStatements = TopLevelStatement[];
+
+export interface IdentityCredentialStatement {
+    idCred_idps: { name: string; id: number }[];
+    statement: AtomicStatementV2[];
+}
 
 export interface AccountStatement {
     idps: { name: string; id: number }[];
@@ -45,7 +51,28 @@ export interface SpecialSetProps extends ExtendStatementProps {
 }
 
 export interface ProofDetailsProps {
-  proof: string | null;
-  isOpen: boolean;
-  onClose: () => void;
+    proof: Proof | null;
+    isOpen: boolean;
+    onClose: () => void;
 }
+
+export enum SubjectClaimsType {
+    AccountOrIdentityClaims = 'AccountOrIdentityClaims',
+    OnlyAccountClaims = 'OnlyAccountClaims',
+    OnlyIdentityClaims = 'OnlyIdentityClaims',
+}
+
+export enum ProofType {
+    VerifiablePresentation,
+    VerifiablePresentationV1,
+}
+
+export type Proof =
+    | {
+        type: ProofType.VerifiablePresentation;
+        value: VerifiablePresentation;
+    }
+    | {
+        type: ProofType.VerifiablePresentationV1;
+        value: VerifiablePresentationV1.Type;
+    };
