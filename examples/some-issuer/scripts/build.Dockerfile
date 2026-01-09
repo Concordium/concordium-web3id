@@ -12,9 +12,8 @@ RUN yarn install --immutable && yarn build-telegram && yarn build-discord
 FROM ${build_image} AS build
 
 WORKDIR /build
-COPY examples/some-issuer examples/some-issuer
-COPY deps/concordium-rust-sdk deps/concordium-rust-sdk
-RUN cargo build --locked --manifest-path examples/some-issuer/Cargo.toml --release
+COPY . .
+RUN cargo build --locked -p some-issuer --release
 
 FROM ${base_image}
 
@@ -29,5 +28,5 @@ RUN apt-get update && \
 COPY --from=frontend /build/examples/some-issuer/frontend/dist frontend
 
 COPY --from=build /build/examples/some-issuer/json-schemas/ /json-schemas
-COPY --from=build /build/examples/some-issuer/target/release/discord /usr/local/bin/
-COPY --from=build /build/examples/some-issuer/target/release/telegram /usr/local/bin/
+COPY --from=build /build/target/release/discord /usr/local/bin/
+COPY --from=build /build/target/release/telegram /usr/local/bin/
