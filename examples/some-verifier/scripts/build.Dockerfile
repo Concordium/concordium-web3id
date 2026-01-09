@@ -12,10 +12,8 @@ RUN yarn install --immutable && yarn build
 FROM ${build_image} AS build
 
 WORKDIR /build
-COPY examples/some-verifier examples/some-verifier
-COPY examples/some-verifier-lib examples/some-verifier-lib
-COPY deps/concordium-rust-sdk deps/concordium-rust-sdk
-RUN cargo build --locked --manifest-path examples/some-verifier/Cargo.toml --release
+COPY . .
+RUN cargo build --locked -p some-verifier --release
 
 FROM ${base_image}
 
@@ -28,5 +26,5 @@ RUN apt-get update && \
 
 COPY --from=frontend /build/examples/some-verifier/frontend/dist frontend
 
-COPY --from=build /build/examples/some-verifier/target/release/some-verifier /usr/local/bin/
+COPY --from=build /build/target/release/some-verifier /usr/local/bin/
 
