@@ -103,9 +103,8 @@ let walletConnectInstance: WalletConnectProvider | undefined;
 
 export class WalletConnectProvider extends WalletProvider {
     private topic: string | undefined;
-    // Gets replaced with the old  or new `WALLET_CONNECT_SESSION_NAMESPACE` and `CHAIN_ID` 
+    // Gets replaced with the old  or new  `CHAIN_ID` 
     // from the `constants.ts` file when the connection to the wallet gets established.
-    private walletConnectSessionNamespace: string = WALLET_CONNECT_SESSION_NAMESPACE;
     private chainID: string = CHAIN_ID;
 
     constructor(private client: SignClient) {
@@ -135,14 +134,12 @@ export class WalletConnectProvider extends WalletProvider {
 
     async connect(methods: string[], useOldWalletConnectConstants: boolean): Promise<string[] | undefined> {
 
-        const sessionNamespace = useOldWalletConnectConstants ? WALLET_CONNECT_SESSION_NAMESPACE : WALLET_CONNECT_SESSION_NAMESPACE;
         const chainID = useOldWalletConnectConstants ? CHAIN_ID_OLD : CHAIN_ID;
-        this.walletConnectSessionNamespace = sessionNamespace
         this.chainID = chainID
 
         const { uri, approval } = await this.client.connect({
             requiredNamespaces: {
-                [this.walletConnectSessionNamespace]: {
+                [WALLET_CONNECT_SESSION_NAMESPACE]: {
                     methods: methods,
                     chains: [this.chainID],
                     events: ['accounts_changed'],
@@ -269,7 +266,7 @@ export class WalletConnectProvider extends WalletProvider {
     }
 
     private getAccount(ns: SessionTypes.Namespaces): string | undefined {
-        const [, , account] = ns[this.walletConnectSessionNamespace].accounts[0].split(':');
+        const [, , account] = ns[WALLET_CONNECT_SESSION_NAMESPACE].accounts[0].split(':');
         return account;
     }
 }
