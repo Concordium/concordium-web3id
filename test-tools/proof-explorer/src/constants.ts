@@ -8,12 +8,12 @@ export const GRPC_WEB_CONFIG = { baseUrl: 'https://grpc.testnet.concordium.com:2
 export const CONCORDIUM_TESTNET_BACKEND_API = 'https://web3id-verifier.testnet.concordium.com';
 
 export const WALLET_CONNECT_PROJECT_ID = '76324905a70fe5c388bab46d3e0564dc';
-export const WALLET_CONNECT_SESSION_NAMESPACE = 'concordium'; // concordium (ID App and new Android/iOS wallets)
+export const WALLET_CONNECT_SESSION_NAMESPACE = 'ccd';
 export const CHAIN_ID = `ccd:4221332d34e1694168c2a0c0b3fd0f27`; // ccd:4221332d34e1694168c2a0c0b3fd0f27 (testnet: ID App and new Android/iOS wallets) // ccd:9dd9ca4d19e9393877d2c44b70f89acb (mainnet: ID App and new Android/iOS wallets)
 
-// Old namespace/chainId used by `Android/iOS wallets`
-export const WALLET_CONNECT_SESSION_NAMESPACE_OLD = 'ccd'; // ccd (old Android/iOS wallets)
-export const CHAIN_ID_OLD = `ccd:testnet`; // ccd:testnet (old Android/iOS wallets)
+// Old chain ID used by older Android/iOS wallets.
+// New Android/iOS wallets continue to support both `CHAIN_ID` and `CHAIN_ID_OLD` for backward compatibility.
+export const CHAIN_ID_OLD = `ccd:testnet`;
 
 export const NETWORK: Network = `Testnet`
 
