@@ -1,5 +1,7 @@
 ## Unreleased changes.
 
+- Use `ccd` as `WALLET_CONNECT_SESSION_NAMESPACE` and use `requiredNamespaces` when connecting to a wallet via wallet-connect.
+
 ## 2.0.0
 
 - Add support for old and new walletConnect namespaces and chainIDs in the ZK proving flows.
