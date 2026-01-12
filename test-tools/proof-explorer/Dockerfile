@@ -19,5 +19,5 @@ COPY --from=frontend /build/test-tools/proof-explorer/dist /usr/share/nginx/html
 COPY ./test-tools/proof-explorer/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Generate the `env.js` file before starting the Nginx server so the frontend
-# can read the `BACKEND_API` value from the container environment at runtime.
-CMD sh -c 'echo "window.BACKEND_API=\"${BACKEND_API}\";" > /usr/share/nginx/html/env.js && nginx -g "daemon off;"'
+# can read the `BACKEND_API` and `CONCORDIUM_TESTNET_V1_VERIFIER` value from the container environment at runtime.
+CMD sh -c 'echo "window.BACKEND_API=\"${BACKEND_API}\";\\window.CONCORDIUM_TESTNET_V1_VERIFIER=\"${CONCORDIUM_TESTNET_V1_VERIFIER}\";" > /usr/share/nginx/html/env.js && nginx -g "daemon off;"'

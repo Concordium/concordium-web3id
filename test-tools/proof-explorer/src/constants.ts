@@ -6,6 +6,7 @@ export const REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA =
 export const GRPC_WEB_CONFIG = { baseUrl: 'https://grpc.testnet.concordium.com:20000' };
 
 export const CONCORDIUM_TESTNET_BACKEND_API = 'https://web3id-verifier.testnet.concordium.com';
+export const CONCORDIUM_TESTNET_V1_VERIFIER = 'https://credential-verification-service.testnet.concordium.com';
 
 export const WALLET_CONNECT_PROJECT_ID = '76324905a70fe5c388bab46d3e0564dc';
 export const WALLET_CONNECT_SESSION_NAMESPACE = 'concordium'; // concordium (ID App and new Android/iOS wallets)

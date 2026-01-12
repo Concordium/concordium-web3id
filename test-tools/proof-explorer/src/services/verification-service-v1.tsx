@@ -2,11 +2,21 @@ import { useState } from 'react';
 
 import { ConcordiumGRPCClient, VerificationRequestV1, VerifiablePresentationV1, TransactionHash, VerificationAuditRecordV1 } from '@concordium/web-sdk';
 
-import { NETWORK } from '../constants';
+import { CONCORDIUM_TESTNET_V1_VERIFIER, NETWORK } from '../constants';
 import { WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { ProofType, SubjectClaimsType, TopLevelStatements } from '../types';
 import ProofDetails from '../components/ProofDetails';
 import { getSubjectClaims } from '../components/ProofExplorer';
+
+// This allows the backend URL to come from three sources, in order of priority:
+// 1️⃣ Runtime value injected by Nginx / Docker via the `env.js` file.
+// 2️⃣ Build-time value from the Vite environment variable `CONCORDIUM_TESTNET_V1_VERIFIER`.
+// 3️⃣ Default Concordium testnet verifier URL.
+export function getVerifierURL(): string {
+    return (window as any).CONCORDIUM_TESTNET_V1_VERIFIER ||
+        process.env.CONCORDIUM_TESTNET_V1_VERIFIER ||
+        CONCORDIUM_TESTNET_V1_VERIFIER;
+}
 
 async function submitProof(
     provider: WalletProvider,
@@ -64,6 +74,30 @@ async function submitProof(
         }
     } else {
         setMessages((oldMessages) => [...oldMessages, `Proof not OK: ${JSON.stringify(verificationResult)}`]);
+        return;
+    }
+
+    const resp = await fetch(`${getVerifierURL()}/verifiabke-presebtations/verify`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            auditRecordID: auditRecordID,
+            publicInfo: {},
+            presentation: proof,
+            verificationRequest
+        })
+    });
+
+    if (resp.ok) {
+        setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
+        if (setProofData) {
+            setProofData(proof);
+        }
+    } else {
+        const body = await resp.json();
+        setMessages((oldMessages) => [...oldMessages, `Proof not OK: (${resp.status}) ${body}`]);
     }
 }
 
