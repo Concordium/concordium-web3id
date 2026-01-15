@@ -27,6 +27,7 @@ async function submitProof(
     anchorTransactionHash: TransactionHash.Type | undefined,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: VerifiablePresentationV1.Type) => void, // optional param to store proof data
+    useVerifierService: boolean = true,
 ) {
 
     if (statements.length == 0) {
@@ -65,40 +66,41 @@ async function submitProof(
     }
 
     const auditRecordID = "12345";
-    let verificationResult = await VerificationAuditRecordV1.createChecked(auditRecordID, verificationRequest, proof, client, NETWORK)
+    let errorMessage: string | undefined;
 
-    if (verificationResult.type == `success`) {
-        setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
-        if (setProofData) {
-            setProofData(proof);
+    if (useVerifierService) {
+        const resp = await fetch(`${getVerifierURL()}/verifiable-presentations/verify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                auditRecordID,
+                publicInfo: {},
+                presentation: proof,
+                verificationRequest
+            })
+        });
+
+        if (!resp.ok) {
+            const body = await resp.json();
+            errorMessage = `Proof not OK: (${resp.status}) ${body}`;
         }
     } else {
-        setMessages((oldMessages) => [...oldMessages, `Proof not OK: ${JSON.stringify(verificationResult)}`]);
+        let verificationResult = await VerificationAuditRecordV1.createChecked(auditRecordID, verificationRequest, proof, client, NETWORK)
+        
+        if (verificationResult.type !== `success`) {
+            errorMessage = `Proof not OK: ${JSON.stringify(verificationResult)}`;
+        }
+    }
+
+    if (errorMessage) {
+        setMessages((oldMessages) => [...oldMessages, errorMessage]);
         return;
     }
 
-    const resp = await fetch(`${getVerifierURL()}/verifiabke-presebtations/verify`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            auditRecordID: auditRecordID,
-            publicInfo: {},
-            presentation: proof,
-            verificationRequest
-        })
-    });
-
-    if (resp.ok) {
-        setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
-        if (setProofData) {
-            setProofData(proof);
-        }
-    } else {
-        const body = await resp.json();
-        setMessages((oldMessages) => [...oldMessages, `Proof not OK: (${resp.status}) ${body}`]);
-    }
+    setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
+    setProofData?.(proof)
 }
 
 export function SubmitProofV1(
