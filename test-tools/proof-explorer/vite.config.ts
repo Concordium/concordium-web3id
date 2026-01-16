@@ -19,7 +19,8 @@ export default defineConfig({
   define: {
     global: 'globalThis',
     'process.env': {
-      VITE_BACKEND_API: process.env.VITE_BACKEND_API
+      VITE_BACKEND_API: process.env.VITE_BACKEND_API,
+      CONCORDIUM_TESTNET_V1_VERIFIER: process.env.CONCORDIUM_TESTNET_V1_VERIFIER
     }
   },
 });

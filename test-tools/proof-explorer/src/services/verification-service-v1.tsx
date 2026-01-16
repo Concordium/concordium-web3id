@@ -2,11 +2,21 @@ import { useState } from 'react';
 
 import { ConcordiumGRPCClient, VerificationRequestV1, VerifiablePresentationV1, TransactionHash, VerificationAuditRecordV1 } from '@concordium/web-sdk';
 
-import { NETWORK } from '../constants';
+import { CONCORDIUM_TESTNET_V1_VERIFIER, NETWORK } from '../constants';
 import { WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { ProofType, SubjectClaimsType, TopLevelStatements } from '../types';
 import ProofDetails from '../components/ProofDetails';
 import { getSubjectClaims } from '../components/ProofExplorer';
+
+// This allows the backend URL to come from three sources, in order of priority:
+// 1️⃣ Runtime value injected by Nginx / Docker via the `env.js` file.
+// 2️⃣ Build-time value from the Vite environment variable `CONCORDIUM_TESTNET_V1_VERIFIER`.
+// 3️⃣ Default Concordium testnet verifier URL.
+export function getVerifierURL(): string {
+    return (window as any).CONCORDIUM_TESTNET_V1_VERIFIER ||
+        process.env.CONCORDIUM_TESTNET_V1_VERIFIER ||
+        CONCORDIUM_TESTNET_V1_VERIFIER;
+}
 
 async function submitProof(
     provider: WalletProvider,
@@ -17,6 +27,7 @@ async function submitProof(
     anchorTransactionHash: TransactionHash.Type | undefined,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: VerifiablePresentationV1.Type) => void, // optional param to store proof data
+    useVerifierService: boolean = true,
 ) {
 
     if (statements.length == 0) {
@@ -55,16 +66,41 @@ async function submitProof(
     }
 
     const auditRecordID = "12345";
-    let verificationResult = await VerificationAuditRecordV1.createChecked(auditRecordID, verificationRequest, proof, client, NETWORK)
+    let errorMessage: string | undefined;
 
-    if (verificationResult.type == `success`) {
-        setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
-        if (setProofData) {
-            setProofData(proof);
+    if (useVerifierService) {
+        const resp = await fetch(`${getVerifierURL()}/verifiable-presentations/verify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                auditRecordID,
+                publicInfo: {},
+                presentation: proof,
+                verificationRequest
+            })
+        });
+
+        if (!resp.ok) {
+            const body = await resp.json();
+            errorMessage = `Proof not OK: (${resp.status}) ${body}`;
         }
     } else {
-        setMessages((oldMessages) => [...oldMessages, `Proof not OK: ${JSON.stringify(verificationResult)}`]);
+        let verificationResult = await VerificationAuditRecordV1.createChecked(auditRecordID, verificationRequest, proof, client, NETWORK)
+        
+        if (verificationResult.type !== `success`) {
+            errorMessage = `Proof not OK: ${JSON.stringify(verificationResult)}`;
+        }
     }
+
+    if (errorMessage) {
+        setMessages((oldMessages) => [...oldMessages, errorMessage]);
+        return;
+    }
+
+    setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
+    setProofData?.(proof)
 }
 
 export function SubmitProofV1(
