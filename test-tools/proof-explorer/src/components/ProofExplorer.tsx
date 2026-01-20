@@ -553,7 +553,7 @@ export default function ProofExplorer() {
                         <button
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
-                                let provider = await WalletConnectProvider.getInstance();
+                                const provider = await WalletConnectProvider.getInstance();
                                 await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD], false);
                                 setProvider(provider);
                             }}
