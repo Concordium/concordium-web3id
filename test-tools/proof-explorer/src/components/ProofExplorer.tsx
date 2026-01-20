@@ -22,7 +22,6 @@ import {
     REQUEST_VERIFIABLE_PRESENTATION_METHOD,
     REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD,
     WALLET_CONNECT_SESSION_NAMESPACE,
-    WALLET_CONNECT_SESSION_NAMESPACE_OLD,
 } from '../constants';
 import { version } from '../../package.json';
 import {
@@ -545,7 +544,7 @@ export default function ProofExplorer() {
                         >
                             <div className="fw-bold">Connect Mobile Wallets for V0 Flow (inaudible flow)</div>
                             <div className="small">
-                                `WALLET_CONNECT_SESSION_NAMESPACE={WALLET_CONNECT_SESSION_NAMESPACE_OLD}`
+                                `WALLET_CONNECT_SESSION_NAMESPACE={WALLET_CONNECT_SESSION_NAMESPACE}`
                             </div>
                             <div className="small">`CHAIN_ID={CHAIN_ID_OLD}`</div>
                             <div className="small">Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD},</div>
@@ -554,32 +553,7 @@ export default function ProofExplorer() {
                         <button
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
-                                const provider = await WalletConnectProvider.getInstance();
-                                await provider.connect(
-                                    [REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD],
-                                    true
-                                );
-                                setProvider(provider);
-                            }}
-                        >
-                            {/* TODO: Temporal button for testing Android/iOS wallets until namespace/chainID update */}
-                            <div className="fw-bold">
-                                Connect Mobile Wallets for V0/V1 Flow (inaudible/audible flow)
-                            </div>
-                            <div className="small">
-                                `WALLET_CONNECT_SESSION_NAMESPACE={WALLET_CONNECT_SESSION_NAMESPACE_OLD}`
-                            </div>
-                            <div className="small">`CHAIN_ID={CHAIN_ID_OLD}`</div>
-                            <div className="small">
-                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD},{' '}
-                                {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}
-                            </div>
-                        </button>
-
-                        <button
-                            className="btn btn-secondary bg-primary mt-2"
-                            onClick={async () => {
-                                const provider = await WalletConnectProvider.getInstance();
+                                let provider = await WalletConnectProvider.getInstance();
                                 await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD], false);
                                 setProvider(provider);
                             }}
