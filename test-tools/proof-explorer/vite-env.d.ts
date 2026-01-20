@@ -1,2 +1,2 @@
-declare const BACKEND_API: string;
-declare const CONCORDIUM_TESTNET_V1_VERIFIER: string;
+declare const VERIFIER_V0_API: string;
+declare const VERIFIER_V1_API: string;

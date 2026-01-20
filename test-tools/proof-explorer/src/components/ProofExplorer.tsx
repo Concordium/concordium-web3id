@@ -1,7 +1,7 @@
 /* eslint-disable no-alert */
 import { useEffect, useState, MouseEventHandler, ChangeEventHandler, useRef } from 'react';
 import { Toaster } from 'react-hot-toast';
-import toast from "react-hot-toast";
+import toast from 'react-hot-toast';
 import {
     AttributeKeyString,
     AtomicStatementV2,
@@ -14,14 +14,36 @@ import {
 } from '@concordium/web-sdk';
 import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport';
 import { BrowserWalletProvider, WalletConnectProvider, WalletProvider } from '../services/wallet-connection';
-import { CHAIN_ID, CHAIN_ID_OLD, GRPC_WEB_CONFIG, NETWORK, REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, SIGN_AND_SEND_TRANSACTION_METHOD, WALLET_CONNECT_SESSION_NAMESPACE, WALLET_CONNECT_SESSION_NAMESPACE_OLD } from '../constants';
+import {
+    CHAIN_ID,
+    CHAIN_ID_OLD,
+    GRPC_WEB_CONFIG,
+    NETWORK,
+    REQUEST_VERIFIABLE_PRESENTATION_METHOD,
+    REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD,
+    WALLET_CONNECT_SESSION_NAMESPACE,
+    WALLET_CONNECT_SESSION_NAMESPACE_OLD,
+} from '../constants';
 import { version } from '../../package.json';
-import { AccountStatement, IdentityCredentialStatement, SubjectClaimsType, TopLevelStatements, Web3IdStatement } from '../types';
+import {
+    AccountStatement,
+    IdentityCredentialStatement,
+    SubjectClaimsType,
+    TopLevelStatements,
+    Web3IdStatement,
+} from '../types';
 import { IdentityProviders, Issuers, parseIssuers } from '../services/credential-provider-services';
 import { SubmitProof } from '../services/verification-service';
 import { Statement } from './statements/StatementDisplay';
 import { AttributeInRange, AttributeInSet, RevealAttribute } from './statements/Web3IdStatementBuilders';
-import { AgeBound, AgeInRange, AttributeIn, DocumentExpiryNoEarlier, DocumentIssuerIn, EUAttributeIn } from './statements/AccountStatementBuilders';
+import {
+    AgeBound,
+    AgeInRange,
+    AttributeIn,
+    DocumentExpiryNoEarlier,
+    DocumentIssuerIn,
+    EUAttributeIn,
+} from './statements/AccountStatementBuilders';
 import { createAnchorAndSubmitService } from '../services/anchor-service';
 import { SubmitProofV1 } from '../services/verification-service-v1';
 
@@ -30,7 +52,10 @@ const accountAttributeNames = Object.values(AttributeKeyString).map((ak) => {
 });
 
 // Convert statements into subject claims for V1 flow
-export function getSubjectClaims(statement: TopLevelStatements, claimsType: SubjectClaimsType): VerificationRequestV1.IdentityClaims[] {
+export function getSubjectClaims(
+    statement: TopLevelStatements,
+    claimsType: SubjectClaimsType
+): VerificationRequestV1.IdentityClaims[] {
     const subjectClaims: VerificationRequestV1.IdentityClaims[] = [];
 
     statement.forEach((stmt, index) => {
@@ -39,16 +64,16 @@ export function getSubjectClaims(statement: TopLevelStatements, claimsType: Subj
                 claimsType === SubjectClaimsType.AccountOrIdentityClaims
                     ? ['identityCredential', 'accountCredential']
                     : claimsType === SubjectClaimsType.OnlyAccountClaims
-                        ? ['accountCredential']
-                        : ['identityCredential'];
+                    ? ['accountCredential']
+                    : ['identityCredential'];
 
             const identityProviderIndex: number[] = [];
-            stmt.statement.idCred_idps.forEach(idp => {
+            stmt.statement.idCred_idps.forEach((idp) => {
                 identityProviderIndex.push(idp.id);
             });
 
-            let did: IdentityProviderDID[] = []
-            identityProviderIndex.forEach(index => {
+            const did: IdentityProviderDID[] = [];
+            identityProviderIndex.forEach((index) => {
                 did.push(new IdentityProviderDID(NETWORK, index));
             });
 
@@ -67,14 +92,16 @@ export function getSubjectClaims(statement: TopLevelStatements, claimsType: Subj
         }
     });
 
-    return subjectClaims
+    return subjectClaims;
 }
 /**
  * The main component.
  */
 export default function ProofExplorer() {
     const [provider, setProvider] = useState<WalletProvider>();
-    const [currentStatementType, setCurrentStatementType] = useState<'account' | 'id' | 'web3id' | undefined>(undefined);
+    const [currentStatementType, setCurrentStatementType] = useState<'account' | 'id' | 'web3id' | undefined>(
+        undefined
+    );
 
     useEffect(() => {
         if (provider !== undefined) {
@@ -119,24 +146,34 @@ export default function ProofExplorer() {
     const nonce = nonceRef.current;
 
     const [withPublicInfo, setWithPublicInfo] = useState(false);
-    const [claimsType, setClaimsType] = useState<SubjectClaimsType>(
-        SubjectClaimsType.AccountOrIdentityClaims
-    );
-    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example Resource ID')
+    const [claimsType, setClaimsType] = useState<SubjectClaimsType>(SubjectClaimsType.AccountOrIdentityClaims);
+    const context = VerificationRequestV1.createSimpleContext(nonce, 'Example Connection ID', 'Example Resource ID');
     const [anchorTransactionHash, setAnchorTransactionHash] = useState<TransactionHash.Type | undefined>(undefined);
-    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(provider, client.current, statement, claimsType, context, anchorTransactionHash);
+    const [setMessagesV1, submitProofDisplayV1] = SubmitProofV1(
+        provider,
+        client.current,
+        statement,
+        claimsType,
+        context,
+        anchorTransactionHash
+    );
 
     const [anchorSubmissionResult, setAnchorSubmissionResult] = useState<string | null>(null);
 
     const addIdentityCredentialStatement = (a: AtomicStatementV2[]) => {
         if (currentStatementType && currentStatementType != 'id') {
-            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement or start a new credential statement first.");
-            toast.error("Warning: mixing statement types. Clear last credential statement or start a new credential statement first.");
+            console.log(
+                'Warning: mixing statement types. Current type=',
+                currentStatementType,
+                '. Clear last credential statement or start a new credential statement first.'
+            );
+            toast.error(
+                'Warning: mixing statement types. Clear last credential statement or start a new credential statement first.'
+            );
             return;
         }
 
-        if (currentStatementType === undefined)
-            setCurrentStatementType('id');
+        if (currentStatementType === undefined) setCurrentStatementType('id');
 
         setStatement((statements) => {
             if (!lastAccount || newStatement || statements.length == 0) {
@@ -155,11 +192,16 @@ export default function ProofExplorer() {
         });
     };
 
-
     const addAccountStatement = (a: AtomicStatementV2[]) => {
         if (currentStatementType && currentStatementType != 'account') {
-            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement or start a new credential statement first.");
-            toast.error("Warning: mixing statement types. Clear last credential statement or start a new credential statement first.");
+            console.log(
+                'Warning: mixing statement types. Current type=',
+                currentStatementType,
+                '. Clear last credential statement or start a new credential statement first.'
+            );
+            toast.error(
+                'Warning: mixing statement types. Clear last credential statement or start a new credential statement first.'
+            );
             return;
         }
 
@@ -183,10 +225,15 @@ export default function ProofExplorer() {
     };
 
     const addWeb3IdStatement = (a: AtomicStatementV2[]) => {
-
         if (currentStatementType && currentStatementType != 'web3id') {
-            console.log("Warning: mixing statement types. Current type=", currentStatementType, ". Clear last credential statement or start a new credential statement first.");
-            toast.error("Warning: mixing statement types. Clear last credential statement or start a new credential statement first.");
+            console.log(
+                'Warning: mixing statement types. Current type=',
+                currentStatementType,
+                '. Clear last credential statement or start a new credential statement first.'
+            );
+            toast.error(
+                'Warning: mixing statement types. Clear last credential statement or start a new credential statement first.'
+            );
             return;
         }
 
@@ -213,7 +260,7 @@ export default function ProofExplorer() {
 
     const handleAddTopLevel: MouseEventHandler<HTMLButtonElement> = () => {
         setNewStatement(true);
-        setCurrentStatementType(undefined)
+        setCurrentStatementType(undefined);
     };
 
     const onIssuersChange: ChangeEventHandler<HTMLInputElement> = (e) => {
@@ -226,12 +273,20 @@ export default function ProofExplorer() {
             setAnchorSubmissionResult('Please connect a browser wallet provider before running the simulation.');
             return;
         }
-        setAnchorTransactionHash(undefined)
+        setAnchorTransactionHash(undefined);
 
         try {
-            const anchorTransactionHash = await createAnchorAndSubmitService(provider, statement, claimsType, context, withPublicInfo);
-            setAnchorSubmissionResult(`Simulation completed successfully with anchor transaction hash: ${anchorTransactionHash}`);
-            setAnchorTransactionHash(TransactionHash.fromHexString(anchorTransactionHash))
+            const anchorTransactionHash = await createAnchorAndSubmitService(
+                provider,
+                statement,
+                claimsType,
+                context,
+                withPublicInfo
+            );
+            setAnchorSubmissionResult(
+                `Simulation completed successfully with anchor transaction hash: ${anchorTransactionHash}`
+            );
+            setAnchorTransactionHash(TransactionHash.fromHexString(anchorTransactionHash));
         } catch (err) {
             console.error('Error during simulation:', err);
             setAnchorSubmissionResult(`Error during simulation: ${err}`);
@@ -256,10 +311,7 @@ export default function ProofExplorer() {
                 </div>
             </nav>
             <div className="row">
-                <Toaster
-                    position="bottom-center"
-                    reverseOrder={false}
-                />
+                <Toaster position="bottom-center" reverseOrder={false} />
                 <div className="col-sm">
                     <div className="bg-success mb-3 p-3 text-white">
                         {' '}
@@ -375,17 +427,20 @@ export default function ProofExplorer() {
                     </div>
                 </div>
 
-
                 <div className="col-sm">
                     <div className="bg-info mb-3 p-3 text-black">
-                        Construct a statement about an identity credential below and then press `Submit Anchor Transaction` button. Finally, press `ProveV1` button.
+                        Construct a statement about an identity credential below and then press `Submit Anchor
+                        Transaction` button. Finally, press `ProveV1` button.
                     </div>
                     <div className="bg-info mb-3 p-3 text-black">
                         Select which identity providers to allow
                         {idCred_idpsDisplay}
                     </div>
                     <div>
-                        <RevealAttribute setStatement={addIdentityCredentialStatement} attributeOptions={accountAttributeNames} />
+                        <RevealAttribute
+                            setStatement={addIdentityCredentialStatement}
+                            attributeOptions={accountAttributeNames}
+                        />
                     </div>
                     <div>
                         <AgeBound younger={true} setStatement={addIdentityCredentialStatement} />
@@ -437,7 +492,10 @@ export default function ProofExplorer() {
                         <EUAttributeIn nationality={false} setStatement={addIdentityCredentialStatement} />
                     </div>
                     <div>
-                        <AttributeInRange setStatement={addIdentityCredentialStatement} attributeOptions={accountAttributeNames} />
+                        <AttributeInRange
+                            setStatement={addIdentityCredentialStatement}
+                            attributeOptions={accountAttributeNames}
+                        />
                     </div>
                     <div>
                         <AttributeInSet
@@ -461,15 +519,18 @@ export default function ProofExplorer() {
                             className="btn btn-primary me-1"
                             onClick={async () => {
                                 try {
-                                    let provider = await BrowserWalletProvider.getInstance()
+                                    const provider = await BrowserWalletProvider.getInstance();
                                     await provider.connect();
                                     setProvider(provider);
                                 } catch (err) {
-                                    console.error(`Failed to connect to browser wallet, make sure it is installed: ${err}`);
-                                    toast.error(`Failed to connect to browser wallet, make sure it is installed: ${err}`);
+                                    console.error(
+                                        `Failed to connect to browser wallet, make sure it is installed: ${err}`
+                                    );
+                                    toast.error(
+                                        `Failed to connect to browser wallet, make sure it is installed: ${err}`
+                                    );
                                 }
-                            }
-                            }
+                            }}
                         >
                             <div className="fw-bold">Connect Browser Wallet</div>
                         </button>
@@ -477,7 +538,7 @@ export default function ProofExplorer() {
                         <button
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
-                                let provider = await WalletConnectProvider.getInstance()
+                                const provider = await WalletConnectProvider.getInstance();
                                 await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_METHOD], true);
                                 setProvider(provider);
                             }}
@@ -486,39 +547,39 @@ export default function ProofExplorer() {
                             <div className="small">
                                 `WALLET_CONNECT_SESSION_NAMESPACE={WALLET_CONNECT_SESSION_NAMESPACE_OLD}`
                             </div>
-                            <div className="small">
-                                `CHAIN_ID={CHAIN_ID_OLD}`
-                            </div>
-                            <div className="small">
-                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD},
-                            </div>
+                            <div className="small">`CHAIN_ID={CHAIN_ID_OLD}`</div>
+                            <div className="small">Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD},</div>
                         </button>
 
                         <button
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
-                                let provider = await WalletConnectProvider.getInstance()
-                                await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD], true);
+                                const provider = await WalletConnectProvider.getInstance();
+                                await provider.connect(
+                                    [REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD],
+                                    true
+                                );
                                 setProvider(provider);
                             }}
                         >
                             {/* TODO: Temporal button for testing Android/iOS wallets until namespace/chainID update */}
-                            <div className="fw-bold">Connect Mobile Wallets for V0/V1 Flow (inaudible/audible flow)</div>
+                            <div className="fw-bold">
+                                Connect Mobile Wallets for V0/V1 Flow (inaudible/audible flow)
+                            </div>
                             <div className="small">
                                 `WALLET_CONNECT_SESSION_NAMESPACE={WALLET_CONNECT_SESSION_NAMESPACE_OLD}`
                             </div>
+                            <div className="small">`CHAIN_ID={CHAIN_ID_OLD}`</div>
                             <div className="small">
-                                `CHAIN_ID={CHAIN_ID_OLD}`
-                            </div>
-                            <div className="small">
-                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD}, {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}
+                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_METHOD},{' '}
+                                {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}
                             </div>
                         </button>
 
                         <button
                             className="btn btn-secondary bg-primary mt-2"
                             onClick={async () => {
-                                let provider = await WalletConnectProvider.getInstance()
+                                const provider = await WalletConnectProvider.getInstance();
                                 await provider.connect([REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD], false);
                                 setProvider(provider);
                             }}
@@ -527,17 +588,14 @@ export default function ProofExplorer() {
                             <div className="small">
                                 `WALLET_CONNECT_SESSION_NAMESPACE={WALLET_CONNECT_SESSION_NAMESPACE}`
                             </div>
-                            <div className="small">
-                                `CHAIN_ID={CHAIN_ID}`
-                            </div>
-                            <div className="small">
-                                Methods: {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}
-                            </div>
+                            <div className="small">`CHAIN_ID={CHAIN_ID}`</div>
+                            <div className="small">Methods: {REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD}</div>
                         </button>
                     </div>
                     <div>
-                        {provider !== undefined && <div className="bg-info p-2 text-center mt-3">
-                            Connected to {provider.connectedAccount}</div>}
+                        {provider !== undefined && (
+                            <div className="bg-info p-2 text-center mt-3">Connected to {provider.connectedAccount}</div>
+                        )}
                         {provider === undefined && (
                             <div className="bg-danger p-2 text-center mt-3"> Not connected </div>
                         )}
@@ -568,9 +626,8 @@ export default function ProofExplorer() {
                                         } else {
                                             return oldStatement.slice(0, oldStatement.length - 1);
                                         }
-                                    })
-                                }
-                                }
+                                    });
+                                }}
                                 type="button"
                                 className="btn btn-primary mt-1"
                             >
@@ -599,18 +656,12 @@ export default function ProofExplorer() {
                         Select Credential Type Source:
                         <select
                             value={claimsType}
-                            onChange={e => setClaimsType(e.target.value as SubjectClaimsType)}
+                            onChange={(e) => setClaimsType(e.target.value as SubjectClaimsType)}
                             className="form-select mt-1"
                         >
-                            <option value={SubjectClaimsType.AccountOrIdentityClaims}>
-                                Account or Identity
-                            </option>
-                            <option value={SubjectClaimsType.OnlyAccountClaims}>
-                                Account only
-                            </option>
-                            <option value={SubjectClaimsType.OnlyIdentityClaims}>
-                                Identity only
-                            </option>
+                            <option value={SubjectClaimsType.AccountOrIdentityClaims}>Account or Identity</option>
+                            <option value={SubjectClaimsType.OnlyAccountClaims}>Account only</option>
+                            <option value={SubjectClaimsType.OnlyIdentityClaims}>Identity only</option>
                         </select>
                         <div className="form-check form-switch mt-2">
                             <input
@@ -618,7 +669,7 @@ export default function ProofExplorer() {
                                 type="checkbox"
                                 id="publicInfoToggle"
                                 checked={withPublicInfo}
-                                onChange={() => setWithPublicInfo(prev => !prev)}
+                                onChange={() => setWithPublicInfo((prev) => !prev)}
                             />
                             <label className="form-check-label" htmlFor="publicInfoToggle">
                                 {withPublicInfo ? 'Added some dummy public info to anchor' : 'No public info in anchor'}
@@ -631,8 +682,7 @@ export default function ProofExplorer() {
                             className="btn btn-primary mt-1"
                         >
                             {'Submit Anchor Transaction'}
-                        </button>
-                        {' '}
+                        </button>{' '}
                         {anchorSubmissionResult && (
                             <div className="alert alert-info mt-2">
                                 <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -641,16 +691,12 @@ export default function ProofExplorer() {
                             </div>
                         )}
                     </div>
-                    <div className="mt-3">
-                        {submitProofDisplayV1}
-                    </div>
+                    <div className="mt-3">{submitProofDisplayV1}</div>
 
                     <hr />
 
                     <pre>VerifiablePresention flow for account/web3id credentials</pre>
-                    <div className="mt-3">
-                        {submitProofDisplay}
-                    </div>
+                    <div className="mt-3">{submitProofDisplay}</div>
                     <hr />
                     <Statement inner={statement} newStatement={newStatement} />
                 </div>

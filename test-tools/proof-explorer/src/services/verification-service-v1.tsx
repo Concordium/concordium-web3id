@@ -1,8 +1,14 @@
 import { useState } from 'react';
 
-import { ConcordiumGRPCClient, VerificationRequestV1, VerifiablePresentationV1, TransactionHash, VerificationAuditRecordV1 } from '@concordium/web-sdk';
+import {
+    ConcordiumGRPCClient,
+    VerificationRequestV1,
+    VerifiablePresentationV1,
+    TransactionHash,
+    VerificationAuditRecordV1,
+} from '@concordium/web-sdk';
 
-import { CONCORDIUM_TESTNET_V1_VERIFIER, NETWORK } from '../constants';
+import { CONCORDIUM_TESTNET_VERIFIER_V1, NETWORK } from '../constants';
 import { WalletConnectProvider, WalletProvider } from './wallet-connection';
 import { ProofType, SubjectClaimsType, TopLevelStatements } from '../types';
 import ProofDetails from '../components/ProofDetails';
@@ -13,9 +19,7 @@ import { getSubjectClaims } from '../components/ProofExplorer';
 // 2️⃣ Build-time value from the Vite environment variable `CONCORDIUM_TESTNET_V1_VERIFIER`.
 // 3️⃣ Default Concordium testnet verifier URL.
 export function getVerifierURL(): string {
-    return (window as any).CONCORDIUM_TESTNET_V1_VERIFIER ||
-        process.env.CONCORDIUM_TESTNET_V1_VERIFIER ||
-        CONCORDIUM_TESTNET_V1_VERIFIER;
+    return (window as any).VERIFIER_V1_API || process.env.VITE_VERIFIER_V1_API || CONCORDIUM_TESTNET_VERIFIER_V1;
 }
 
 async function submitProof(
@@ -27,24 +31,22 @@ async function submitProof(
     anchorTransactionHash: TransactionHash.Type | undefined,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
     setProofData?: (proof: VerifiablePresentationV1.Type) => void, // optional param to store proof data
-    useVerifierService: boolean = true,
+    useVerifierService = true,
+    withPublicInfo = true
 ) {
-
     if (statements.length == 0) {
         console.error('Create the statement in the column on the left and submit the anchor transaction first.');
-        throw new Error(
-            'Create the statement in the column on the left and submit the anchor transaction first.'
-        );
+        throw new Error('Create the statement in the column on the left and submit the anchor transaction first.');
     }
 
     if (anchorTransactionHash == undefined) {
         console.error(`Submit an anchor transaction first.`);
-        throw new Error(`Submit an anchor transaction first.`)
+        throw new Error(`Submit an anchor transaction first.`);
     }
 
     const subjectClaims = getSubjectClaims(statements, claimsType);
 
-    let verificationRequest = VerificationRequestV1.create(context, subjectClaims, anchorTransactionHash);
+    const verificationRequest = VerificationRequestV1.create(context, subjectClaims, anchorTransactionHash);
 
     let proof: VerifiablePresentationV1.Type;
 
@@ -65,7 +67,7 @@ async function submitProof(
         return;
     }
 
-    const auditRecordID = "12345";
+    const auditRecordId = '12345';
     let errorMessage: string | undefined;
 
     if (useVerifierService) {
@@ -75,20 +77,44 @@ async function submitProof(
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                auditRecordID,
-                publicInfo: {},
+                auditRecordId,
+                publicInfo: withPublicInfo
+                    ? {
+                          somePublicInfo: 'public Info',
+                          issuer: 'some issuer',
+                      }
+                    : undefined,
                 presentation: proof,
-                verificationRequest
-            })
+                verificationRequest,
+            }),
         });
 
+        let body = undefined;
+
+        try {
+            body = await resp.json();
+        } catch {}
+
         if (!resp.ok) {
-            const body = await resp.json();
-            errorMessage = `Proof not OK: (${resp.status}) ${body}`;
+            errorMessage = `Proof not OK: (${resp.status}) ${JSON.stringify(body ?? resp.statusText)}`;
+        } else {
+            const result = body?.result ?? body;
+            const failed = result?.failed;
+
+            if (failed) {
+                errorMessage = `Proof not OK: ${failed.message}${
+                    failed.code !== undefined ? ` (code: ${failed.code})` : ''
+                }`;
+            }
         }
     } else {
-        let verificationResult = await VerificationAuditRecordV1.createChecked(auditRecordID, verificationRequest, proof, client, NETWORK)
-        
+        const verificationResult = await VerificationAuditRecordV1.createChecked(
+            auditRecordId,
+            verificationRequest,
+            proof,
+            client,
+            NETWORK
+        );
         if (verificationResult.type !== `success`) {
             errorMessage = `Proof not OK: ${JSON.stringify(verificationResult)}`;
         }
@@ -100,7 +126,7 @@ async function submitProof(
     }
 
     setMessages((oldMessages) => [...oldMessages, 'Proof OK']);
-    setProofData?.(proof)
+    setProofData?.(proof);
 }
 
 export function SubmitProofV1(
@@ -109,11 +135,14 @@ export function SubmitProofV1(
     statements: TopLevelStatements,
     claimsType: SubjectClaimsType,
     context: VerificationRequestV1.Context,
-    anchorTransactionHash: TransactionHash.Type | undefined,
+    anchorTransactionHash: TransactionHash.Type | undefined
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
     const [currentProof, setCurrentProof] = useState<VerifiablePresentationV1.Type | null>(null);
     const [isProofDetailsOpen, setIsProofDetailsOpen] = useState<boolean>(false);
+
+    const [useVerifierService, setUseVerifierService] = useState<boolean>(true);
+    const [withPublicInfo, setWithPublicInfo] = useState<boolean>(true);
 
     const handleViewDetails = () => {
         if (currentProof) {
@@ -128,12 +157,47 @@ export function SubmitProofV1(
     return [
         setMessages,
         <div>
+            <div className="form-check form-switch mb-2">
+                <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="useVerifierServiceToggle"
+                    checked={useVerifierService}
+                    onChange={(e) => setUseVerifierService(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="useVerifierServiceToggle">
+                    {useVerifierService ? 'Use verifier service' : 'Do not use verifier service'}
+                </label>
+            </div>
+            <div className="form-check form-switch mb-2">
+                <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="publicInfoToggleV1"
+                    checked={withPublicInfo}
+                    onChange={(e) => setWithPublicInfo(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="publicInfoToggleV1">
+                    {withPublicInfo ? 'With public info' : 'No public info'}
+                </label>
+            </div>
             <div>
                 {provider !== undefined && (
                     <button
                         title="Submit the statement as a verified presentation request to the wallet."
-                        onClick={
-                            () => submitProof(provider, client, statements, claimsType, context, anchorTransactionHash, setMessages, setCurrentProof)
+                        onClick={() =>
+                            submitProof(
+                                provider,
+                                client,
+                                statements,
+                                claimsType,
+                                context,
+                                anchorTransactionHash,
+                                setMessages,
+                                setCurrentProof,
+                                useVerifierService,
+                                withPublicInfo
+                            )
                         }
                         type="button"
                         className="col-sm-4 btn btn-primary"
@@ -148,18 +212,22 @@ export function SubmitProofV1(
                     {messages.map((m, index) => {
                         if (m === 'Proof OK' && currentProof) {
                             return (
-                                <li key={index} className="alert alert-success d-flex justify-content-between align-items-center">
+                                <li
+                                    key={index}
+                                    className="alert alert-success d-flex justify-content-between align-items-center"
+                                >
                                     <span>{m}</span>
-                                    <button
-                                        onClick={handleViewDetails}
-                                        className="btn btn-sm btn-outline-success"
-                                    >
+                                    <button onClick={handleViewDetails} className="btn btn-sm btn-outline-success">
                                         View Details
                                     </button>
                                 </li>
                             );
                         }
-                        return <li key={index} className="alert alert-success">{m}</li>;
+                        return (
+                            <li key={index} className="alert alert-success">
+                                {m}
+                            </li>
+                        );
                     })}
                 </ol>
             </div>

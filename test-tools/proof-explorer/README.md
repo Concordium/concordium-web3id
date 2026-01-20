@@ -28,13 +28,13 @@ Use `yarn lint` to check formatting and common issues. Use `yarn lint-and-fix` t
 The ZK (zero knowledge) verifier backend URL is configurable, using the following priority order to determine its value:
 
 - 1️⃣ Runtime value injected by Nginx / Docker via the `env.js` file.
-- 2️⃣ Build-time value from the Vite environment variable `VITE_BACKEND_API`.
+- 2️⃣ Build-time value from the Vite environment variable `VITE_VERIFIER_V0_API`.
 - 3️⃣ Fallback Concordium hosted testnet verifier URL [https://web3id-verifier.testnet.concordium.com](https://github.com/Concordium/concordium-web3id/tree/main/services/web3id-verifier)
 
-For example, you can use a custom ZK (zero knowledge) verifier backend with the `VITE_BACKEND_API` env as follows:
+For example, you can use a custom ZK (zero knowledge) verifier backend with the `VITE_VERIFIER_V0_API` env as follows:
 
 ```console
-VITE_BACKEND_API=http://localhost:7017 yarn dev
+VITE_VERIFIER_V0_API=http://localhost:7017 yarn dev
 ```
 
 ## Docker image
