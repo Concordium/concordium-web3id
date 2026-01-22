@@ -23,6 +23,10 @@ export function getVerifierURL(): string {
     return (window as any).VERIFIER_V1_API || process.env.VITE_VERIFIER_V1_API || CONCORDIUM_TESTNET_VERIFIER_V1;
 }
 
+function bytesToHex(bytes: Uint8Array): string {
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function submitProof(
     provider: WalletProvider,
     client: ConcordiumGRPCClient,
@@ -81,8 +85,8 @@ async function submitProof(
                 auditRecordId,
                 publicInfo: withPublicInfo
                     ? {
-                          somePublicInfo: cborEncode('public Info'),
-                          issuer: cborEncode('some issuer'),
+                          somePublicInfo: bytesToHex(cborEncode('public Info')),
+                          issuer: bytesToHex(cborEncode('some issuer')),
                       }
                     : undefined,
                 presentation: proof,
