@@ -1,8 +1,4 @@
-import {
-    VerificationRequestV1,
-    RegisterDataPayload,
-    DataBlob,
-} from '@concordium/web-sdk';
+import { VerificationRequestV1, RegisterDataPayload, DataBlob } from '@concordium/web-sdk';
 
 import { BrowserWalletProvider, WalletProvider } from './wallet-connection';
 import { SubjectClaimsType, TopLevelStatements } from '../types';
@@ -13,13 +9,11 @@ export const createAnchorAndSubmitService = async (
     statements: TopLevelStatements,
     claimsType: SubjectClaimsType,
     context: VerificationRequestV1.Context,
-    withPublicInfo: boolean,
+    withPublicInfo: boolean
 ) => {
     if (statements.length == 0) {
         console.error('Create the statement in the column on the left before submitting the anchor transaction.');
-        throw new Error(
-            'Create the statement in the column on the left before submitting the anchor transaction.'
-        );
+        throw new Error('Create the statement in the column on the left before submitting the anchor transaction.');
     }
 
     const subjectClaims = getSubjectClaims(statements, claimsType);
@@ -28,13 +22,9 @@ export const createAnchorAndSubmitService = async (
 
     const anchor = withPublicInfo
         ? (console.log('Generating anchor with public info'),
-            VerificationRequestV1.createAnchor(
-                context,
-                subjectClaims,
-                { somePublicInfo: 'public info' }
-            ))
+          VerificationRequestV1.createAnchor(context, subjectClaims, { somePublicInfo: 'public info' }))
         : (console.log('Generating anchor without public info'),
-            VerificationRequestV1.createAnchor(context, subjectClaims));
+          VerificationRequestV1.createAnchor(context, subjectClaims));
 
     const registerData: RegisterDataPayload = { data: new DataBlob(Uint8Array.from(anchor).buffer) };
 

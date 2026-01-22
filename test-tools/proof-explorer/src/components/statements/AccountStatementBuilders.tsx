@@ -129,13 +129,11 @@ export function DocumentIssuerIn({ setStatement }: ExtendStatementProps) {
     );
 }
 
-export function toAttributesKeys(
-    key: string
-): AttributesKeys {
+export function toAttributesKeys(key: string): AttributesKeys {
     if (key in AttributesKeys) {
         return AttributesKeys[key as AttributeKey];
     }
-    throw Error(`Unkown attributes key: ${key}`)
+    throw Error(`Unkown attributes key: ${key}`);
 }
 
 /*

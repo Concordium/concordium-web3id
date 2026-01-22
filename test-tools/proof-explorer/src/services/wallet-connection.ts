@@ -6,9 +6,22 @@ import SignClient from '@walletconnect/sign-client';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 import { detectConcordiumProvider, WalletApi } from '@concordium/browser-wallet-api-helpers';
 import { AccountTransactionType, RegisterDataPayload } from '@concordium/web-sdk';
-import { CredentialStatements, HexString, VerifiablePresentation, VerifiablePresentationV1, VerificationRequestV1 } from '@concordium/web-sdk';
+import {
+    CredentialStatements,
+    HexString,
+    VerifiablePresentation,
+    VerifiablePresentationV1,
+    VerificationRequestV1,
+} from '@concordium/web-sdk';
 
-import { CHAIN_ID, CHAIN_ID_OLD, REQUEST_VERIFIABLE_PRESENTATION_METHOD, REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD, WALLET_CONNECT_PROJECT_ID, WALLET_CONNECT_SESSION_NAMESPACE } from '../constants';
+import {
+    CHAIN_ID,
+    CHAIN_ID_OLD,
+    REQUEST_VERIFIABLE_PRESENTATION_METHOD,
+    REQUEST_VERIFIABLE_PRESENTATION_V1_METHOD,
+    WALLET_CONNECT_PROJECT_ID,
+    WALLET_CONNECT_SESSION_NAMESPACE,
+} from '../constants';
 
 const walletConnectOpts: SignClientTypes.Options = {
     projectId: WALLET_CONNECT_PROJECT_ID,
@@ -56,11 +69,11 @@ export class BrowserWalletProvider extends WalletProvider {
         super();
 
         provider.on('accountChanged', (account) => {
-            super.onAccountChanged(account)
+            super.onAccountChanged(account);
         });
         provider.on('accountDisconnected', async () => {
             const newAccount = (await provider.getMostRecentlySelectedAccount()) ?? undefined;
-            super.onAccountChanged(newAccount)
+            super.onAccountChanged(newAccount);
         });
     }
     /**
@@ -78,7 +91,7 @@ export class BrowserWalletProvider extends WalletProvider {
     async connect(): Promise<string[] | undefined> {
         const accounts = await this.provider.requestAccounts();
         this.connectedAccount = accounts[0];
-        return accounts
+        return accounts;
     }
 
     async requestVerifiablePresentation(
@@ -88,13 +101,11 @@ export class BrowserWalletProvider extends WalletProvider {
         return this.provider.requestVerifiablePresentation(challenge, statement);
     }
 
-    async sendRegisterDataTransaction(
-        payload: RegisterDataPayload
-    ): Promise<string> {
+    async sendRegisterDataTransaction(payload: RegisterDataPayload): Promise<string> {
         if (this.connectedAccount) {
             return this.provider.sendTransaction(this.connectedAccount, AccountTransactionType.RegisterData, payload);
         } else {
-            throw new Error("No connected account to send transaction.")
+            throw new Error('No connected account to send transaction.');
         }
     }
 }
@@ -103,7 +114,7 @@ let walletConnectInstance: WalletConnectProvider | undefined;
 
 export class WalletConnectProvider extends WalletProvider {
     private topic: string | undefined;
-    // Gets replaced with the old  or new  `CHAIN_ID` 
+    // Gets replaced with the old  or new  `CHAIN_ID`
     // from the `constants.ts` file when the connection to the wallet gets established.
     private chainID: string = CHAIN_ID;
 
@@ -114,7 +125,7 @@ export class WalletConnectProvider extends WalletProvider {
             super.onAccountChanged(this.getAccount(params.namespaces));
         });
 
-        this.client.on("session_delete", () => {
+        this.client.on('session_delete', () => {
             this.topic = undefined;
             super.onAccountChanged(undefined);
         });
@@ -133,9 +144,8 @@ export class WalletConnectProvider extends WalletProvider {
     }
 
     async connect(methods: string[], useOldWalletConnectConstants: boolean): Promise<string[] | undefined> {
-
         const chainID = useOldWalletConnectConstants ? CHAIN_ID_OLD : CHAIN_ID;
-        this.chainID = chainID
+        this.chainID = chainID;
 
         const { uri, approval } = await this.client.connect({
             requiredNamespaces: {
@@ -185,7 +195,7 @@ export class WalletConnectProvider extends WalletProvider {
             throw new Error('No connection');
         }
         if (!this.connectedAccount) {
-            throw new Error("No connected account to send transaction.")
+            throw new Error('No connected account to send transaction.');
         }
 
         const params = {
@@ -215,17 +225,18 @@ export class WalletConnectProvider extends WalletProvider {
         }
     }
 
-    async requestVerifiablePresentationV1(
-        request: VerificationRequestV1.Type,
-    ): Promise<VerifiablePresentationV1.Type> {
+    async requestVerifiablePresentationV1(request: VerificationRequestV1.Type): Promise<VerifiablePresentationV1.Type> {
         if (!this.topic) {
             throw new Error('No connection');
         }
         if (!this.connectedAccount) {
-            throw new Error("No connected account to send transaction.")
+            throw new Error('No connected account to send transaction.');
         }
 
-        console.log('WalletConnectProvider: requesting verifiable presentation V1 with request: ', JSON.stringify(request));
+        console.log(
+            'WalletConnectProvider: requesting verifiable presentation V1 with request: ',
+            JSON.stringify(request)
+        );
         try {
             const result = await this.client.request<{ verifiablePresentationJson: VerifiablePresentationV1.JSON }>({
                 topic: this.topic,

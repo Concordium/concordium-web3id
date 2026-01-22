@@ -1,12 +1,12 @@
-import { 
-    ConcordiumGRPCClient, 
-    ContractAddress, 
-    ContractName, 
-    deserializeTypeValue, 
-    EntrypointName, 
-    ReceiveName, 
-    SmartContractTypeValues, 
-    toBuffer 
+import {
+    ConcordiumGRPCClient,
+    ContractAddress,
+    ContractName,
+    deserializeTypeValue,
+    EntrypointName,
+    ReceiveName,
+    SmartContractTypeValues,
+    toBuffer,
 } from '@concordium/web-sdk';
 import { REGISTRY_CONTRACT_REGISTRY_METADATA_RETURN_VALUE_SCHEMA } from '../constants';
 import { useEffect, useState, ChangeEvent } from 'react';

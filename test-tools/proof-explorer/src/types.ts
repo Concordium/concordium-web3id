@@ -1,4 +1,9 @@
-import { AtomicStatementV2, ContractAddress, VerifiablePresentation, VerifiablePresentationV1 } from '@concordium/web-sdk';
+import {
+    AtomicStatementV2,
+    ContractAddress,
+    VerifiablePresentation,
+    VerifiablePresentationV1,
+} from '@concordium/web-sdk';
 
 export type TopLevelStatement =
     | { type: 'account'; statement: AccountStatement }
@@ -69,10 +74,10 @@ export enum ProofType {
 
 export type Proof =
     | {
-        type: ProofType.VerifiablePresentation;
-        value: VerifiablePresentation;
-    }
+          type: ProofType.VerifiablePresentation;
+          value: VerifiablePresentation;
+      }
     | {
-        type: ProofType.VerifiablePresentationV1;
-        value: VerifiablePresentationV1.Type;
-    };
+          type: ProofType.VerifiablePresentationV1;
+          value: VerifiablePresentationV1.Type;
+      };

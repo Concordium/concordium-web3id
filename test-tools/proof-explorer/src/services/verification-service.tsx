@@ -1,5 +1,5 @@
 import { CredentialStatement, VerifiablePresentation } from '@concordium/web-sdk';
-import { CONCORDIUM_TESTNET_BACKEND_API } from '../constants';
+import { CONCORDIUM_TESTNET_VERIFIER_V0 } from '../constants';
 import { Buffer } from 'buffer';
 import { WalletProvider } from './wallet-connection';
 import { useState } from 'react';
@@ -8,19 +8,17 @@ import ProofDetails from '../components/ProofDetails';
 
 // This allows the backend URL to come from three sources, in order of priority:
 // 1️⃣ Runtime value injected by Nginx / Docker via the `env.js` file.
-// 2️⃣ Build-time value from the Vite environment variable `VITE_BACKEND_API`.
+// 2️⃣ Build-time value from the Vite environment variable `VITE_VERIFIER_V0_API`.
 // 3️⃣ Default Concordium testnet verifier URL.
 export function getVerifierURL(): string {
-    return (window as any).BACKEND_API ||
-        process.env.VITE_BACKEND_API ||
-        CONCORDIUM_TESTNET_BACKEND_API;
+    return (window as any).VERIFIER_V0_API || process.env.VITE_VERIFIER_V0_API || CONCORDIUM_TESTNET_VERIFIER_V0;
 }
 
 async function submitProof(
     allStatements: TopLevelStatements,
     provider: WalletProvider,
     setMessages: (updateMessage: (oldMessages: string[]) => string[]) => void,
-    setProofData?: (proof: VerifiablePresentation) => void  // optional param to store proof data
+    setProofData?: (proof: VerifiablePresentation) => void // optional param to store proof data
 ) {
     const statement = allStatements.map((s) => {
         switch (s.type) {
@@ -42,7 +40,7 @@ async function submitProof(
                 } as CredentialStatement;
             case 'id':
                 console.error(`Identity credentials cannot be proven by this flow. Use V1 flow instead.`);
-                throw new Error(`Identity credentials cannot be proven by this flow. Use V1 flow instead.`)
+                throw new Error(`Identity credentials cannot be proven by this flow. Use V1 flow instead.`);
         }
     });
 
@@ -87,7 +85,7 @@ async function submitProof(
 
 export function SubmitProof(
     allStatements: TopLevelStatements,
-    provider: WalletProvider | undefined,
+    provider: WalletProvider | undefined
 ): [(messages: string[]) => any, React.JSX.Element] {
     const [messages, setMessages] = useState<string[]>([]);
     const [currentProof, setCurrentProof] = useState<VerifiablePresentation | null>(null);
@@ -124,18 +122,22 @@ export function SubmitProof(
                     {messages.map((m, index) => {
                         if (m === 'Proof OK' && currentProof) {
                             return (
-                                <li key={index} className="alert alert-success d-flex justify-content-between align-items-center">
+                                <li
+                                    key={index}
+                                    className="alert alert-success d-flex justify-content-between align-items-center"
+                                >
                                     <span>{m}</span>
-                                    <button
-                                        onClick={handleViewDetails}
-                                        className="btn btn-sm btn-outline-success"
-                                    >
+                                    <button onClick={handleViewDetails} className="btn btn-sm btn-outline-success">
                                         View Details
                                     </button>
                                 </li>
                             );
                         }
-                        return <li key={index} className="alert alert-success">{m}</li>;
+                        return (
+                            <li key={index} className="alert alert-success">
+                                {m}
+                            </li>
+                        );
                     })}
                 </ol>
             </div>

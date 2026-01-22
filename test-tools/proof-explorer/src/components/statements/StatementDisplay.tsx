@@ -55,8 +55,8 @@ function Issuer({ outerStatement }: { outerStatement: TopLevelStatement }) {
     }
 }
 /**
-* Component to display the statement.
-*/
+ * Component to display the statement.
+ */
 export function Statement({ inner, newStatement }: { inner: TopLevelStatements; newStatement: boolean }) {
     const statements = inner.map((outerStatement) => (
         <>

@@ -1,5 +1,8 @@
 ## Unreleased changes.
 
+- Add backend for the V1 verification flow.
+- Change Vite environment variable `VITE_BACKEND_API` to `VITE_VERIFIER_V0_API`.
+- Change runtime environment variable `BACKEND_API` to `VERIFIER_V0_API`.
 - Use `ccd` as `WALLET_CONNECT_SESSION_NAMESPACE` and use `requiredNamespaces` when connecting to a wallet via wallet-connect.
 
 ## 2.0.0
