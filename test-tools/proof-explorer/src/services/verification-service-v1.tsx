@@ -6,6 +6,7 @@ import {
     VerifiablePresentationV1,
     TransactionHash,
     VerificationAuditRecordV1,
+    cborEncode,
 } from '@concordium/web-sdk';
 
 import { CONCORDIUM_TESTNET_VERIFIER_V1, NETWORK } from '../constants';
@@ -16,7 +17,7 @@ import { getSubjectClaims } from '../components/ProofExplorer';
 
 // This allows the backend URL to come from three sources, in order of priority:
 // 1️⃣ Runtime value injected by Nginx / Docker via the `env.js` file.
-// 2️⃣ Build-time value from the Vite environment variable `CONCORDIUM_TESTNET_V1_VERIFIER`.
+// 2️⃣ Build-time value from the Vite environment variable `VITE_VERIFIER_V1_API`.
 // 3️⃣ Default Concordium testnet verifier URL.
 export function getVerifierURL(): string {
     return (window as any).VERIFIER_V1_API || process.env.VITE_VERIFIER_V1_API || CONCORDIUM_TESTNET_VERIFIER_V1;
@@ -80,8 +81,8 @@ async function submitProof(
                 auditRecordId,
                 publicInfo: withPublicInfo
                     ? {
-                          somePublicInfo: 'public Info',
-                          issuer: 'some issuer',
+                          somePublicInfo: cborEncode('public Info'),
+                          issuer: cborEncode('some issuer'),
                       }
                     : undefined,
                 presentation: proof,
@@ -90,13 +91,17 @@ async function submitProof(
         });
 
         let body = undefined;
+        let raw = '';
 
         try {
-            body = await resp.json();
-        } catch {}
+            raw = await resp.text();
+            body = JSON.parse(raw);
+        } catch {
+            body = undefined;
+        }
 
         if (!resp.ok) {
-            errorMessage = `Proof not OK: (${resp.status}) ${JSON.stringify(body ?? resp.statusText)}`;
+            errorMessage = `Proof not OK: (${resp.status}) ${raw || resp.statusText}`;
         } else {
             const result = body?.result ?? body;
             const failed = result?.failed;
@@ -157,53 +162,55 @@ export function SubmitProofV1(
     return [
         setMessages,
         <div>
-            <div className="form-check form-switch mb-2">
-                <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id="useVerifierServiceToggle"
-                    checked={useVerifierService}
-                    onChange={(e) => setUseVerifierService(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="useVerifierServiceToggle">
-                    {useVerifierService ? 'Use verifier service' : 'Do not use verifier service'}
-                </label>
-            </div>
-            <div className="form-check form-switch mb-2">
-                <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id="publicInfoToggleV1"
-                    checked={withPublicInfo}
-                    onChange={(e) => setWithPublicInfo(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="publicInfoToggleV1">
-                    {withPublicInfo ? 'With public info' : 'No public info'}
-                </label>
-            </div>
             <div>
                 {provider !== undefined && (
-                    <button
-                        title="Submit the statement as a verified presentation request to the wallet."
-                        onClick={() =>
-                            submitProof(
-                                provider,
-                                client,
-                                statements,
-                                claimsType,
-                                context,
-                                anchorTransactionHash,
-                                setMessages,
-                                setCurrentProof,
-                                useVerifierService,
-                                withPublicInfo
-                            )
-                        }
-                        type="button"
-                        className="col-sm-4 btn btn-primary"
-                    >
-                        {'ProveV1'}
-                    </button>
+                    <div>
+                        <div className="form-check form-switch mb-2">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id="useVerifierServiceToggle"
+                                checked={useVerifierService}
+                                onChange={(e) => setUseVerifierService(e.target.checked)}
+                            />
+                            <label className="form-check-label" htmlFor="useVerifierServiceToggle">
+                                {useVerifierService ? 'Use verifier service' : 'Do not use verifier service'}
+                            </label>
+                        </div>
+                        <div className="form-check form-switch mb-2">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                id="publicInfoToggleV1"
+                                checked={withPublicInfo}
+                                onChange={(e) => setWithPublicInfo(e.target.checked)}
+                            />
+                            <label className="form-check-label" htmlFor="publicInfoToggleV1">
+                                {withPublicInfo ? 'With public info in VAA anchor' : 'No public info in VAA anchor'}
+                            </label>
+                        </div>
+                        <button
+                            title="Submit the statement as a verified presentation request to the wallet."
+                            onClick={() =>
+                                submitProof(
+                                    provider,
+                                    client,
+                                    statements,
+                                    claimsType,
+                                    context,
+                                    anchorTransactionHash,
+                                    setMessages,
+                                    setCurrentProof,
+                                    useVerifierService,
+                                    withPublicInfo
+                                )
+                            }
+                            type="button"
+                            className="col-sm-4 btn btn-primary"
+                        >
+                            {'ProveV1'}
+                        </button>
+                    </div>
                 )}
             </div>
             <hr />

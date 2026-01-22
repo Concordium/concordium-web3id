@@ -8,7 +8,7 @@ import ProofDetails from '../components/ProofDetails';
 
 // This allows the backend URL to come from three sources, in order of priority:
 // 1️⃣ Runtime value injected by Nginx / Docker via the `env.js` file.
-// 2️⃣ Build-time value from the Vite environment variable `VITE_BACKEND_API`.
+// 2️⃣ Build-time value from the Vite environment variable `VITE_VERIFIER_V0_API`.
 // 3️⃣ Default Concordium testnet verifier URL.
 export function getVerifierURL(): string {
     return (window as any).VERIFIER_V0_API || process.env.VITE_VERIFIER_V0_API || CONCORDIUM_TESTNET_VERIFIER_V0;

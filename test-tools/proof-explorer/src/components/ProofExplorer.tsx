@@ -646,7 +646,9 @@ export default function ProofExplorer() {
                                 onChange={() => setWithPublicInfo((prev) => !prev)}
                             />
                             <label className="form-check-label" htmlFor="publicInfoToggle">
-                                {withPublicInfo ? 'Added some dummy public info to anchor' : 'No public info in anchor'}
+                                {withPublicInfo
+                                    ? 'Added some dummy public info to VRA anchor'
+                                    : 'No public info in VRA anchor'}
                             </label>
                         </div>
                         <button
