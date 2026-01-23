@@ -1,5 +1,7 @@
 ## Unreleased changes.
 
+## 2.1.0
+
 - Add backend for the V1 verification flow.
 - Change Vite environment variable `VITE_BACKEND_API` to `VITE_VERIFIER_V0_API`.
 - Change runtime environment variable `BACKEND_API` to `VERIFIER_V0_API`.
