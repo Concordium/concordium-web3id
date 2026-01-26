@@ -148,7 +148,7 @@ export class WalletConnectProvider extends WalletProvider {
         this.chainID = chainID;
 
         const { uri, approval } = await this.client.connect({
-            requiredNamespaces: {
+            optionalNamespaces: {
                 [WALLET_CONNECT_SESSION_NAMESPACE]: {
                     methods: methods,
                     chains: [this.chainID],

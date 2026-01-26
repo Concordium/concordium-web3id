@@ -1,5 +1,9 @@
 ## Unreleased changes.
 
+## 2.1.1
+
+- Use `optionalNamesapces` when connecting to a wallet via wallet-connect.
+
 ## 2.1.0
 
 - Add backend for the V1 verification flow.
