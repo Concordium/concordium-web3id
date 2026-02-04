@@ -38,10 +38,12 @@ jobs:
           cache-dependency-path: '${{ matrix.packages }}/yarn.lock'
 
       - name: Install dependencies
+        working-directory: ${{ matrix.packages }}
         run: yarn install --immutable
 
       - name: Audit - Critical vulnerabilities
         id: audit_critical
+        working-directory: ${{ matrix.packages }}
         run: |
           AUDIT_OUTPUT=$(yarn npm audit --all --recursive --severity critical || true)
           echo "$AUDIT_OUTPUT"
@@ -55,6 +57,7 @@ jobs:
 
       - name: Audit - High vulnerabilities
         id: audit_high
+        working-directory: ${{ matrix.packages }}
         run: |
           AUDIT_OUTPUT=$(yarn npm audit --all --recursive --severity high || true)
           echo "$AUDIT_OUTPUT"
