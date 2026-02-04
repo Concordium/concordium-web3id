@@ -27,6 +27,9 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
