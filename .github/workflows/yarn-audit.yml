@@ -21,6 +21,7 @@ jobs:
       matrix:
         packages:
           - issuer-front-end
+          - test-tools/issuer-front-end
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
