@@ -7,6 +7,8 @@ FROM ${build_image} AS frontend
 # Copy front end files
 WORKDIR /build/issuer-front-end
 COPY ./issuer-front-end ./
+
+RUN corepack enable
 RUN yarn install && yarn build
 
 FROM nginx
