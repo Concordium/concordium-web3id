@@ -1,5 +1,7 @@
 ## Unreleased changes.
 
+- Added `requestVerifiablePresentationV1` in WalletProvider 
+
 ## 2.1.1
 
 - Use `optionalNamesapces` when connecting to a wallet via wallet-connect.
