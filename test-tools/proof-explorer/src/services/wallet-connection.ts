@@ -41,6 +41,10 @@ export abstract class WalletProvider extends EventEmitter {
         statement: CredentialStatements
     ): Promise<VerifiablePresentation>;
 
+    abstract requestVerifiablePresentationV1(
+        request: VerificationRequestV1.Type
+    ): Promise<VerifiablePresentationV1.Type>;
+
     disconnect?(): Promise<void>;
 
     /**
@@ -99,6 +103,10 @@ export class BrowserWalletProvider extends WalletProvider {
         statement: CredentialStatements
     ): Promise<VerifiablePresentation> {
         return this.provider.requestVerifiablePresentation(challenge, statement);
+    }
+
+    async requestVerifiablePresentationV1(request: VerificationRequestV1.Type): Promise<VerifiablePresentationV1.Type> {
+        return this.provider.requestVerifiablePresentationV1(request);
     }
 
     async sendRegisterDataTransaction(payload: RegisterDataPayload): Promise<string> {
