@@ -56,13 +56,9 @@ async function submitProof(
     let proof: VerifiablePresentationV1.Type;
 
     try {
-        if (provider instanceof WalletConnectProvider) {
-            proof = await provider.requestVerifiablePresentationV1(verificationRequest);
-            console.log(JSON.stringify(proof));
-            console.log(proof);
-        } else {
-            throw new Error(`Verifiable presentation V1 flow is not implemented for the browser wallet yet.`);
-        }
+        proof = await provider.requestVerifiablePresentationV1(verificationRequest);
+        console.log(JSON.stringify(proof));
+        console.log(proof);
     } catch (err) {
         if (err instanceof Error) {
             setMessages((oldMessages) => [...oldMessages, `Could not get proof: ${err.message}`]);
