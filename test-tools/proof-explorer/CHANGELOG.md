@@ -1,5 +1,7 @@
 ## Unreleased changes.
 
+## 2.1.2
+
 - Added `requestVerifiablePresentationV1` in WalletProvider 
 
 ## 2.1.1
