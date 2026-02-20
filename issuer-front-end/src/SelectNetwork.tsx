@@ -1,5 +1,3 @@
-/* eslint-disable no-console */
-/* eslint-disable no-alert */
 import { Dispatch, SetStateAction } from 'react';
 import { Form } from 'react-bootstrap';
 import { MODULE_REFERENCE_CREDENTIAL_REGISTRY } from './constants';

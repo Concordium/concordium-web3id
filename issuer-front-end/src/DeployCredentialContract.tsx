@@ -1,6 +1,6 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
-/* eslint-disable no-param-reassign */
+
 import { useEffect, useState } from 'react';
 
 import { useGrpcClient, TESTNET, MAINNET, WalletConnection } from '@concordium/react-components';
@@ -271,8 +271,9 @@ export default function DeployCredentialContract(props: ConnectionProps) {
                         className="link"
                         target="_blank"
                         rel="noreferrer"
-                        href={`https://${isTestnet ? `testnet.` : ``
-                            }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
+                        href={`https://${
+                            isTestnet ? `testnet.` : ``
+                        }ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`}
                     >
                         {txHash}
                     </a>

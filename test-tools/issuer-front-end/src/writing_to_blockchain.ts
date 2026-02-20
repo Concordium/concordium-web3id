@@ -107,10 +107,7 @@ export async function updateCredentialSchema(
 
     const payload = {
         amount: CcdAmount.zero(),
-        address: ContractAddress.create(
-            credentialRegistryContractIndex,
-            CONTRACT_SUB_INDEX,
-        ),
+        address: ContractAddress.create(credentialRegistryContractIndex, CONTRACT_SUB_INDEX),
         receiveName: ReceiveName.fromString('credential_registry.updateCredentialSchema'),
         maxContractExecutionEnergy: Energy.create(30000n),
     } as UpdateContractPayload;
@@ -161,10 +158,7 @@ export async function updateCredentialMetadata(
 
     const payload = {
         amount: CcdAmount.zero(),
-        address: ContractAddress.create(
-            credentialRegistryContractIndex,
-            CONTRACT_SUB_INDEX,
-        ),
+        address: ContractAddress.create(credentialRegistryContractIndex, CONTRACT_SUB_INDEX),
         receiveName: ReceiveName.fromString('credential_registry.updateCredentialMetadata'),
         maxContractExecutionEnergy: Energy.create(30000n),
     } as UpdateContractPayload;
@@ -205,10 +199,7 @@ export async function updateIssuerMetadata(
 
     const payload = {
         amount: CcdAmount.zero(),
-        address: ContractAddress.create(
-            credentialRegistryContractIndex,
-            CONTRACT_SUB_INDEX,
-        ),
+        address: ContractAddress.create(credentialRegistryContractIndex, CONTRACT_SUB_INDEX),
         receiveName: ReceiveName.fromString('credential_registry.updateIssuerMetadata'),
         maxContractExecutionEnergy: Energy.create(30000n),
     } as UpdateContractPayload;
@@ -256,10 +247,7 @@ export async function revokeCredential(
 
     const payload = {
         amount: CcdAmount.zero(),
-        address: ContractAddress.create(
-            credentialRegistryContractIndex,
-            CONTRACT_SUB_INDEX,
-        ),
+        address: ContractAddress.create(credentialRegistryContractIndex, CONTRACT_SUB_INDEX),
         receiveName: ReceiveName.fromString('credential_registry.revokeCredentialIssuer'),
         maxContractExecutionEnergy: Energy.create(30000n),
     } as UpdateContractPayload;
@@ -305,10 +293,7 @@ export async function restoreCredential(
 
     const payload = {
         amount: CcdAmount.zero(),
-        address: ContractAddress.create(
-            credentialRegistryContractIndex,
-            CONTRACT_SUB_INDEX,
-        ),
+        address: ContractAddress.create(credentialRegistryContractIndex, CONTRACT_SUB_INDEX),
         receiveName: ReceiveName.fromString('credential_registry.restoreCredential'),
         maxContractExecutionEnergy: Energy.create(30000n),
     } as UpdateContractPayload;
@@ -385,10 +370,7 @@ export async function issueCredential(
 
     const payload = {
         amount: CcdAmount.zero(),
-        address: ContractAddress.create(
-            credentialRegistryContractIndex,
-            CONTRACT_SUB_INDEX,
-        ),
+        address: ContractAddress.create(credentialRegistryContractIndex, CONTRACT_SUB_INDEX),
         receiveName: ReceiveName.fromString('credential_registry.registerCredential'),
         maxContractExecutionEnergy: Energy.create(30000n),
     } as UpdateContractPayload;
