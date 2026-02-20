@@ -1,4 +1,3 @@
-/* eslint-disable no-alert */
 import { useEffect, useState, MouseEventHandler, ChangeEventHandler, useRef } from 'react';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
@@ -79,7 +78,7 @@ export function getSubjectClaims(
             const subjectClaim: VerificationRequestV1.SubjectClaims = {
                 type: 'identity',
                 source,
-                // @ts-ignore
+                // @ts-expect-error - maybe empty causing issues
                 statements: stmt.statement.statement,
                 issuers: did,
             };
