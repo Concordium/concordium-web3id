@@ -21,6 +21,8 @@ module.exports = {
         'no-restricted-syntax': ['error', 'ForInStatement', 'LabeledStatement', 'WithStatement'],
         'react/jsx-props-no-spreading': 0,
         'react/require-default-props': 0,
+        "react/react-in-jsx-scope": "off",
+        "react/jsx-uses-react": "off",
         'class-methods-use-this': 0,
         'jsx-a11y/no-autofocus': 0,
         'no-await-in-loop': 0,

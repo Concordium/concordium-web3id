@@ -1,6 +1,14 @@
 /* eslint-disable no-console */
 import { createContext } from 'react';
-import { AccountTransactionType, CcdAmount, InitContractPayload, ModuleReference, ContractName, Parameter, Energy } from '@concordium/web-sdk';
+import {
+    AccountTransactionType,
+    CcdAmount,
+    InitContractPayload,
+    ModuleReference,
+    ContractName,
+    Parameter,
+    Energy,
+} from '@concordium/web-sdk';
 import { WalletConnection } from '@concordium/react-components';
 import { TypedSmartContractParameters, moduleSchemaFromBase64 } from '@concordium/wallet-connectors';
 import { CREDENTIAL_REGISTRY_BASE_64_SCHEMA, MODULE_REFERENCE_CREDENTIAL_REGISTRY } from './constants';
@@ -57,7 +65,7 @@ export async function createNewIssuer(
             Some: [account],
         },
         revocation_keys: JSON.parse(revocationKeys),
-    } as TypedSmartContractParameters["parameters"];
+    } as TypedSmartContractParameters['parameters'];
 
     const schema: TypedSmartContractParameters = {
         parameters: parameter,
