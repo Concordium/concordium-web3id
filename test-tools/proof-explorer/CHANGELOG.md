@@ -1,5 +1,10 @@
 ## Unreleased changes.
 
+## 2.2.0
+
+- `publicInfo` is now supplied as a json structure instead of a Map of String 
+to hex encoded CBOR values in our `credential-verification-service`.
+
 ## 2.1.2
 
 - Added `requestVerifiablePresentationV1` in WalletProvider 
