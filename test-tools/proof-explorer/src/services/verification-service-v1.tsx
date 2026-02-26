@@ -6,11 +6,10 @@ import {
     VerifiablePresentationV1,
     TransactionHash,
     VerificationAuditRecordV1,
-    cborEncode,
 } from '@concordium/web-sdk';
 
 import { CONCORDIUM_TESTNET_VERIFIER_V1, NETWORK } from '../constants';
-import { WalletConnectProvider, WalletProvider } from './wallet-connection';
+import { WalletProvider } from './wallet-connection';
 import { ProofType, SubjectClaimsType, TopLevelStatements } from '../types';
 import ProofDetails from '../components/ProofDetails';
 import { getSubjectClaims } from '../components/ProofExplorer';
@@ -21,10 +20,6 @@ import { getSubjectClaims } from '../components/ProofExplorer';
 // 3️⃣ Default Concordium testnet verifier URL.
 export function getVerifierURL(): string {
     return (window as any).VERIFIER_V1_API || process.env.VITE_VERIFIER_V1_API || CONCORDIUM_TESTNET_VERIFIER_V1;
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function submitProof(
@@ -81,8 +76,16 @@ async function submitProof(
                 auditRecordId,
                 publicInfo: withPublicInfo
                     ? {
-                          somePublicInfo: bytesToHex(cborEncode('public Info')),
-                          issuer: bytesToHex(cborEncode('some issuer')),
+                          someSessionObject: {
+                              id: crypto.randomUUID(),
+                              issuer: 'some issuer',
+                              additionalData: {
+                                  randomValue: Math.random(),
+                              },
+                          },
+                          anotherKey: {
+                              someNestedData: 'some value',
+                          },
                       }
                     : undefined,
                 presentation: proof,
