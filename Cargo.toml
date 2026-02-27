@@ -9,6 +9,8 @@ members = [
    "examples/some-verifier-lib",
    "examples/bots/discord-bot",
    "examples/bots/telegram-bot",
+   "test-tools/web3id-test",
+   "test-tools/issuer-front-end/backend",
 ]
 
 # Exclude crates in submodules
