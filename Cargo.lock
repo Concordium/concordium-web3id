@@ -1053,7 +1053,7 @@ dependencies = [
  "derive_more",
  "ed25519-dalek",
  "either",
- "ff",
+ "ff 0.13.1",
  "hex",
  "hmac 0.12.1",
  "itertools 0.14.0",
@@ -1614,6 +1614,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ed25519_hd_key_derivation"
+version = "1.0.0"
+dependencies = [
+ "ed25519-dalek",
+ "hex",
+ "hmac 0.12.1",
+ "regex",
+ "sha2 0.10.9",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1671,6 +1683,16 @@ name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
+
+[[package]]
+name = "ff"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4530da57967e140ee0b44e0143aa66b5cb42bd9c503dbe316a15d5b0be65713e"
+dependencies = [
+ "byteorder",
+ "rand_core 0.5.1",
+]
 
 [[package]]
 name = "ff"
@@ -1885,7 +1907,7 @@ version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0f9ef7462f7c099f518d754361858f86d8a07af53ba9af0fe635bbccb151a63"
 dependencies = [
- "ff",
+ "ff 0.13.1",
  "rand_core 0.6.4",
  "subtle",
 ]
@@ -2047,6 +2069,15 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hkdf"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5f8eb2ad728638ea2c7d47a21db23b7b58a72ed6a38256b8a1849f15fbbdf7"
+dependencies = [
+ "hmac 0.12.1",
+]
 
 [[package]]
 name = "hmac"
@@ -2491,6 +2522,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ecc2af9a1119c51f12a14607e783cb977bde58bc069ff0c3da1095e635d70654"
 dependencies = [
  "cpufeatures",
+]
+
+[[package]]
+name = "key_derivation"
+version = "2.1.1"
+dependencies = [
+ "concordium_base",
+ "ed25519-dalek",
+ "ed25519_hd_key_derivation",
+ "hmac 0.12.1",
+ "keygen_bls",
+ "pbkdf2",
+ "serde",
+ "sha2 0.10.9",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "keygen_bls"
+version = "2.0.0"
+dependencies = [
+ "concordium_base",
+ "ff 0.5.2",
+ "hex",
+ "hkdf",
+ "sha2 0.10.9",
 ]
 
 [[package]]
@@ -3355,6 +3412,12 @@ dependencies = [
  "ppv-lite86",
  "rand_core 0.9.3",
 ]
+
+[[package]]
+name = "rand_core"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90bde5296fc891b0cef12a6d03ddccc162ce7b2aff54160af9338f8d40df6d19"
 
 [[package]]
 name = "rand_core"
@@ -4448,6 +4511,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-issuer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum 0.6.20",
+ "clap",
+ "concordium-rust-sdk",
+ "hex",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 1.0.69",
+ "tokio",
+ "tonic",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5190,6 +5275,25 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "web3id-test"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "concordium-rust-sdk",
+ "hex",
+ "key_derivation",
+ "rand 0.8.5",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+ "web3id-issuer",
 ]
 
 [[package]]
