@@ -6,16 +6,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-chrono = "0.4.24"
-clap = { version = "4.3", features = ["derive", "env"] }
-concordium-rust-sdk = { path = "../../deps/concordium-rust-sdk" }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+concordium-rust-sdk = { workspace = true }
 web3id-issuer = { version = "*", path = "../../services/web3id-issuer/" }
-hex = "0.4"
+hex = { workspace = true }
 key_derivation = { version = "*", path = "../../deps/concordium-rust-sdk/concordium-base/rust-src/key_derivation" }
-rand = "0.8"
-reqwest = { version = "0.11", features = ["json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tokio = { version = "1.28", features = ["rt-multi-thread", "time"] }
-url = "2.3.1"
+rand = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
+url = { workspace = true }
