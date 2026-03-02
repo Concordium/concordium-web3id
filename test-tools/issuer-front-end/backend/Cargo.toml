@@ -6,20 +6,19 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-clap = { version = "4.3", features = ["derive", "env"] }
-concordium-rust-sdk = { path = "../../../deps/concordium-rust-sdk" }
-hex = "0.4"
-rand = "0.8"
-tokio = { version = "1.28", features = ["rt-multi-thread", "time", "macros"] }
-thiserror = "1.0"
-axum = { version = "0.6", features = ["tracing"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
-tonic = { version = "0.12", features = ["tls", "tls-roots"] }
-tower-http = { version = "0.4", features = ["trace", "limit", "cors", "timeout", "fs"] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+concordium-rust-sdk = { workspace = true }
+hex = { workspace = true }
+rand = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "time", "macros"] }
+thiserror = { workspace = true }
+axum = { workspace = true, features = ["tracing"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tonic = { workspace = true, features = ["tls", "tls-roots"] }
+tower-http = { workspace = true, features = ["trace", "limit", "cors", "timeout", "fs"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 rand_chacha = "0.3"
-sha2 = "0.10"
-
+sha2 = { workspace = true }
